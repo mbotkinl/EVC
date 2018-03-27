@@ -2,6 +2,7 @@
 %Micah Botkin-Levy
 %3/26/18
 %from Mads Almassakhi code
+
 clc;clear all;
 N   = 6;
 %% model parameters 1:
@@ -83,7 +84,7 @@ Ahats=diag(ones(K,1),-1);
 Ahats0=[1;zeros(K,1)];
 Bhats=cell(N,1);
 for i=1:N
-Bhats{i,1}=diag(ones(K+1,1)*eta(i));
+    Bhats{i,1}=diag(ones(K+1,1)*eta(i));
 end
 AhatT=diag(ones(K,1)*tau,-1);
 AhatT0=[tau;zeros(K,1)];
@@ -101,7 +102,7 @@ FullTamb    = Tamb_amplitude*ones(K+1,1); %normpdf(0,linspace(-10,10,max(K,kmax)
 ndisturbs=2;
 w = zeros((K+1)*ndisturbs,1);
 for i=1:K+1
-w((i-1)*ndisturbs+1:i*ndisturbs,1)  = [iD(i); Tamb_amplitude];
+    w((i-1)*ndisturbs+1:i*ndisturbs,1)  = [iD(i); Tamb_amplitude];
 end
 %% penalty matrix
 Qs  = 10;              % Stage and terminal penalty on charge difference with respect to 1 (states s)
@@ -114,30 +115,30 @@ Ri = ones(N,1);
 QsiKi = ones(N,1);
 RiKi = ones(N,1);
 for i=1:N
-Qsi(i)   = Qs   * (10*rand(1)+.01);
-Ri(i)    = R    * (5*rand(1)+.1);
-QsiKi(i) = QsKi * (rand(1)+.1);
-RiKi(i)  = RKi  * (rand(1)+.1);
+    Qsi(i)   = Qs   * (10*rand(1)+.01);
+    Ri(i)    = R    * (5*rand(1)+.1);
+    QsiKi(i) = QsKi * (rand(1)+.1);
+    RiKi(i)  = RKi  * (rand(1)+.1);
 end
 Rt = []; Qt = [];
 for k=1:K+1
-%for k=1:K
-for i=1:N
-if k<FullChargeTime(i)
-Rt = blkdiag(Rt,  Ri(i));
-Qt = blkdiag(Qt, Qsi(i));
-else
-Rt = blkdiag(Rt,  RiKi(i));
-Qt = blkdiag(Qt, QsiKi(i));
-end
-end
-Qt = blkdiag(Qt, QT);    % Temperature penalty
+    %for k=1:K
+    for i=1:N
+        if k<FullChargeTime(i)
+            Rt = blkdiag(Rt,  Ri(i));
+            Qt = blkdiag(Qt, Qsi(i));
+        else
+            Rt = blkdiag(Rt,  RiKi(i));
+            Qt = blkdiag(Qt, QsiKi(i));
+        end
+    end
+    Qt = blkdiag(Qt, QT);    % Temperature penalty
 end
 Rt = sparse(Rt); Qt = sparse(Qt);
 %% save
 if( any(eta.*K.*FullChargeTime_relative.*imax+s0 < SOCmin) )
-%if( any(eta.*K1.*FullChargeTime_relative.*imax+s0 < SOCmin) )
-disp('Some PEVs may not be able to meet SOC min level by desired time!');
+    %if( any(eta.*K1.*FullChargeTime_relative.*imax+s0 < SOCmin) )
+    disp('Some PEVs may not be able to meet SOC min level by desired time!');
 end
 name=sprintf("EVCscenarioN%d.mat",N);
 save(name)
