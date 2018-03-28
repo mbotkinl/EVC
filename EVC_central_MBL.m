@@ -1,11 +1,13 @@
 %EVC centralized compact PWL
 %Micah Botkin-Levy
 %Spring 2018
-clc;clear all
+clc;clearvars;
 
 N=6;
 Testnum=1;
-load(fullfile(sprintf('N%d_T%d',N,Testnum),sprintf('EVCscenarioN%d.mat',N)))
+testFolder=sprintf('N%d_T%d',N,Testnum);
+scenarioFile=sprintf('EVCscenarioN%d.mat',N);
+load(fullfile(testFolder,scenarioFile))  %generated with EVC_scenario_MBL
 
 %initial states
 x0=[s0;T0];
@@ -95,3 +97,7 @@ subplot(3,1,3)
 plot(X(N+1,:))
 ylabel("XFRM Temp (K)")
 xlim([1 steps])
+
+%plotName='Central1';
+%print(fullfile(testFolder,plotName),'-dpng','-r0')
+

@@ -1,22 +1,25 @@
 %EVC decentralized PWL
 %Micah Botkin-Levy
 %Spring 2018
-clc;clear all;
+clc;clearvars;
 
 N=6;
 Testnum=1;
-load(fullfile(sprintf('N%d_T%d',N,Testnum),sprintf('EVCscenarioN%d.mat',N))) %generated with EVC_scenario_MBL
+testFolder=sprintf('N%d_T%d',N,Testnum);
+scenarioFile=sprintf('EVCscenarioN%d.mat',N);
+load(fullfile(testFolder,scenarioFile)) %generated with EVC_scenario_MBL
 
 %desired states
 Sn0=SOCmin;
 Kn=FullChargeTime;
 
 %initialize
-lambdaGuess=1;
+lambdaGuess=10;
 lambda0=ones(K+1,1)*lambdaGuess;
 lambda=lambda0;
-alpha=2;
+alpha=.5;
 numIteration=500;
+steps=K+1;
 
 %for step=1:steps
     step=1;
@@ -38,6 +41,9 @@ numIteration=500;
     for p=1:numIteration
         fprintf("iteration step %g of %g....\n",p,numIteration)
         %solve N subproblems
+        
+        tic 
+        %parfor for evInd=1:N
         for evInd=1:N
             %move this elsewhere after (but  need to change as i-->K)
             Qhatn=eye(K+1)*Qsi(evInd);
@@ -67,12 +73,15 @@ numIteration=500;
                 U{p,1}(:,evInd)=un;  %current goes in current time slot
             end
         end
+        toc
         
         %solve coordinator problem
         cvx_begin quiet
             variable z(S*(K+1),1)
             variable xt(K+1,1)
-            minimize (-sum(lambda)*sum(z))
+            %minimize (-sum(lambda)*sum(z))
+            %minimize (-sum(lambda(1:K+1,1))*sum(z(1:S,1)))
+            minimize (-lambda'*Fhat*z)
             subject to
                 (eye(K+1)-AhatT)*xt==AhatT0*T0+VhatT*w+EhatT*z;
                 xt<=Tmax;
@@ -92,9 +101,9 @@ numIteration=500;
         %grad of lagragian
         gradL=sum(U{p,1},2)+Ghat*w-Fhat*z;
         
-        
         %update lambda
         alpha_p = alpha/ceil(p/10);
+        
         %alpha_p=alpha;
         lambda_new=lambda+alpha_p*gradL;
         Lam(:,p)=lambda_new;
@@ -103,25 +112,26 @@ numIteration=500;
 %end
 
 
-figure
-plot(Lam(1,:))
-hold on
-plot(Lam(2,:))
+figure; hold on;
+for ii =25
+    plot(Lam(ii,:))
+end
+% plotName='Lam1';
+%print(fullfile(testFolder,plotName),'-dpng','-r0')
 
-
-figure
+figure;
 lgd=strings(1,N);
 for ii =1:N
     subplot(3,1,1)
     plot(Xn{numIteration,1}(:,ii));
+    hold on;
     ylabel("SOC")
-    %xlim([1 K+1])
-    hold on
+    xlim([1 steps])
     subplot(3,1,2)
     plot(U{numIteration,1}(:,ii));
+    hold on;
     ylabel("Current")
-    %xlim([1 steps])
-    hold on
+    xlim([1 steps])
     lgd(ii)=sprintf("EV%d",ii);
 end
 legend(lgd)
@@ -129,7 +139,8 @@ legend(lgd)
 subplot(3,1,3)
 plot(Xt(:,numIteration))
 ylabel("XFRM Temp (K)")
-%xlim([1 steps])
+xlim([1 steps])
 
-
+plotName='Decentral1';
+%print(fullfile(testFolder,plotName),'-dpng','-r0')
 
