@@ -3,7 +3,9 @@
 %Spring 2018
 clc;clear all
 
-load('EVCscenarioN6.mat')
+N=6;
+Testnum=1;
+load(fullfile(sprintf('N%d_T%d',N,Testnum),sprintf('EVCscenarioN%d.mat',N)))
 
 %initial states
 x0=[s0;T0];
@@ -32,7 +34,6 @@ for i=1:steps
         end
         variable u(N*(K+1),1) %control
         variable x((N+1)*(K+1),1) %states (time 1 all states first N+1 rows)
-        %variable w(2*(K+1),1)  %distrubances
         variable z(S*(K+1),1) %pw currents
         minimize (u'*Rt*u+x'*Qt*x-2*ones(1,(N+1)*(K+1))*Qt*x)
         subject to

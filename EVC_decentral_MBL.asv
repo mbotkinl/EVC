@@ -3,9 +3,7 @@
 %Spring 2018
 clc;clear all;
 
-N=6;
-Testnum=1;
-load(fullfile(sprintf('N%d_T%d',N,Testnum),sprintf('EVCscenarioN%d.mat',N))) %generated with EVC_scenario_MBL
+load('EVCscenarioN6.mat') %generated with "EVC_scenario_MBL.m"
 
 %desired states
 Sn0=SOCmin;
@@ -127,9 +125,9 @@ end
 legend(lgd)
 
 subplot(3,1,3)
-plot(Xt(:,numIteration))
+plot(Xt(N+1,:))
 ylabel("XFRM Temp (K)")
-%xlim([1 steps])
+xlim([1 steps])
 
 
 
