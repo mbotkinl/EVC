@@ -3,39 +3,49 @@
 %3/26/18
 %from Mads Almassakhi code
 
-clc;clear all;
-N   = 6;
+clc;clearvars;
+N   = 10;
+modelNum=2;
 %% model parameters 1:
-a = rand(N,1)*.1 + 0.8; % efficiency of Li-ion batts is ~80-90%
-b = 6*rand(N,1)+12;     % battery capacity (12-18 kWh)
-eta = a./b;             % normalized battery sizes (0-1)
-Rw = 1.0;               % Ohm
-m = 13;                 % transformer mass in kg           -------> CAUTION: This is way too low!!! Physics not right!!!
-%m=555;
-C = 0.45*m;             % heat cap. thermal mass ----- spec. heat cap. of {carbon steel, iron, veg. oil} = {0.49, 0.45, 1.67} kJ/(kg*K)
-R = 1070e-4/(5*(m/7870)^(2/3)); % heat outflow resistance K/kW : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
-Ts = 155;                 % sampling time in seconds
-%Ts=.155;
-tau = 1 - Ts/(R*C);     % temp time constant: 1 - 1/RC
-rho = 1 - tau;          % ambient-to-temp param: 1/RC
-gamma = Ts*Rw/C;           % load-to-temp param:
-Vtf = 8320;
+
+if modelNum==1
+    a = rand(N,1)*.1 + 0.8; % efficiency of Li-ion batts is ~80-90%
+    b = 6*rand(N,1)+12;     % battery capacity (12-18 kWh)
+    eta = a./b;             % normalized battery sizes (0-1)
+    Rw = 1.0;               % Ohm
+    m = 13;                 % transformer mass in kg           -------> CAUTION: This is way too low!!! Physics not right!!!
+    %m=555;
+    C = 0.45*m;             % heat cap. thermal mass ----- spec. heat cap. of {carbon steel, iron, veg. oil} = {0.49, 0.45, 1.67} kJ/(kg*K)
+    R = 1070e-4/(5*(m/7870)^(2/3)); % heat outflow resistance K/kW : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
+    Ts = 155;                 % sampling time in seconds
+    %Ts=.155;
+    tau = 1 - Ts/(R*C);     % temp time constant: 1 - 1/RC
+    rho = 1 - tau;          % ambient-to-temp param: 1/RC
+    gamma = Ts*Rw/C;           % load-to-temp param:
+    Vtf = 8320;
+    
+    K=99;
+end
 %% Model parameters 2:
-% a   = rand(N,1)*.1 + 0.8;               % efficiency of Li-ion batts is ~80-90%
-% b   = (6*rand(N,1)+12)*3.6e6;           % battery capacity (12-18 kWh = 43.3-64.8 MJ)
-% m   = 2000;                             % transformer mass in kg
-% C   = 450*m;                            % heat cap. thermal mass J/K ----- spec. heat cap. of C = {carbon steel, iron, veg. oil} = {490, 450, 1670} J/(kg*K)
-% Rh   = 1070e-4/(35*5*(m/7870)^(2/3));    % heat outflow resistance K/W : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
-% Rw  = 1;                              % coil winding resistance --- ohms:
-% Vac = 240;                              % PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
-% Vtf = 8320;                             % distr-level transformer rms voltage --- V [used in inelastic kW -> kA conv]
-% Ntf   = Vtf/Vac;                          % pole-top transformer turns ratio
-% %% Discretization parameters:
-% Ts = Rh*C/9;              % s, sampling time in seconds
-% eta = Ts*Vac*a./b;        % 1/A, normalized battery sizes (0-1)
-% tau = 1 - Ts/(Rh*C);       % no units, temp time constant: 1 - 1/RC
-% rho = 1 - tau;            % no units, ambient-to-temp param: 1/RC
-% gamma = Ts*Rw/(C*Ntf);      % K/W, ohmic losses-to-temp parameter
+if modelNum==2
+    a   = rand(N,1)*.1 + 0.8;               % efficiency of Li-ion batts is ~80-90%
+    b   = (6*rand(N,1)+12)*3.6e6;           % battery capacity (12-18 kWh = 43.3-64.8 MJ)
+    m   = 2000;                             % transformer mass in kg
+    C   = 450*m;                            % heat cap. thermal mass J/K ----- spec. heat cap. of C = {carbon steel, iron, veg. oil} = {490, 450, 1670} J/(kg*K)
+    Rh   = 1070e-4/(35*5*(m/7870)^(2/3));    % heat outflow resistance K/W : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
+    Rw  = 1;                              % coil winding resistance --- ohms:
+    Vac = 240;                              % PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
+    Vtf = 8320;                             % distr-level transformer rms voltage --- V [used in inelastic kW -> kA conv]
+    Ntf   = Vtf/Vac;                          % pole-top transformer turns ratio
+    %% Discretization parameters:
+    Ts = Rh*C/9;              % s, sampling time in seconds
+    eta = Ts*Vac*a./b;        % 1/A, normalized battery sizes (0-1)
+    tau = 1 - Ts/(Rh*C);       % no units, temp time constant: 1 - 1/RC
+    rho = 1 - tau;            % no units, ambient-to-temp param: 1/RC
+    gamma = Ts*Rw/(C*Ntf);      % K/W, ohmic losses-to-temp parameter
+    
+    K=331;
+end
 %% PWL Parameters:
 S = 3;
 ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
@@ -44,7 +54,7 @@ deltaI = ItotalMax/S;
 %K1 = round(12*3600/Ts);            % Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
 %K2 = round(2*3600/Ts);             % Additional time instants past control horizon
 %K  = K1+K2;                        % Total horizon (8 PM to 10 AM)Qs  = 10;              % Stage and terminal penalty on charge difference with respect to 1 (states s)
-K=99;
+
 %% Constraint parameters:
 Tmax = 393;                             % Short-term over-loading --> 120 C = 393 Kelvin
 imin = zeros(N,1);                      % A, q_min < 0 if V2G is allowed
@@ -56,7 +66,9 @@ FullChargeTime = round(K*FullChargeTime_relative);
 s0 = 0.25*rand(N,1);      % initial states of charge (0 - 0.20)
 T0 = 368;                 % initial temp (~65 K below Tmax)
 % Disturbances
-Dload_amplitude = 2;  % base-demand factor
+%sDload_amplitude = 2;  % base-demand factor
+Dload_amplitude =  0.5;% base-demand factor
+
 Tamb_amplitude  = 303;   % assume hot night in summer (30 C)
 %% constraint matrices
 Et=gamma*deltaI*[1:2:(2*S-1)];
@@ -70,6 +82,8 @@ Ed = [zeros(N,S);Et];
 Fa = ones(1,S);
 Ga = [-1 0];
 Ha = -ones(1,N);
+
+
 %create matrices for compact central problem
 Ahat=[[zeros(N+1,(K)*(N+1));blkdiagMat(Ad,K)] zeros((K+1)*(N+1),N+1)];
 A0hat=[Ad;zeros((N+1)*(K+1)-(N+1),N+1)];
@@ -79,6 +93,8 @@ Ehat=blkdiagMat(Ed,K+1);
 Hhat=blkdiagMat(Ha,K+1);
 Ghat=blkdiagMat(Ga,K+1);
 Fhat=blkdiagMat(Fa,K+1);
+
+
 %create matricies for dual/decentral
 Ahats=diag(ones(K,1),-1);
 Ahats0=[1;zeros(K,1)];
@@ -141,4 +157,4 @@ if( any(eta.*K.*FullChargeTime_relative.*imax+s0 < SOCmin) )
     disp('Some PEVs may not be able to meet SOC min level by desired time!');
 end
 name=sprintf("EVCscenarioN%d.mat",N);
-save(name)
+%save(name)

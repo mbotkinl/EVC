@@ -3,7 +3,7 @@
 %Spring 2018
 clc;clearvars;
 
-N=6;
+N=20;
 Testnum=1;
 testFolder=sprintf('N%d_T%d',N,Testnum);
 scenarioFile=sprintf('EVCscenarioN%d.mat',N);
@@ -26,13 +26,18 @@ for i=1:steps
     %solve optimization from step i to K+i
     cvx_solver Gurobi
     %cvx_solver SDPT3
-    %cvx_precision low
-    cvx_begin quiet
-        target=zeros((N+1)*(K+1),1);
+    cvx_precision low
+    cvx_solver_settings('NumericFocus',2)
+    cvx_solver_settings('ResultFile','test.lp')
+
+    %gurobi_cl C:/Users/micah/Documents/uvm/Research/EVC/test.lp
+    
+    cvx_begin %quiet
+        target=zeros((N+1)*(K+1),1); 
         for ii=1:N
-            cur=Kn(ii)-(i-1);
-            ind=max(0,(cur-1)*(N+1))+ii:N+1:length(target);
-            target(ind)=Sn(ii);
+           cur=Kn(ii)-(i-1);
+           ind=max(0,(cur-1)*(N+1))+ii:N+1:length(target);
+           target(ind)=Sn(ii);
         end
         variable u(N*(K+1),1) %control
         variable x((N+1)*(K+1),1) %states (time 1 all states first N+1 rows)
@@ -52,6 +57,7 @@ for i=1:steps
         fprintf("Optimization Failed")
         break
     end
+    
     %     d=x(1:N+1:length(x));
     %     MPCfig(d,i)
     %     pause
@@ -98,6 +104,6 @@ plot(X(N+1,:))
 ylabel("XFRM Temp (K)")
 xlim([1 steps])
 
-%plotName='Central1';
+plotName='Central1';
 %print(fullfile(testFolder,plotName),'-dpng','-r0')
 

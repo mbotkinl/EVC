@@ -3,7 +3,7 @@
 %Spring 2018
 clc;clearvars;
 
-N=6;
+N=20;
 Testnum=1;
 testFolder=sprintf('N%d_T%d',N,Testnum);
 scenarioFile=sprintf('EVCscenarioN%d.mat',N);
@@ -39,11 +39,16 @@ steps=K+1;
     
     %p=1;
     for p=1:numIteration
+        
+
         fprintf("iteration step %g of %g....\n",p,numIteration)
         %solve N subproblems
         
-        tic 
-        %parfor for evInd=1:N
+        
+        %xtemp=zeros(K+2,N);
+        %utemp=zeros(K+1,N);
+        %parfor evInd=1:N
+        
         for evInd=1:N
             %move this elsewhere after (but  need to change as i-->K)
             Qhatn=eye(K+1)*Qsi(evInd);
@@ -67,13 +72,15 @@ steps=K+1;
             
             if cvx_status == "Failed"
                 fprintf("Optimization Failed")
-                break
+                %break
             else
                 Xn{p,1}(2:K+2,evInd)=xn; %solved state goes in next time slot
+                %xtemp(:,evInd)=xn;
                 U{p,1}(:,evInd)=un;  %current goes in current time slot
+                %utemp(:,evInd)=un;
             end
         end
-        toc
+        
         
         %solve coordinator problem
         cvx_begin quiet
@@ -92,7 +99,7 @@ steps=K+1;
         
         if cvx_status == "Failed"
             fprintf("Coordinator Optimization Failed")
-            break
+            %break
         else
             Xt(:,p)=xt;
         end
@@ -108,12 +115,14 @@ steps=K+1;
         lambda_new=lambda+alpha_p*gradL;
         Lam(:,p)=lambda_new;
         lambda=lambda_new;
+        
+        
     end
 %end
 
 
 figure; hold on;
-for ii =25
+for ii =1
     plot(Lam(ii,:))
 end
 % plotName='Lam1';
