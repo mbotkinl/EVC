@@ -1,7 +1,7 @@
 %EVC decentralized PWL
 %Micah Botkin-Levy
 %Spring 2018
-clc;clearvars;
+clc;clear all;
 
 N=20;
 Testnum=1;
@@ -9,15 +9,12 @@ testFolder=sprintf('N%d_T%d',N,Testnum);
 scenarioFile=sprintf('EVCscenarioN%d.mat',N);
 load(fullfile(testFolder,scenarioFile)) %generated with EVC_scenario_MBL
 
-%desired states
-Sn0=SOCmin;
-Kn=FullChargeTime;
-
 %initialize
+cvx_solver Gurobi
 lambdaGuess=10;
 lambda0=ones(K+1,1)*lambdaGuess;
 lambda=lambda0;
-alpha=.5;
+alpha=.2;
 numIteration=500;
 steps=K+1;
 
@@ -53,12 +50,10 @@ steps=K+1;
             %move this elsewhere after (but  need to change as i-->K)
             Qhatn=eye(K+1)*Qsi(evInd);
             Rhatn=eye(K+1)*Ri(evInd);
-            
-            cvx_solver Gurobi
-            
+                        
             cvx_begin quiet
                 target=zeros((K+1),1);
-                target(max(1,Kn(evInd)-(step-1)*Ts):length(target),1)=Sn0(evInd); %fix Ts for time loop???
+                target(max(1,Kn(evInd)-(step-1)*Ts):length(target),1)=s0(evInd); %fix Ts for time loop???
                 variable xn(K+1,1)
                 variable un(K+1,1)
                 minimize (un'*Rhatn*un+xn'*Qhatn*xn-2*ones(1,(K+1))*Qhatn*xn+lambda'*un)
@@ -70,9 +65,10 @@ steps=K+1;
                     un>=imin(evInd);
             cvx_end
             
-            if cvx_status ~= "Solved"
-                fprintf("Optimization Failed")
-                %break
+            %if cvx_status ~= "Solved"
+            if cvx_status == "Failed"
+                fprintf("Optimization Failed %d \n",evInd)
+                break
             else
                 Xn{p,1}(2:K+2,evInd)=xn; %solved state goes in next time slot
                 %xtemp(:,evInd)=xn;
@@ -97,9 +93,10 @@ steps=K+1;
                 z<=deltaI;
         cvx_end
         
-        if cvx_status ~= "Solved"
+        %if cvx_status ~= "Solved"
+        if cvx_status == "Failed"
             fprintf("Coordinator Optimization Failed")
-            %break
+            break
         else
             Xt(:,p)=xt;
         end
@@ -144,6 +141,8 @@ for ii =1:N
     lgd(ii)=sprintf("EV%d",ii);
 end
 legend(lgd)
+
+
 
 subplot(3,1,3)
 plot(Xt(:,numIteration))

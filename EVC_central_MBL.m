@@ -3,7 +3,7 @@
 %Spring 2018
 clc;clearvars;
 
-N=10;
+N=20;
 Testnum=1;
 testFolder=sprintf('N%d_T%d',N,Testnum);
 scenarioFile=sprintf('EVCscenarioN%d.mat',N);
@@ -15,13 +15,14 @@ X=zeros((N+1),steps);
 X(:,1)=x0;
 xi=x0;
 U=zeros(N,steps);
-cvx_solver Gurobi
+%cvx_solver Gurobi
 
 i=1;
 
 
 %for i=1:steps
-    fprintf("MPC step %g of %g....\n",i,steps)
+    %fprintf("MPC step %g of %g....\n",i,steps)
+    
     %solve optimization from step i to K+i
     %cvx_solver SDPT3
     %cvx_precision low
@@ -40,12 +41,13 @@ i=1;
         variable u(N*(K+1),1) %control
         variable x((N+1)*(K+1),1) %states (time 1 all states first N+1 rows)
         variable z(S*(K+1),1) %pw currents
-        minimize (u'*R*u+x'*Q*x-2*ones(1,(N+1)*(K+1))*Q*x)
+        minimize (u'*Rt*u+x'*Qt*x-2*ones(1,(N+1)*(K+1))*Qt*x)
         subject to
             (eye((K+1)*(N+1))-Ahat)*x==A0hat*xi+Bhat*u+Vhat*w+Ehat*z; %64
             0==Hhat*u+Ghat*w+Fhat*z; %65
             x<=repmat([ones(N,1);Tmax],K+1,1);
             x>=target;
+            %x>=0;
             u<=repmat(imax,K+1,1);
             u>=repmat(imin,K+1,1);
             z>=0;
@@ -53,7 +55,7 @@ i=1;
     cvx_end
     %if cvx_status ~= "Solved"
     if cvx_status == "Failed"
-        fprintf("Optimization Failed")
+        fprintf("Optimization Failed \n")
         %break
     end
     
@@ -62,10 +64,12 @@ i=1;
     %     MPCfig(d,i)
     %     pause
     
-    %check iterative step
+    %check iterative SOC step
     %x0(N+1)
     %x(N+1)
     %A0hat(N+1,:)*xi+Vhat(N+1,:)*w+Ehat(N+1,:)*z
+    %check iterative temp step
+    
     
     %one time step plots
     figure
@@ -93,13 +97,13 @@ i=1;
     
     
     plotName='Central1';
-    print(fullfile(testFolder,plotName),'-dpng','-r0')
+    %print(fullfile(testFolder,plotName),'-dpng','-r0')
     
     
-    %apply u1 and get new xi for i+1
-    xi=x(1:N+1);s
-    X(:,i+1)=xi;
-    U(:,i)=u(1:N);
+    %%MPC: apply u1 and get new xi for i+1
+    %xi=x(1:N+1);s
+    %X(:,i+1)=xi;
+    %U(:,i)=u(1:N);
 %end
 
 

@@ -4,8 +4,9 @@
 %from Mads Almassakhi code
 
 clc;clearvars;
-N   = 10;
+N   = 4;
 modelNum=2;
+penNum=2;
 %% model parameters 1:
 
 if modelNum==1
@@ -49,8 +50,8 @@ if modelNum==2
 end
 %% PWL Parameters:
 S = 3;
-%ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
-ItotalMax = 140;   
+ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
+%ItotalMax = 800;   
 deltaI = ItotalMax/S;
 %% MPC Paramters
 %K1 = round(12*3600/Ts);            % Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
@@ -130,53 +131,56 @@ end
 
 
 %% penalty matrix new (need to fix for k>Ki)
+if penNum==2
+    Ru   = .1;              % Stage and terminal penalty on local power flow (inputs u)4
+    %RKi   = 10;            % Stage and terminal penalty on local power flow (inputs q), for k >= Ki
+    Qs  = 10;              % Stage and terminal penalty on charge difference with respect to 1 (states s)
+    QT  = 0;               % PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
+    %QsKi  = 1;             % Stage and terminal penalty on charge difference with respect to 1 (states s), for k >= Ki
+    Ri=Ru*(5*rand(N,1)+.1);
+    Qsi=[Qs*(10*rand(N,1)+.01);QT];
 
-Ru   = .1;              % Stage and terminal penalty on local power flow (inputs u)4
-%RKi   = 10;            % Stage and terminal penalty on local power flow (inputs q), for k >= Ki
-Qs  = 10;              % Stage and terminal penalty on charge difference with respect to 1 (states s)
-QT  = 0;               % PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
-%QsKi  = 1;             % Stage and terminal penalty on charge difference with respect to 1 (states s), for k >= Ki
-Ri=Ru*(5*rand(N,1)+.1);
-Qsi=[Qs*(10*rand(N,1)+.01);QT];
-
-Q=blkdiagMat(diag(Qsi),K+1);
-R=blkdiagMat(diag(Ri),K+1);
-
+    Qt=blkdiagMat(diag(Qsi),K+1);
+    Rt=blkdiagMat(diag(Ri),K+1);
+end
 %% penalty matrix old
-% Qs  = 10;              % Stage and terminal penalty on charge difference with respect to 1 (states s)
-% QT  = 0;               % PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
-% R   = .1;              % Stage and terminal penalty on local power flow (inputs q)
-% QsKi  = 1;             % Stage and terminal penalty on charge difference with respect to 1 (states s), for k >= Ki
-% RKi   = 10;            % Stage and terminal penalty on local power flow (inputs q), for k >= Ki
-% Qsi = ones(N,1);
-% Ri = ones(N,1);
-% QsiKi = ones(N,1);
-% RiKi = ones(N,1);
-% for i=1:N
-%     Qsi(i)   = Qs   * (10*rand(1)+.01);
-%     Ri(i)    = R    * (5*rand(1)+.1);
-%     QsiKi(i) = QsKi * (rand(1)+.1);
-%     RiKi(i)  = RKi  * (rand(1)+.1);
-% end
-% Rt = []; Qt = [];
-% for k=1:K+1
-%     %for k=1:K
-%     for i=1:N
-%         if k<FullChargeTime(i)
-%             Rt = blkdiag(Rt,  Ri(i));
-%             Qt = blkdiag(Qt, Qsi(i));
-%         else
-%             Rt = blkdiag(Rt,  RiKi(i));
-%             Qt = blkdiag(Qt, QsiKi(i));
-%         end
-%     end
-%     Qt = blkdiag(Qt, QT);    % Temperature penalty
-% end
-% Rt = sparse(Rt); Qt = sparse(Qt);
+
+if penNum==1
+    Qs  = 10;              % Stage and terminal penalty on charge difference with respect to 1 (states s)
+    QT  = 0;               % PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
+    R   = .1;              % Stage and terminal penalty on local power flow (inputs q)
+    QsKi  = 1;             % Stage and terminal penalty on charge difference with respect to 1 (states s), for k >= Ki
+    RKi   = 10;            % Stage and terminal penalty on local power flow (inputs q), for k >= Ki
+    Qsi = ones(N,1);
+    Ri = ones(N,1);
+    QsiKi = ones(N,1);
+    RiKi = ones(N,1);
+    for i=1:N
+        Qsi(i)   = Qs   * (10*rand(1)+.01);
+        Ri(i)    = R    * (5*rand(1)+.1);
+        QsiKi(i) = QsKi * (rand(1)+.1);
+        RiKi(i)  = RKi  * (rand(1)+.1);
+    end
+    Rt = []; Qt = [];
+    for k=1:K+1
+        %for k=1:K
+        for i=1:N
+            if k<FullChargeTime(i)
+                Rt = blkdiag(Rt,  Ri(i));
+                Qt = blkdiag(Qt, Qsi(i));
+            else
+                Rt = blkdiag(Rt,  RiKi(i));
+                Qt = blkdiag(Qt, QsiKi(i));
+            end
+        end
+        Qt = blkdiag(Qt, QT);    % Temperature penalty
+    end
+    Rt = sparse(Rt); Qt = sparse(Qt);
+end
 %% save
 if( any(eta.*K.*FullChargeTime_relative.*imax+s0 < SOCmin) )
 %if( any(eta.*K1.*FullChargeTime_relative.*imax+s0 < SOCmin) )
     disp('Some PEVs may not be able to meet SOC min level by desired time!');
 end
 name=sprintf("EVCscenarioN%d.mat",N);
-%save(name)
+save(name)
