@@ -70,7 +70,7 @@ steps=K+1;
                     un>=imin(evInd);
             cvx_end
             
-            if cvx_status == "Failed"
+            if cvx_status ~= "Solved"
                 fprintf("Optimization Failed")
                 %break
             else
@@ -97,7 +97,7 @@ steps=K+1;
                 z<=deltaI;
         cvx_end
         
-        if cvx_status == "Failed"
+        if cvx_status ~= "Solved"
             fprintf("Coordinator Optimization Failed")
             %break
         else
