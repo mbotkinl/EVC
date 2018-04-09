@@ -3,9 +3,9 @@
 %Spring 2018
 clc;clear all;
 
-N=20;
-Testnum=1;
-testFolder=sprintf('N%d_T%d',N,Testnum);
+N=10;
+Testnum='new';
+testFolder=sprintf('N%d_%s',N,Testnum);
 scenarioFile=sprintf('EVCscenarioN%d.mat',N);
 load(fullfile(testFolder,scenarioFile)) %generated with EVC_scenario_MBL
 
@@ -14,8 +14,8 @@ cvx_solver Gurobi
 lambdaGuess=10;
 lambda0=ones(K+1,1)*lambdaGuess;
 lambda=lambda0;
-alpha=.2;
-numIteration=500;
+alpha=.1;
+numIteration=1000;
 steps=K+1;
 
 %for step=1:steps
@@ -36,12 +36,10 @@ steps=K+1;
     
     %p=1;
     for p=1:numIteration
-        
 
         fprintf("iteration step %g of %g....\n",p,numIteration)
         %solve N subproblems
-        
-        
+
         %xtemp=zeros(K+2,N);
         %utemp=zeros(K+1,N);
         %parfor evInd=1:N
@@ -118,10 +116,10 @@ steps=K+1;
 %end
 
 
-figure; hold on;
-for ii =1
-    plot(Lam(ii,:))
-end
+% figure; hold on;
+% for ii =1
+%     plot(Lam(ii,:))
+% end
 % plotName='Lam1';
 %print(fullfile(testFolder,plotName),'-dpng','-r0')
 

@@ -4,7 +4,7 @@
 %from Mads Almassakhi code
 
 clc;clearvars;
-N   = 4;
+N   = 3;
 modelNum=2;
 penNum=2;
 %% model parameters 1:
@@ -51,7 +51,7 @@ end
 %% PWL Parameters:
 S = 3;
 ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
-%ItotalMax = 800;   
+ItotalMax = 200;   
 deltaI = ItotalMax/S;
 %% MPC Paramters
 %K1 = round(12*3600/Ts);            % Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
@@ -76,7 +76,6 @@ Kn=FullChargeTime;
 
 % Disturbances
 Dload_amplitude = 2;  % base-demand factor
-
 Tamb_amplitude  = 303;   % assume hot night in summer (30 C)
 %% constraint matrices
 Et=gamma*deltaI*[1:2:(2*S-1)];

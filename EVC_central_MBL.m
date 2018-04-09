@@ -3,9 +3,9 @@
 %Spring 2018
 clc;clearvars;
 
-N=20;
-Testnum=1;
-testFolder=sprintf('N%d_T%d',N,Testnum);
+N=10;
+Testnum='new';
+testFolder=sprintf('N%d_%s',N,Testnum);
 scenarioFile=sprintf('EVCscenarioN%d.mat',N);
 load(fullfile(testFolder,scenarioFile))  %generated with EVC_scenario_MBL
 
@@ -15,7 +15,7 @@ X=zeros((N+1),steps);
 X(:,1)=x0;
 xi=x0;
 U=zeros(N,steps);
-%cvx_solver Gurobi
+cvx_solver Gurobi
 
 i=1;
 
