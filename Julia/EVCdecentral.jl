@@ -17,7 +17,7 @@ function string_as_varname(s::String,v::Any)
 end
 
 #read in mat scenario
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N50\\EVCscenarioN50.mat"
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N20\\EVCscenarioN20.mat"
 vars = matread(path)
 varnames=keys(vars)
 varNum=length(varnames)
@@ -78,7 +78,11 @@ for p=2:numIteration #change this to a while
         			sum((u[k,1])^2*Ri[evInd,1]    for k=1:K+1) +
                     sum(lambda[k,1]*u[k,1]      for k=1:K+1)
         @objective(evM,Min, objFun(xn,un))
-        @constraint(evM,(eye(K+1)-Ahats)*xn.==Ahats0*s0[evInd,1]+Bhats[evInd,1]*un) #this is slow???
+
+        #@constraint(evM,(eye(K+1)-Ahats)*xn.==Ahats0*s0[evInd,1]+Bhats[evInd,1]*un) #this is slow???
+		@constraint(evM,xn[1,1]==s0[evInd,1]) #fix for MPC loop
+		@constraint(evM,[k=1:K],xn[k+1,1]==xn[k,1]+eta[evInd,1]*un[k,1]) #check K+1
+
         @constraint(evM,xn.<=1)
         @constraint(evM,xn.>=target)
         @constraint(evM,un.<=imax[evInd,1])
@@ -98,7 +102,11 @@ for p=2:numIteration #change this to a while
     @variable(coorM,z[1:S*(K+1)])
     @variable(coorM,xt[1:K+1])
     @objective(coorM,Min,-sum(lambda[k,1]*sum(z[(k-1)*S+ii,1] for ii=1:S) for k=1:K+1))
-    @constraint(coorM,(eye(K+1)-AhatT)*xt.==AhatT0*T0+VhatT*w+EhatT*z)
+
+    #@constraint(coorM,(eye(K+1)-AhatT)*xt.==AhatT0*T0+VhatT*w+EhatT*z)
+	@constraint(coorM,xt[1,1]==T0) #fix for MPC loop
+	@constraint(coorM,[k=1:K],xt[(k+1),1]==tau*xt[(k),1]+sum(Et*z[(k-1)*S+(1:1:S),1])+rho*w[k*2,1]) #check Z index
+
     @constraint(coorM,xt.<=Tmax)
     @constraint(coorM,xt.>=0)
     @constraint(coorM,z.<=deltaI)
