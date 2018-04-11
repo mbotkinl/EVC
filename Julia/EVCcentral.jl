@@ -1,3 +1,5 @@
+#Micah Botkin-Levy
+#4/8/18
 
 println("Loading Packages...")
 
@@ -51,7 +53,7 @@ Kn=convert(Array{Int,2},Kn)
 xi=x0
 
 #add mpc loop here ??
-i=1
+stepI=1
 
 println("setting up model")
 m = Model(solver = GurobiSolver())
@@ -65,15 +67,15 @@ m = Model(solver = GurobiSolver())
 #desired SOC
 target=zeros((N+1)*(K+1),1);
 for ii=1:N
-   cur=Kn[ii]-(i-1);
+   cur=Kn[ii]-(stepI-1);
    ind=max(0,(cur-1)*(N+1))+ii:N+1:length(target);
    target[ind]=Sn[ii];
 end
 
 println("obj")
 #@objective(m,Min,sum(u'*Rt*u+x'*Qt*x-2*ones(1,n2)*Qt*x))
-objFun(x,u)=sum(sum((x[(k-1)*(N+1)+n,1]-1)^2*Qsi[n] for n=1:N+1) for k=1:K)+
-			sum(sum((u[(k-1)*N+n,1])^2*Ri[n]        for n=1:N) for k=1:K)
+objFun(x,u)=sum(sum((x[(k-1)*(N+1)+n,1]-1)^2*Qsi[n] for n=1:N+1) for k=1:K+1)+
+			sum(sum((u[(k-1)*N+n,1])^2*Ri[n]        for n=1:N) for k=1:K+1)
 @objective(m,Min, objFun(x,u))
 
 println("constraints")

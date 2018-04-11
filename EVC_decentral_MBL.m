@@ -51,7 +51,7 @@ steps=K+1;
                         
             cvx_begin quiet
                 target=zeros((K+1),1);
-                target(max(1,Kn(evInd)-(step-1)*Ts):length(target),1)=s0(evInd); %fix Ts for time loop???
+                target(max(1,Kn(evInd)-(step-1)*Ts):length(target),1)=s0(evInd); %fix Ts for time loop??? this doesnt work with none integer Ts???
                 variable xn(K+1,1)
                 variable un(K+1,1)
                 minimize (un'*Rhatn*un+xn'*Qhatn*xn-2*ones(1,(K+1))*Qhatn*xn+lambda'*un)
