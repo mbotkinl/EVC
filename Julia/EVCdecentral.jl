@@ -43,8 +43,9 @@ Kn=convert(Array{Int,2},Kn)
 lambdaGuess=10
 lambda0=ones(K+1,1)*lambdaGuess
 lambda=lambda0
-alpha=.1
-numIteration=1000
+alpha=.05
+convChk = 1
+numIteration=300
 steps=K+1
 
 
@@ -61,7 +62,8 @@ Xn[1,:]=s0'
 Un=zeros((K+1),N) #row are time, column are EV
 
 #iterate at each time step until convergence
-for p=1:numIteration #change this to a while
+for p=2:numIteration #change this to a while
+#p=2
     @printf "iteration step %g of %g....\n" p numIteration
 
     #solve subproblem for each EV
@@ -83,7 +85,7 @@ for p=1:numIteration #change this to a while
         @constraint(evM,un.>=imin[evInd])
         status = solve(evM)
         if status!=:Optimal
-            break
+            #break
         else
             Xn[2:K+2,evInd]=getvalue(xn) #solved state goes in next time slot
 
@@ -103,7 +105,7 @@ for p=1:numIteration #change this to a while
     @constraint(coorM,z.>=0)
     status = solve(coorM)
     if status!=:Optimal
-        break
+        #break
 	else
 		 Xt=getvalue(xt);
 	end
@@ -116,4 +118,15 @@ for p=1:numIteration #change this to a while
     lambda_new=lambda+alpha_p*gradL;
     Lam[:,p]=lambda_new;
     lambda=lambda_new;
+
+	#check convergence
+	convGap = norm(Lam[:,p]-Lam[:,p-1],2)
+	if(convGap < convChk )
+		@printf "Converged after %g iterations\n" p
+		break
+	else
+		@printf "convGap %f after %g iterations\n" convGap p
+	end
+
+
 end
