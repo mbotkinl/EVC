@@ -23,30 +23,26 @@ function string_as_varname(s::String,v::Any)
 end
 
 #read in mat scenario
-file = matopen("EVCscenarioN10.mat")
-#file = matopen("test.mat")
-varnames=names(file)
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N50\\EVCscenarioN50.mat"
+vars = matread(path)
+varnames=keys(vars)
 varNum=length(varnames)
-varnamesS=collect(varnames)
-
-#println(varnamesS)
+varKeys=collect(varnames)
+varValues=collect(values(vars))
 
 for i =1:varNum
-	n=varnamesS[i]
-	#println(n)
-	if n!="MCOS"
-		string_as_varname(n,read(file,n))
-		#if isa(n,Array)
-		#	n=convert(DataFrame, n) #fix this???
-		#end
+	n=varKeys[i]
+	v=varValues[i]
+	if n in ["N" "K" "S"]
+		v=convert(Int, v)
 	end
+	#if isa(v,Array)
+	#	v=convert(DataFrame, v)
+	#end
+	string_as_varname(n,v)
 end
-close(file)
 println("done reading in")
 
-N=convert(Int,N)
-K=convert(Int,K)
-S=convert(Int,S)
 Kn=convert(Array{Int,2},Kn)
 
 #initialize
@@ -69,17 +65,24 @@ target=zeros((N+1)*(K+1),1);
 for ii=1:N
    cur=Kn[ii]-(stepI-1);
    ind=max(0,(cur-1)*(N+1))+ii:N+1:length(target);
-   target[ind]=Sn[ii];
+   target[ind]=Sn[ii,1];
 end
 
 println("obj")
 #@objective(m,Min,sum(u'*Rt*u+x'*Qt*x-2*ones(1,n2)*Qt*x))
-objFun(x,u)=sum(sum((x[(k-1)*(N+1)+n,1]-1)^2*Qsi[n] for n=1:N+1) for k=1:K+1)+
-			sum(sum((u[(k-1)*N+n,1])^2*Ri[n]        for n=1:N) for k=1:K+1)
+objFun(x,u)=sum(sum((x[(k-1)*(N+1)+n,1]-1)^2*Qsi[n,1] for n=1:N+1) for k=1:K+1)+
+			sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]        for n=1:N) for k=1:K+1)
 @objective(m,Min, objFun(x,u))
 
 println("constraints")
 @constraint(m,(eye((N+1)*(K+1))-Ahat)*x.==A0hat*xi+Bhat*u+Vhat*w+Ehat*z) #this is slow???
+
+#@constraint(m,x[1:N+1,1].==xi)
+#for n=1:N
+#	@constraint(m,[k=1:K],x[n*(K+1),1]==eta[n,1]*x[n*(K),1])
+#end
+#@constraint(m,[k=1:K],x[(N+1)*(k+1),1]==tau*x[(N+1)*(k),1]+sum(Et*z[k+(0:1:(S-1)),1])+rho*w[k*2,1])
+
 @constraint(m,0.==Hhat*u+Ghat*w+Fhat*z)
 @constraint(m,x.<=repmat([ones(N,1);Tmax],K+1,1))
 @constraint(m,x.>=target)

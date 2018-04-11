@@ -17,26 +17,26 @@ function string_as_varname(s::String,v::Any)
 end
 
 #read in mat scenario
-file = matopen("EVCscenarioN10.mat")
-varnames=names(file)
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N50\\EVCscenarioN50.mat"
+vars = matread(path)
+varnames=keys(vars)
 varNum=length(varnames)
-varnamesS=collect(varnames)
+varKeys=collect(varnames)
+varValues=collect(values(vars))
 
 for i =1:varNum
-	n=varnamesS[i]
-	if n!="MCOS"
-		string_as_varname(n,read(file,n))
-		#if isa(n,Array)
-		#	n=convert(DataFrame, n) #fix this???
-		#end
+	n=varKeys[i]
+	v=varValues[i]
+	if n in ["N" "K" "S"]
+		v=convert(Int, v)
 	end
+	#if isa(v,Array)
+	#	v=convert(DataFrame, v)
+	#end
+	string_as_varname(n,v)
 end
-close(file)
 println("done reading in")
 
-N=convert(Int,N)
-K=convert(Int,K)
-S=convert(Int,S)
 Kn=convert(Array{Int,2},Kn)
 
 #initialize
@@ -70,19 +70,19 @@ for p=2:numIteration #change this to a while
     for evInd=1:N
         target=zeros((K+1),1)
         #target[max(1,Kn[evInd]-(stepI-1)*Ts):1:length(target),1]=s0[evInd] #fix Ts for time loop???
-        target[Kn[evInd]:1:length(target),1]=s0[evInd]
+        target[Kn[evInd,1]:1:length(target),1]=s0[evInd,1]
         evM=Model(solver = GurobiSolver(OutputFlag=0))
         @variable(evM,un[1:K+1])
         @variable(evM,xn[1:K+1])
-        objFun(x,u)=sum((x[k,1]-1)^2*Qsi[evInd] for k=1:K+1) +
-        			sum((u[k,1])^2*Ri[evInd]    for k=1:K+1) +
+        objFun(x,u)=sum((x[k,1]-1)^2*Qsi[evInd,1] for k=1:K+1) +
+        			sum((u[k,1])^2*Ri[evInd,1]    for k=1:K+1) +
                     sum(lambda[k,1]*u[k,1]      for k=1:K+1)
         @objective(evM,Min, objFun(xn,un))
-        @constraint(evM,(eye(K+1)-Ahats)*xn.==Ahats0*s0[evInd]+Bhats[evInd,1]*un) #this is slow???
+        @constraint(evM,(eye(K+1)-Ahats)*xn.==Ahats0*s0[evInd,1]+Bhats[evInd,1]*un) #this is slow???
         @constraint(evM,xn.<=1)
         @constraint(evM,xn.>=target)
-        @constraint(evM,un.<=imax[evInd])
-        @constraint(evM,un.>=imin[evInd])
+        @constraint(evM,un.<=imax[evInd,1])
+        @constraint(evM,un.>=imin[evInd,1])
         status = solve(evM)
         if status!=:Optimal
             #break
@@ -127,6 +127,17 @@ for p=2:numIteration #change this to a while
 	else
 		@printf "convGap %f after %g iterations\n" convGap p
 	end
-
-
 end
+
+
+p1=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+		Guide.xlabel("Time"), Guide.ylabel("SOC"))
+display(p1)
+
+p2=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+		Guide.xlabel("Time"), Guide.ylabel("PEV Current"))
+display(p2)
+
+p3=plot(x=1:K+1,y=Xt,Geom.line,
+	Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),)
+display(p3)
