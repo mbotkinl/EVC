@@ -4,7 +4,7 @@
 %from Mads Almassakhi code
 
 clc;clearvars;
-N   = 50;
+N   = 20;
 modelNum=2;
 penNum=2;
 %% model parameters 1:
@@ -49,9 +49,10 @@ if modelNum==2
     K=331;
 end
 %% PWL Parameters:
-S = 3;
-ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
-ItotalMax = 10000;   
+%S = 3;
+S=50;
+%ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
+ItotalMax = 200;   
 deltaI = ItotalMax/S;
 %% MPC Paramters
 %K1 = round(12*3600/Ts);            % Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)

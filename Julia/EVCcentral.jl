@@ -23,8 +23,9 @@ function string_as_varname(s::String,v::Any)
 end
 
 #read in mat scenario
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N50\\EVCscenarioN50.mat"
-vars = matread(path)
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N20\\"
+file="EVCscenarioN20.mat"
+vars = matread(path*file)
 varnames=keys(vars)
 varNum=length(varnames)
 varKeys=collect(varnames)
@@ -75,17 +76,20 @@ objFun(x,u)=sum(sum((x[(k-1)*(N+1)+n,1]-1)^2*Qsi[n,1] for n=1:N+1) for k=1:K+1)+
 @objective(m,Min, objFun(x,u))
 
 println("constraints")
-@constraint(m,(eye((N+1)*(K+1))-Ahat)*x.==A0hat*xi+Bhat*u+Vhat*w+Ehat*z) #this is slow???
+#@constraint(m,(eye((N+1)*(K+1))-Ahat)*x.==A0hat*xi+Bhat*u+Vhat*w+Ehat*z) #this is slow???
 
-#@constraint(m,x[1:N+1,1].==xi)
-#for n=1:N
-#	@constraint(m,[k=1:K],x[n*(K+1),1]==eta[n,1]*x[n*(K),1])
-#end
-#@constraint(m,[k=1:K],x[(N+1)*(k+1),1]==tau*x[(N+1)*(k),1]+sum(Et*z[k+(0:1:(S-1)),1])+rho*w[k*2,1])
+@constraint(m,x[1:N,1].==xi[1:N,1]+eta[:,1].*u[1:N,1])
+for n=1:N
+	@constraint(m,[k=1:K],x[n+(k)*(N+1),1]==x[n+(k-1)*(N+1),1]+eta[n,1]*u[n+(k)*(N),1])
+end
 
-@constraint(m,0.==Hhat*u+Ghat*w+Fhat*z)
+@constraint(m,x[N+1,1]==tau*T0+sum(Et*z[1:S,1])+rho*w[2,1]) #fix for MPC loop
+@constraint(m,[k=1:K],x[(N+1)*(k+1),1]==tau*x[(N+1)*(k),1]+sum(Et*z[(k)*S+(1:1:S),1])+rho*w[k*2+2,1]) #check Z index
+
+@constraint(m,0.==Hhat*u+Ghat*w+Fhat*z) #fix for speed?
 @constraint(m,x.<=repmat([ones(N,1);Tmax],K+1,1))
 @constraint(m,x.>=target)
+#@constraint(m,x.>=0)
 @constraint(m,u.<=repmat(imax,K+1,1))
 @constraint(m,u.>=repmat(imin,K+1,1))
 @constraint(m,z.>=0)
@@ -104,9 +108,9 @@ end
 
 p1=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("SOC"))
-display(p1)
-#draw(PNG("SOC.png", 4inch, 3inch), p1)
-
+#display(p1)
+fName="J_Central_SOC.png"
+draw(PNG(path*fName, 4inch, 3inch), p1)
 
 uRaw=getvalue(u)
 uPlot=DataFrame()
@@ -116,12 +120,13 @@ end
 
 p2=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current"))
-display(p2)
-#draw(PNG("Current.png", 4inch, 3inch), p2)
-
+#display(p2)
+fName="J_Central_Current.png"
+draw(PNG(path*fName, 4inch, 3inch), p2)
 
 
 p3=plot(x=1:K+1,y=xRaw[N+1:N+1:length(xRaw)],Geom.line,
 	Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),)
-display(p3)
-#draw(PNG("Temp.png", 4inch, 3inch), p3)
+#display(p3)
+fName="J_Central_Temp.png"
+draw(PNG(path*fName, 4inch, 3inch), p3)

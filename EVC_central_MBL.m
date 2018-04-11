@@ -3,9 +3,9 @@
 %Spring 2018
 clc;clearvars;
 
-N=10;
-Testnum='new';
-testFolder=sprintf('N%d_%s',N,Testnum);
+N=20;
+%Testnum='new';
+testFolder=sprintf('N%d',N);
 scenarioFile=sprintf('EVCscenarioN%d.mat',N);
 load(fullfile(testFolder,scenarioFile))  %generated with EVC_scenario_MBL
 
@@ -96,8 +96,8 @@ i=1;
     
     
     
-    plotName='Central_95';
-    %print(fullfile(testFolder,plotName),'-dpng','-r0')
+    plotName='M_Central_20';
+    print(fullfile(testFolder,plotName),'-dpng','-r0')
     
     
     %%MPC: apply u1 and get new xi for i+1

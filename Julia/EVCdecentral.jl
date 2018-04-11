@@ -8,7 +8,8 @@ using DataFrames
 using JuMP
 using Gurobi
 using MAT #to read in scenarios from matlab
-
+using Cairo #for png output
+using Fontconfig
 
 println("Reading in Data...")
 function string_as_varname(s::String,v::Any)
@@ -17,8 +18,9 @@ function string_as_varname(s::String,v::Any)
 end
 
 #read in mat scenario
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N20\\EVCscenarioN20.mat"
-vars = matread(path)
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N20\\"
+file="EVCscenarioN20.mat"
+vars = matread(path*file)
 varnames=keys(vars)
 varNum=length(varnames)
 varKeys=collect(varnames)
@@ -40,13 +42,13 @@ println("done reading in")
 Kn=convert(Array{Int,2},Kn)
 
 #initialize
-lambdaGuess=-15
+lambdaGuess=-60
 lambda0=ones(K+1,1)*lambdaGuess
 #lambda0=rand(K+1)/2
 lambda=lambda0
 alpha=0.01
 convChk = 0
-numIteration=1000
+numIteration=500
 steps=K+1
 
 
@@ -56,10 +58,10 @@ stepI = 1;
 
 Lam=zeros((K+1),numIteration) #(rows are time, columns are iteration)
 Lam[:,1]=lambda0
-#Xt=zeros((K+1),1) #rows are time
+xt=zeros((K+1),1) #rows are time
 #Xt[1,1]=T0
-Xn=zeros((K+2),N) #row are time, column are EV
-Xn[1,:]=s0'
+Xn=zeros((K+1),N) #row are time, column are EV
+#Xn[1,:]=s0'
 Un=zeros((K+1),N) #row are time, column are EV
 
 #iterate at each time step until convergence
@@ -81,8 +83,8 @@ for p=2:numIteration
         @objective(evM,Min, objFun(xn,un))
 
         #@constraint(evM,(eye(K+1)-Ahats)*xn.==Ahats0*s0[evInd,1]+Bhats[evInd,1]*un) #this is slow???
-		@constraint(evM,xn[1,1]==s0[evInd,1]) #fix for MPC loop
-		@constraint(evM,[k=1:K],xn[k+1,1]==xn[k,1]+eta[evInd,1]*un[k,1]) #check K+1
+		@constraint(evM,xn[1,1]==s0[evInd,1]+eta[evInd,1]*un[1,1]) #fix for MPC loop
+		@constraint(evM,[k=1:K],xn[k+1,1]==xn[k,1]+eta[evInd,1]*un[k+1,1]) #check K+1
 
         @constraint(evM,xn.<=1)
         @constraint(evM,xn.>=target)
@@ -97,7 +99,7 @@ for p=2:numIteration
 		if status!=:Optimal
             break
         else
-            Xn[2:K+2,evInd]=getvalue(xn) #solved state goes in next time slot
+            Xn[:,evInd]=getvalue(xn) #solved state goes in next time slot
 
             Un[:,evInd]=getvalue(un) #current go
         end
@@ -134,10 +136,10 @@ for p=2:numIteration
 
 	#fast ascent
 	ztotal=sum(Un[:,ii] for ii=1:N)+ w[1:2:length(w),1]
-	xt=zeros(K+1,1)
-	xt[1,1]=T0 #fix for MPCT loop
+	#xt=zeros(K+1,1)
+	xt[1,1]=tau*T0 +gamma*ztotal[1,1]^2+rho*w[2,1]#fix for MPC loop
 	for k=1:K
-		xt[k+1,1]=tau*xt[k,1]+gamma*ztotal[k,1]^2+rho*w[k*2,1]
+		xt[k+1,1]=tau*xt[k,1]+gamma*ztotal[k+1,1]^2+rho*w[k*2+2,1] #check this
 	end
 	gradL=xt-Tmax*ones(K+1,1)
 
@@ -163,20 +165,24 @@ end
 p1=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("SOC"))
 display(p1)
-#draw(PNG("Temp.png", 4inch, 3inch), p3)
+fName="J_Decentral_SOC.png"
+draw(PNG(path*fName, 4inch, 3inch), p1)
 
 
-#draw(PNG("Temp.png", 4inch, 3inch), p3)
 p2=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current"))
 display(p2)
-#draw(PNG("Temp.png", 4inch, 3inch), p3)
-
+fName="J_Decentral_Current.png"
+draw(PNG(path*fName, 4inch, 3inch), p2)
 
 p3=plot(x=1:K+1,y=xt,Geom.line,
 	Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),)
 display(p3)
-#draw(PNG("Temp.png", 4inch, 3inch), p3)
+fName="J_Decentral_Temp.png"
+draw(PNG(path*fName, 4inch, 3inch), p3)
+
 p4=plot(x=1:K+1,y=lambda)
 display(p4)
+fName="J_Decentral_Price.png"
+draw(PNG(path*fName, 4inch, 3inch), p4)
