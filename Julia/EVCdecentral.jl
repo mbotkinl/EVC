@@ -44,8 +44,8 @@ lambdaGuess=10
 lambda0=ones(K+1,1)*lambdaGuess
 lambda=lambda0
 alpha=.05
-convChk = 1
-numIteration=300
+convChk = 0.1
+numIteration=2000
 steps=K+1
 
 
@@ -87,9 +87,14 @@ for p=2:numIteration #change this to a while
         @constraint(evM,xn.>=target)
         @constraint(evM,un.<=imax[evInd,1])
         @constraint(evM,un.>=imin[evInd,1])
+
+		TT = STDOUT # save original STDOUT stream
+		redirect_stdout()
         status = solve(evM)
-        if status!=:Optimal
-            #break
+		redirect_stdout(TT)
+
+		if status!=:Optimal
+            break
         else
             Xn[2:K+2,evInd]=getvalue(xn) #solved state goes in next time slot
 
@@ -111,9 +116,14 @@ for p=2:numIteration #change this to a while
     @constraint(coorM,xt.>=0)
     @constraint(coorM,z.<=deltaI)
     @constraint(coorM,z.>=0)
+
+	TT = STDOUT # save original STDOUT stream
+	redirect_stdout()
     status = solve(coorM)
+	redirect_stdout(TT)
+
     if status!=:Optimal
-        #break
+        break
 	else
 		 Xt=getvalue(xt);
 	end
