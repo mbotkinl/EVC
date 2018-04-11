@@ -40,12 +40,13 @@ println("done reading in")
 Kn=convert(Array{Int,2},Kn)
 
 #initialize
-lambdaGuess=-10
+lambdaGuess=-15
 lambda0=ones(K+1,1)*lambdaGuess
+#lambda0=rand(K+1)/2
 lambda=lambda0
 alpha=0.01
-convChk = 0.1
-numIteration=2000
+convChk = 0
+numIteration=1000
 steps=K+1
 
 
@@ -55,8 +56,8 @@ stepI = 1;
 
 Lam=zeros((K+1),numIteration) #(rows are time, columns are iteration)
 Lam[:,1]=lambda0
-Xt=zeros((K+1),1) #rows are time
-Xt[1,1]=T0
+#Xt=zeros((K+1),1) #rows are time
+#Xt[1,1]=T0
 Xn=zeros((K+2),N) #row are time, column are EV
 Xn[1,:]=s0'
 Un=zeros((K+1),N) #row are time, column are EV
@@ -162,11 +163,20 @@ end
 p1=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("SOC"))
 display(p1)
+#draw(PNG("Temp.png", 4inch, 3inch), p3)
 
+
+#draw(PNG("Temp.png", 4inch, 3inch), p3)
 p2=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current"))
 display(p2)
+#draw(PNG("Temp.png", 4inch, 3inch), p3)
 
-p3=plot(x=1:K+1,y=Xt,Geom.line,
+
+p3=plot(x=1:K+1,y=xt,Geom.line,
 	Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),)
 display(p3)
+#draw(PNG("Temp.png", 4inch, 3inch), p3)
+p4=plot(x=1:K+1,y=lambda)
+display(p4)
