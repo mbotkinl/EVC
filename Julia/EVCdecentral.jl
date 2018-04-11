@@ -40,10 +40,10 @@ println("done reading in")
 Kn=convert(Array{Int,2},Kn)
 
 #initialize
-lambdaGuess=10
+lambdaGuess=-10
 lambda0=ones(K+1,1)*lambdaGuess
 lambda=lambda0
-alpha=.05
+alpha=0.01
 convChk = 0.1
 numIteration=2000
 steps=K+1
@@ -62,9 +62,9 @@ Xn[1,:]=s0'
 Un=zeros((K+1),N) #row are time, column are EV
 
 #iterate at each time step until convergence
-for p=2:numIteration #change this to a while
+for p=2:numIteration
 #p=2
-    @printf "iteration step %g of %g....\n" p numIteration
+    #@printf "iteration step %g of %g....\n" p numIteration
 
     #solve subproblem for each EV
     for evInd=1:N
@@ -102,37 +102,48 @@ for p=2:numIteration #change this to a while
         end
     end
 
-    #solve coordinator problem
-    coorM=Model(solver = GurobiSolver(OutputFlag=0))
-    @variable(coorM,z[1:S*(K+1)])
-    @variable(coorM,xt[1:K+1])
-    @objective(coorM,Min,-sum(lambda[k,1]*sum(z[(k-1)*S+ii,1] for ii=1:S) for k=1:K+1))
 
-    #@constraint(coorM,(eye(K+1)-AhatT)*xt.==AhatT0*T0+VhatT*w+EhatT*z)
-	@constraint(coorM,xt[1,1]==T0) #fix for MPC loop
-	@constraint(coorM,[k=1:K],xt[(k+1),1]==tau*xt[(k),1]+sum(Et*z[(k-1)*S+(1:1:S),1])+rho*w[k*2,1]) #check Z index
 
-    @constraint(coorM,xt.<=Tmax)
-    @constraint(coorM,xt.>=0)
-    @constraint(coorM,z.<=deltaI)
-    @constraint(coorM,z.>=0)
+    # #solve coordinator problem
+    # coorM=Model(solver = GurobiSolver(OutputFlag=0))
+    # @variable(coorM,z[1:S*(K+1)])
+    # @variable(coorM,xt[1:K+1])
+    # @objective(coorM,Min,-sum(lambda[k,1]*sum(z[(k-1)*S+ii,1] for ii=1:S) for k=1:K+1))
+    # #@constraint(coorM,(eye(K+1)-AhatT)*xt.==AhatT0*T0+VhatT*w+EhatT*z)
+	# @constraint(coorM,xt[1,1]==T0) #fix for MPC loop
+	# @constraint(coorM,[k=1:K],xt[(k+1),1]==tau*xt[(k),1]+sum(Et*z[(k-1)*S+(1:1:S),1])+rho*w[k*2,1]) #check Z index
+    # @constraint(coorM,xt.<=Tmax)
+    # @constraint(coorM,xt.>=0)
+    # @constraint(coorM,z.<=deltaI)
+    # @constraint(coorM,z.>=0)
+	# TT = STDOUT # save original STDOUT stream
+	# redirect_stdout()
+    # status = solve(coorM)
+	# redirect_stdout(TT)
+    # if status!=:Optimal
+    #     break
+	# else
+	# 	 Xt=getvalue(xt);
+	# end
 
-	TT = STDOUT # save original STDOUT stream
-	redirect_stdout()
-    status = solve(coorM)
-	redirect_stdout(TT)
 
-    if status!=:Optimal
-        break
-	else
-		 Xt=getvalue(xt);
+    # #grad of lagragian
+    # gradL=sum(Un[:,ii] for ii=1:N)+Ghat*w-Fhat*getvalue(z); #need to sum U to get one value for each time step???
+
+
+	#fast ascent
+	ztotal=sum(Un[:,ii] for ii=1:N)+ w[1:2:length(w),1]
+	xt=zeros(K+1,1)
+	xt[1,1]=T0 #fix for MPCT loop
+	for k=1:K
+		xt[k+1,1]=tau*xt[k,1]+gamma*ztotal[k,1]^2+rho*w[k*2,1]
 	end
+	gradL=xt-Tmax*ones(K+1,1)
 
-    #grad of lagragian
-    gradL=sum(Un[:,ii] for ii=1:N)+Ghat*w-Fhat*getvalue(z); #need to sum U to get one value for each time step???
+
 
     #update lambda
-    alpha_p = alpha/ceil(p/10);
+    alpha_p = alpha/ceil(p/2);
     lambda_new=lambda+alpha_p*gradL;
     Lam[:,p]=lambda_new;
     lambda=lambda_new;
