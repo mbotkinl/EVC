@@ -4,7 +4,7 @@
 %from Mads Almassakhi code
 
 clc;clearvars;
-N   = 3;
+N   = 95;
 modelNum=2;
 penNum=2;
 %% model parameters 1:
@@ -51,7 +51,7 @@ end
 %% PWL Parameters:
 S = 3;
 ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
-ItotalMax = 200;   
+ItotalMax = 10000;   
 deltaI = ItotalMax/S;
 %% MPC Paramters
 %K1 = round(12*3600/Ts);            % Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
@@ -182,4 +182,4 @@ if( any(eta.*K.*FullChargeTime_relative.*imax+s0 < SOCmin) )
     disp('Some PEVs may not be able to meet SOC min level by desired time!');
 end
 name=sprintf("EVCscenarioN%d.mat",N);
-save(name)
+%save(name)

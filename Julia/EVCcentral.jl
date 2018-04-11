@@ -1,8 +1,4 @@
 
-
-
-#remove converts once julia scenario ???
-
 println("Loading Packages...")
 
 using Gadfly
@@ -14,6 +10,7 @@ using Gurobi
 using MAT #to read in scenarios from matlab
 using Cairo #for png output
 using Fontconfig
+
 
 
 println("Reading in Data...")
@@ -103,7 +100,7 @@ end
 p1=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("SOC"))
 display(p1)
-draw(PNG("SOC.png", 4inch, 3inch), p1)
+#draw(PNG("SOC.png", 4inch, 3inch), p1)
 
 
 uRaw=getvalue(u)
@@ -115,17 +112,11 @@ end
 p2=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current"))
 display(p2)
-draw(PNG("Current.png", 4inch, 3inch), p2)
+#draw(PNG("Current.png", 4inch, 3inch), p2)
 
 
 
 p3=plot(x=1:K+1,y=xRaw[N+1:N+1:length(xRaw)],Geom.line,
 	Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),)
 display(p3)
-draw(PNG("Temp.png", 4inch, 3inch), p3)
-
-
-#pwd()
-#cd(homedir())
-#cd("Documents\\uvm\\Research\\EVC code\\Julia")
-#include("EVC_central_J.jl") to run
+#draw(PNG("Temp.png", 4inch, 3inch), p3)

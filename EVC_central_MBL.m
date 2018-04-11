@@ -64,11 +64,11 @@ i=1;
     %     MPCfig(d,i)
     %     pause
     
-    %check iterative SOC step
+    %check iterative temp step
     %x0(N+1)
     %x(N+1)
     %A0hat(N+1,:)*xi+Vhat(N+1,:)*w+Ehat(N+1,:)*z
-    %check iterative temp step
+    
     
     
     %one time step plots
@@ -96,7 +96,7 @@ i=1;
     
     
     
-    plotName='Central1';
+    plotName='Central_95';
     %print(fullfile(testFolder,plotName),'-dpng','-r0')
     
     
