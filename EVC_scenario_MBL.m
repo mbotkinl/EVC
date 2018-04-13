@@ -52,7 +52,7 @@ end
 %S = 3;
 S=50;
 %ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
-ItotalMax = 200;   
+ItotalMax = 4000;   
 deltaI = ItotalMax/S;
 %% MPC Paramters
 %K1 = round(12*3600/Ts);            % Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)

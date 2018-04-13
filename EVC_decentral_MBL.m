@@ -107,7 +107,7 @@ steps=K+1;
         alpha_p = alpha/ceil(p/10);
         
         %alpha_p=alpha;
-        lambda_new=lambda+alpha_p*gradL;
+        lambda_new=max(lambda+alpha_p*gradL,0);
         Lam(:,p)=lambda_new;
         lambda=lambda_new;
         

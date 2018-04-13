@@ -42,7 +42,7 @@ println("done reading in")
 Kn=convert(Array{Int,2},Kn)
 
 #initialize
-lambdaGuess=-60
+lambdaGuess=1
 lambda0=ones(K+1,1)*lambdaGuess
 #lambda0=rand(K+1)/2
 lambda=lambda0
@@ -79,7 +79,7 @@ for p=2:numIteration
         @variable(evM,xn[1:K+1])
         objFun(x,u)=sum((x[k,1]-1)^2*Qsi[evInd,1] for k=1:K+1) +
         			sum((u[k,1])^2*Ri[evInd,1]    for k=1:K+1) +
-                    sum(lambda[k,1]*u[k,1]      for k=1:K+1)
+                    sum(lambda[k,1]*u[k,1]        for k=1:K+1)
         @objective(evM,Min, objFun(xn,un))
 
         #@constraint(evM,(eye(K+1)-Ahats)*xn.==Ahats0*s0[evInd,1]+Bhats[evInd,1]*un) #this is slow???
@@ -147,13 +147,13 @@ for p=2:numIteration
 
     #update lambda
     alpha_p = alpha/ceil(p/2);
-    lambda_new=lambda+alpha_p*gradL;
+    lambda_new=max.(lambda+alpha_p*gradL,0);
     Lam[:,p]=lambda_new;
     lambda=lambda_new;
 
 	#check convergence
 	convGap = norm(Lam[:,p]-Lam[:,p-1],2)
-	if(convGap < convChk )
+	if(convGap <= convChk )
 		@printf "Converged after %g iterations\n" p
 		break
 	else
