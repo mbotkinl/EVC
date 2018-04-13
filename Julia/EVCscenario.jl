@@ -6,7 +6,7 @@
 using Distributions
 using JLD
 
-N   = 20;
+N   = 40;
 
 #model parameters
 a   = rand(N,1)*.1 + 0.8;               # efficiency of Li-ion batts is ~80-90%
@@ -46,7 +46,7 @@ imin = zeros(N,1);                      # A, q_min < 0 if V2G is allowed
 imax = (10 + 16*rand(N,1));             # A, charging with 10-24 A
 SOCmin = 1 - 0.20*rand(N,1);            # Required min final states of charge (~0.80-1)
 FullChargeTime_relative = .25*rand(N,1)+.75;
-FullChargeTime = round.(K*FullChargeTime_relative);
+FullChargeTime = convert(Array{Int,2},round.(K*FullChargeTime_relative));
 
 # Initial conditions:
 s0 = 0.25*rand(N,1);      # initial states of charge (0 - 0.20)
@@ -58,8 +58,10 @@ Sn=SOCmin;
 Kn=FullChargeTime;
 
 # Disturbances
-Dload_amplitude = 2;  # base-demand factor
-Tamb_amplitude  = 303;   # assume hot night in summer (30 C)
+#Dload_amplitude = 2;  # base-demand factor
+Dload_amplitude = 20000
+#Tamb_amplitude  = 303;   # assume hot night in summer (30 C)
+Tamb_amplitude  = 363
 
 # constraint matrices
 Et=gamma*deltaI*collect(1:2:(2*S-1))';
@@ -99,4 +101,4 @@ if any(eta.*K.*FullChargeTime_relative.*imax+s0 .< SOCmin)
    println("Some PEVs may not be able to meet SOC min level by desired time!")
 end
 
-@save "EVCscenarioN$(N).jld"
+#@save "EVCscenarioN$(N).jld"

@@ -3,13 +3,14 @@
 
 println("Loading Packages...")
 
-#using Gadfly
+using Gadfly
 using DataFrames
 using JuMP
 using Gurobi
 #using Ipopt
 #using Clp
-using MAT #to read in scenarios from matlab
+#using MAT #to read in scenarios from matlab
+using JLD
 using Cairo #for png output
 using Fontconfig
 
@@ -24,8 +25,9 @@ end
 
 #read in mat scenario
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N20\\"
-file="EVCscenarioN20.mat"
-vars = matread(path*file)
+file="EVCscenarioN20.jld"
+#vars = matread(path*file)
+vars=load(path*file)
 varnames=keys(vars)
 varNum=length(varnames)
 varKeys=collect(varnames)
@@ -34,9 +36,9 @@ varValues=collect(values(vars))
 for i =1:varNum
 	n=varKeys[i]
 	v=varValues[i]
-	if n in ["N" "K" "S"]
-		v=convert(Int, v)
-	end
+	# if n in ["N" "K" "S"]
+	# 	v=convert(Int, v)
+	# end
 	#if isa(v,Array)
 	#	v=convert(DataFrame, v)
 	#end
@@ -44,7 +46,7 @@ for i =1:varNum
 end
 println("done reading in")
 
-Kn=convert(Array{Int,2},Kn)
+#Kn=convert(Array{Int,2},Kn)
 
 #initialize
 xi=x0

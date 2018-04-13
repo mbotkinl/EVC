@@ -7,7 +7,8 @@ using Gadfly
 using DataFrames
 using JuMP
 using Gurobi
-using MAT #to read in scenarios from matlab
+#using MAT #to read in scenarios from matlab
+using JLD
 using Cairo #for png output
 using Fontconfig
 
@@ -19,8 +20,9 @@ end
 
 #read in mat scenario
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N20\\"
-file="EVCscenarioN20.mat"
-vars = matread(path*file)
+file="EVCscenarioN20.jld"
+#vars = matread(path*file)
+vars=load(path*file)
 varnames=keys(vars)
 varNum=length(varnames)
 varKeys=collect(varnames)
@@ -29,9 +31,9 @@ varValues=collect(values(vars))
 for i =1:varNum
 	n=varKeys[i]
 	v=varValues[i]
-	if n in ["N" "K" "S"]
-		v=convert(Int, v)
-	end
+	# if n in ["N" "K" "S"]
+	# 	v=convert(Int, v)
+	# end
 	#if isa(v,Array)
 	#	v=convert(DataFrame, v)
 	#end
@@ -39,7 +41,7 @@ for i =1:varNum
 end
 println("done reading in")
 
-Kn=convert(Array{Int,2},Kn)
+#Kn=convert(Array{Int,2},Kn)
 
 #initialize
 lambdaGuess=1
@@ -166,7 +168,7 @@ p1=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("SOC"))
 display(p1)
 fName="J_Decentral_SOC.png"
-draw(PNG(path*fName, 4inch, 3inch), p1)
+#draw(PNG(path*fName, 4inch, 3inch), p1)
 
 
 p2=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
@@ -174,15 +176,15 @@ p2=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current"))
 display(p2)
 fName="J_Decentral_Current.png"
-draw(PNG(path*fName, 4inch, 3inch), p2)
+#draw(PNG(path*fName, 4inch, 3inch), p2)
 
 p3=plot(x=1:K+1,y=xt,Geom.line,
 	Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),)
 display(p3)
 fName="J_Decentral_Temp.png"
-draw(PNG(path*fName, 4inch, 3inch), p3)
+#draw(PNG(path*fName, 4inch, 3inch), p3)
 
 p4=plot(x=1:K+1,y=lambda)
 display(p4)
 fName="J_Decentral_Price.png"
-draw(PNG(path*fName, 4inch, 3inch), p4)
+#draw(PNG(path*fName, 4inch, 3inch), p4)
