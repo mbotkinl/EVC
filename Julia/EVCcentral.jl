@@ -9,8 +9,8 @@ using JuMP
 using Gurobi
 #using Ipopt
 #using Clp
-#using MAT #to read in scenarios from matlab
-using JLD
+using MAT #to read in scenarios from matlab
+#using JLD
 using Cairo #for png output
 using Fontconfig
 
@@ -25,9 +25,9 @@ end
 
 #read in mat scenario
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N20\\"
-file="EVCscenarioN20.jld"
-#vars = matread(path*file)
-vars=load(path*file)
+file="EVCscenarioN20.mat"
+vars = matread(path*file)
+#vars=load(path*file)
 varnames=keys(vars)
 varNum=length(varnames)
 varKeys=collect(varnames)
@@ -36,9 +36,9 @@ varValues=collect(values(vars))
 for i =1:varNum
 	n=varKeys[i]
 	v=varValues[i]
-	# if n in ["N" "K" "S"]
-	# 	v=convert(Int, v)
-	# end
+	if n in ["N" "K" "S"]
+		v=convert(Int, v)
+	end
 	#if isa(v,Array)
 	#	v=convert(DataFrame, v)
 	#end
@@ -46,7 +46,9 @@ for i =1:varNum
 end
 println("done reading in")
 
-#Kn=convert(Array{Int,2},Kn)
+Kn=convert(Array{Int,2},Kn)
+
+
 
 #initialize
 xi=x0
@@ -103,7 +105,7 @@ end
 println("solving....")
 status = solve(m)
 
-
+getobjectivevalue(m)
 lambda=getdual(currCon)
 
 println("plotting....")
@@ -114,10 +116,9 @@ for ii= 1:N
 end
 
 p1=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("SOC"))
+		Guide.xlabel("Time"), Guide.ylabel("SOC"),
+		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
 #display(p1)
-fName="J_Central_SOC.png"
-#draw(PNG(path*fName, 4inch, 3inch), p1)
 
 uRaw=getvalue(u)
 uPlot=DataFrame()
@@ -126,20 +127,22 @@ for ii= 1:N
 end
 
 p2=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV Current"))
+		Guide.xlabel("Time"), Guide.ylabel("PEV Current"),
+		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
 #display(p2)
-fName="J_Central_Current.png"
-#draw(PNG(path*fName, 4inch, 3inch), p2)
+
 
 
 p3=plot(x=1:K+1,y=xRaw[N+1:N+1:length(xRaw)],Geom.line,
-	Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),)
+	Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),
+	Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
 #display(p3)
-fName="J_Central_Temp.png"
-#draw(PNG(path*fName, 4inch, 3inch), p3)
 
 
-p4=plot(x=1:K+1,y=lambda)
-display(p4)
-fName="J_Decentral_Price.png"
-#draw(PNG(path*fName, 4inch, 3inch), p4)
+
+p4=plot(x=1:K+1,y=lambda,Geom.line,
+	Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
+#display(p4)
+
+fName="J_Central.png"
+draw(PNG(path*fName, 13.5inch, 8.5inch), vstack(p1,p2,p3,p4))

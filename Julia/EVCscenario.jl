@@ -6,7 +6,7 @@
 using Distributions
 using JLD
 
-N   = 40;
+N   = 6;
 
 #model parameters
 a   = rand(N,1)*.1 + 0.8;               # efficiency of Li-ion batts is ~80-90%
@@ -55,13 +55,13 @@ x0=[s0;T0];
 
 #desired states
 Sn=SOCmin;
-Kn=FullChargeTime;
+Kn=FullChargeTime
 
 # Disturbances
 #Dload_amplitude = 2;  # base-demand factor
-Dload_amplitude = 20000
+Dload_amplitude = 20
 #Tamb_amplitude  = 303;   # assume hot night in summer (30 C)
-Tamb_amplitude  = 363
+Tamb_amplitude  = 303
 
 # constraint matrices
 Et=gamma*deltaI*collect(1:2:(2*S-1))';

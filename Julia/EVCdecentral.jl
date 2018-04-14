@@ -7,8 +7,8 @@ using Gadfly
 using DataFrames
 using JuMP
 using Gurobi
-#using MAT #to read in scenarios from matlab
-using JLD
+using MAT #to read in scenarios from matlab
+#using JLD
 using Cairo #for png output
 using Fontconfig
 
@@ -20,9 +20,9 @@ end
 
 #read in mat scenario
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N20\\"
-file="EVCscenarioN20.jld"
-#vars = matread(path*file)
-vars=load(path*file)
+file="EVCscenarioN20.mat"
+vars = matread(path*file)
+#vars=load(path*file)
 varnames=keys(vars)
 varNum=length(varnames)
 varKeys=collect(varnames)
@@ -31,9 +31,9 @@ varValues=collect(values(vars))
 for i =1:varNum
 	n=varKeys[i]
 	v=varValues[i]
-	# if n in ["N" "K" "S"]
-	# 	v=convert(Int, v)
-	# end
+	if n in ["N" "K" "S"]
+		v=convert(Int, v)
+	end
 	#if isa(v,Array)
 	#	v=convert(DataFrame, v)
 	#end
@@ -41,7 +41,8 @@ for i =1:varNum
 end
 println("done reading in")
 
-#Kn=convert(Array{Int,2},Kn)
+Kn=convert(Array{Int,2},Kn)
+
 
 #initialize
 lambdaGuess=1
@@ -50,10 +51,9 @@ lambda0=ones(K+1,1)*lambdaGuess
 lambda=lambda0
 alpha=0.01
 convChk = 0
+convIt=500
 numIteration=500
 steps=K+1
-
-
 
 #MPC here???
 stepI = 1;
@@ -130,10 +130,14 @@ for p=2:numIteration
 	# else
 	# 	 Xt=getvalue(xt);
 	# end
-
-
+    #
     # #grad of lagragian
-    # gradL=sum(Un[:,ii] for ii=1:N)+Ghat*w-Fhat*getvalue(z); #need to sum U to get one value for each time step???
+    # #gradL=sum(Un[:,ii] for ii=1:N)+Ghat*w-Fhat*getvalue(z); #need to sum U to get one value for each time step???
+	# zSum=zeros(K+1,1)
+	# for k=1:K+1
+	# 	zSum[k,1]=sum(getvalue(z)[(k-1)*(S)+(1:S)])
+	# end
+	# gradL=sum(Un[:,ii] for ii=1:N)+w[1:2:length(w),1]-zSum
 
 
 	#fast ascent
@@ -150,6 +154,7 @@ for p=2:numIteration
     #update lambda
     alpha_p = alpha/ceil(p/2);
     lambda_new=max.(lambda+alpha_p*gradL,0);
+	#lambda_new=lambda+alpha_p*gradL
     Lam[:,p]=lambda_new;
     lambda=lambda_new;
 
@@ -157,34 +162,34 @@ for p=2:numIteration
 	convGap = norm(Lam[:,p]-Lam[:,p-1],2)
 	if(convGap <= convChk )
 		@printf "Converged after %g iterations\n" p
+		convIt=p
 		break
 	else
 		@printf "convGap %f after %g iterations\n" convGap p
 	end
 end
 
+println("plotting....")
 
-p1=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("SOC"))
-display(p1)
-fName="J_Decentral_SOC.png"
-#draw(PNG(path*fName, 4inch, 3inch), p1)
+pd1=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+		Guide.xlabel("Time"), Guide.ylabel("SOC"),
+		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
+display(pd1)
+
+pd2=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+		Guide.xlabel("Time"), Guide.ylabel("PEV Current"),
+		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
+display(pd2)
+
+pd3=plot(x=1:K+1,y=xt,Geom.line,
+		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),
+		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
+display(pd3)
+
+pd4=plot(x=1:K+1,y=Lam[:,convIt],Geom.line,
+		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
+display(pd4)
 
 
-p2=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-
-		Guide.xlabel("Time"), Guide.ylabel("PEV Current"))
-display(p2)
-fName="J_Decentral_Current.png"
-#draw(PNG(path*fName, 4inch, 3inch), p2)
-
-p3=plot(x=1:K+1,y=xt,Geom.line,
-	Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),)
-display(p3)
-fName="J_Decentral_Temp.png"
-#draw(PNG(path*fName, 4inch, 3inch), p3)
-
-p4=plot(x=1:K+1,y=lambda)
-display(p4)
-fName="J_Decentral_Price.png"
-#draw(PNG(path*fName, 4inch, 3inch), p4)
+fName="J_Decentral.png"
+draw(PNG(path*fName, 13.5inch, 8.5inch), vstack(pd1,pd2,pd3,pd4))

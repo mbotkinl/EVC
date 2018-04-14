@@ -41,10 +41,11 @@ i=1;
         variable u(N*(K+1),1) %control
         variable x((N+1)*(K+1),1) %states (time 1 all states first N+1 rows)
         variable z(S*(K+1),1) %pw currents
+        dual variables lambda
         minimize (u'*Rt*u+x'*Qt*x-2*ones(1,(N+1)*(K+1))*Qt*x)
         subject to
             (eye((K+1)*(N+1))-Ahat)*x==A0hat*xi+Bhat*u+Vhat*w+Ehat*z; %64
-            0==Hhat*u+Ghat*w+Fhat*z; %65
+            lambda: 0==Hhat*u+Ghat*w+Fhat*z; %65
             x<=repmat([ones(N,1);Tmax],K+1,1);
             x>=target;
             %x>=0;
@@ -75,29 +76,32 @@ i=1;
     figure
     lgd=strings(1,N);
     for ii= 1:N
-        subplot(3,1,1)
+        subplot(4,1,1)
         plot(x(ii:N+1:length(x)))
         ylabel("SOC")
         xlim([1 steps])
         hold on
-        subplot(3,1,2)
+        subplot(4,1,2)
         plot(u(ii:N:length(u)))
         ylabel("Current")
         xlim([1 steps])
         hold on
         lgd(ii)=sprintf("EV%d",ii);
     end
-    subplot(3,1,3)
+    subplot(4,1,3)
     plot(x(N+1:N+1:length(x)))
     ylabel("XFRM Temp (K)")
+    xlim([1 steps])
+    subplot(4,1,4)
+    plot(lambda)
+    ylabel("Lambda")
     xlim([1 steps])
     
     
     
     
-    
     plotName='M_Central_20';
-    print(fullfile(testFolder,plotName),'-dpng','-r0')
+    %print(fullfile(testFolder,plotName),'-dpng','-r0')
     
     
     %%MPC: apply u1 and get new xi for i+1
