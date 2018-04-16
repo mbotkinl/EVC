@@ -45,15 +45,15 @@ println("done reading in")
 
 
 #initialize
-#lambdaGuess=1
-#lambda0=ones(K+1,1)*lambdaGuess
-lambda0=linspace(7,0,K+1)
+lambdaGuess=2
+lambda0=ones(K+1,1)*lambdaGuess
+#lambda0=[0;linspace(7,0,K)]
 #lambda0=rand(K+1)/2
 lambda=lambda0
 alpha=0.01
 convChk = 0
-convIt=500
-numIteration=500
+numIteration=1000
+convIt=numIteration
 steps=K+1
 
 #MPC here???
@@ -153,8 +153,8 @@ for p=2:numIteration
 
 
     #update lambda
-    #alpha_p = alpha/ceil(p/2);
-	alpha_p = 2/ceil(p/3);
+    alpha_p = alpha/ceil(p/2);
+	#alpha_p = 2/ceil(p/3);
     lambda_new=max.(lambda+alpha_p*gradL,0);
 	#lambda_new=lambda+alpha_p*gradL
     Lam[:,p]=lambda_new;
