@@ -7,8 +7,8 @@ using Gadfly
 using DataFrames
 using JuMP
 using Gurobi
-using MAT #to read in scenarios from matlab
-#using JLD
+#using MAT #to read in scenarios from matlab
+using JLD
 using Cairo #for png output
 using Fontconfig
 
@@ -20,9 +20,9 @@ end
 
 #read in mat scenario
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N20\\"
-file="EVCscenarioN20.mat"
-vars = matread(path*file)
-#vars=load(path*file)
+file="EVCscenarioN20.jld"
+#vars = matread(path*file)
+vars=load(path*file)
 varnames=keys(vars)
 varNum=length(varnames)
 varKeys=collect(varnames)
@@ -31,9 +31,9 @@ varValues=collect(values(vars))
 for i =1:varNum
 	n=varKeys[i]
 	v=varValues[i]
-	if n in ["N" "K" "S"]
-		v=convert(Int, v)
-	end
+	# if n in ["N" "K" "S"]
+	# 	v=convert(Int, v)
+	# end
 	#if isa(v,Array)
 	#	v=convert(DataFrame, v)
 	#end
@@ -41,12 +41,13 @@ for i =1:varNum
 end
 println("done reading in")
 
-Kn=convert(Array{Int,2},Kn)
+#Kn=convert(Array{Int,2},Kn)
 
 
 #initialize
-lambdaGuess=1
-lambda0=ones(K+1,1)*lambdaGuess
+#lambdaGuess=1
+#lambda0=ones(K+1,1)*lambdaGuess
+lambda0=linspace(7,0,K+1)
 #lambda0=rand(K+1)/2
 lambda=lambda0
 alpha=0.01
@@ -145,14 +146,15 @@ for p=2:numIteration
 	#xt=zeros(K+1,1)
 	xt[1,1]=tau*T0 +gamma*ztotal[1,1]^2+rho*w[2,1]#fix for MPC loop
 	for k=1:K
-		xt[k+1,1]=tau*xt[k,1]+gamma*ztotal[k+1,1]^2+rho*w[k*2+2,1] #check this
+		xt[k+1,1]=tau*xt[k,1]+gamma*ztotal[k+1,1]^2+rho*w[k*2+2,1] #check this????
 	end
 	gradL=xt-Tmax*ones(K+1,1)
 
 
 
     #update lambda
-    alpha_p = alpha/ceil(p/2);
+    #alpha_p = alpha/ceil(p/2);
+	alpha_p = 2/ceil(p/3);
     lambda_new=max.(lambda+alpha_p*gradL,0);
 	#lambda_new=lambda+alpha_p*gradL
     Lam[:,p]=lambda_new;

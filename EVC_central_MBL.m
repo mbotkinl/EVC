@@ -26,12 +26,14 @@ i=1;
     %solve optimization from step i to K+i
     %cvx_solver SDPT3
     %cvx_precision low
-    %cvx_solver_settings('NumericFocus',2)
+    %cvx_solver_settings('NumericFocus',3)
+    %cvx_solver_settings('BarQCPConvTol',0)
     %cvx_solver_settings('ResultFile','test.lp')
 
     %gurobi_cl C:/Users/micah/Documents/uvm/Research/EVC/test.lp
     
     cvx_begin %quiet
+        cvx_precision medium
         target=zeros((N+1)*(K+1),1); 
         for ii=1:N
            cur=Kn(ii)-(i-1);
@@ -45,8 +47,9 @@ i=1;
         minimize (u'*Rt*u+x'*Qt*x-2*ones(1,(N+1)*(K+1))*Qt*x)
         subject to
             (eye((K+1)*(N+1))-Ahat)*x==A0hat*xi+Bhat*u+Vhat*w+Ehat*z; %64
-            lambda: 0==Hhat*u+Ghat*w+Fhat*z; %65
-            x<=repmat([ones(N,1);Tmax],K+1,1);
+            0==Hhat*u+Ghat*w+Fhat*z; %65
+            %0==Hhat*u+Ghat*w+Fhat*z; %65
+            lambda: x<=repmat([ones(N,1);Tmax],K+1,1);
             x>=target;
             %x>=0;
             u<=repmat(imax,K+1,1);
@@ -57,7 +60,7 @@ i=1;
     %if cvx_status ~= "Solved"
     if cvx_status == "Failed"
         fprintf("Optimization Failed \n")
-        %break
+        return
     end
     
     %mpc plot
@@ -93,14 +96,14 @@ i=1;
     ylabel("XFRM Temp (K)")
     xlim([1 steps])
     subplot(4,1,4)
-    plot(lambda)
+    plot(lambda(N+1:N+1:length(lambda)))
     ylabel("Lambda")
     xlim([1 steps])
     
     
     
     
-    plotName='M_Central_20';
+    plotName='M_Central_25';
     %print(fullfile(testFolder,plotName),'-dpng','-r0')
     
     

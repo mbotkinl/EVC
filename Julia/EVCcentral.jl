@@ -9,8 +9,8 @@ using JuMP
 using Gurobi
 #using Ipopt
 #using Clp
-using MAT #to read in scenarios from matlab
-#using JLD
+#using MAT #to read in scenarios from matlab
+using JLD
 using Cairo #for png output
 using Fontconfig
 
@@ -25,9 +25,9 @@ end
 
 #read in mat scenario
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N20\\"
-file="EVCscenarioN20.mat"
-vars = matread(path*file)
-#vars=load(path*file)
+file="EVCscenarioN20.jld"
+#vars = matread(path*file)
+vars=load(path*file)
 varnames=keys(vars)
 varNum=length(varnames)
 varKeys=collect(varnames)
@@ -36,9 +36,9 @@ varValues=collect(values(vars))
 for i =1:varNum
 	n=varKeys[i]
 	v=varValues[i]
-	if n in ["N" "K" "S"]
-		v=convert(Int, v)
-	end
+	# if n in ["N" "K" "S"]
+	# 	v=convert(Int, v)
+	# end
 	#if isa(v,Array)
 	#	v=convert(DataFrame, v)
 	#end
@@ -46,7 +46,7 @@ for i =1:varNum
 end
 println("done reading in")
 
-Kn=convert(Array{Int,2},Kn)
+#Kn=convert(Array{Int,2},Kn)
 
 
 
@@ -75,38 +75,36 @@ for ii=1:N
 end
 
 println("obj")
-#@objective(m,Min,sum(u'*Rt*u+x'*Qt*x-2*ones(1,n2)*Qt*x))
-objFun(x,u)=sum(sum((x[(k-1)*(N+1)+n,1]-1)^2*Qsi[n,1] for n=1:N+1) for k=1:K+1)+
-			sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]        for n=1:N) for k=1:K+1)
+objFun(x,u)=sum(sum((x[(k-1)*(N+1)+n,1]-1)^2*Qsi[n,1] for n=1:N+1) for k=1:K+1) +
+			sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]        for n=1:N)   for k=1:K+1)
 @objective(m,Min, objFun(x,u))
 
 println("constraints")
-#@constraint(m,(eye((N+1)*(K+1))-Ahat)*x.==A0hat*xi+Bhat*u+Vhat*w+Ehat*z) #this is slow???
-
-@constraint(m,x[1:N,1].==xi[1:N,1]+eta[:,1].*u[1:N,1])
-for n=1:N
-	@constraint(m,[k=1:K],x[n+(k)*(N+1),1]==x[n+(k-1)*(N+1),1]+eta[n,1]*u[n+(k)*(N),1])
-end
-
-@constraint(m,x[N+1,1]==tau*T0+sum(Et*z[1:S,1])+rho*w[2,1]) #fix for MPC loop
-@constraint(m,[k=1:K],x[(N+1)*(k+1),1]==tau*x[(N+1)*(k),1]+sum(Et*z[(k)*S+(1:1:S),1])+rho*w[k*2+2,1]) #check Z index
-
-#@constraint(m,currCon,0.==Hhat*u+Ghat*w+Fhat*z) #fix for speed?
+@constraint(m,stateCon1,x[1:N,1].==xi[1:N,1]+eta[:,1].*u[1:N,1])
+@constraint(m,stateCon2[k=1:K,n=1:N],x[n+(k)*(N+1),1]==x[n+(k-1)*(N+1),1]+eta[n,1]*u[n+(k)*(N),1])
+@constraint(m,tempCon1,x[N+1,1]==tau*T0+sum(Et*z[1:S,1])+rho*w[2,1]) #fix for MPC loop???
+@constraint(m,tempCon2[k=1:K],x[(N+1)*(k+1),1]==tau*x[(N+1)*(k),1]+sum(Et*z[(k)*S+(1:1:S),1])+rho*w[k*2+2,1])
 @constraint(m,currCon[k=1:K+1],0==-sum(u[(k-1)*(N)+(1:N)])-w[(k-1)*2+1]+sum(z[(k-1)*(S)+(1:S)]))
-
-@constraint(m,x.<=repmat([ones(N,1);Tmax],K+1,1))
+@constraint(m,upperTCon,x.<=repmat([ones(N,1);Tmax],K+1,1))
 @constraint(m,x.>=target)
 #@constraint(m,x.>=0)
-@constraint(m,u.<=repmat(imax,K+1,1))
+@constraint(m,upperCCon,u.<=repmat(imax,K+1,1))
 @constraint(m,u.>=repmat(imin,K+1,1))
 @constraint(m,z.>=0)
 @constraint(m,z.<=deltaI)
 
 println("solving....")
 status = solve(m)
+if status!=:Optimal
+    return
+end
 
 getobjectivevalue(m)
-lambda=getdual(currCon)
+lambdaCurr=getdual(currCon)
+lambdaTemp=[getdual(tempCon1);getdual(tempCon2)]
+lambdaState=[getdual(stateCon1)';getdual(stateCon2)]
+lambdaUpperT=-getdual(upperTCon)
+lambdaUpperC=-getdual(upperCCon)
 
 println("plotting....")
 xRaw=getvalue(x)
@@ -139,8 +137,11 @@ p3=plot(x=1:K+1,y=xRaw[N+1:N+1:length(xRaw)],Geom.line,
 #display(p3)
 
 
+# tt=-getdual(x)
+# p4=plot(x=1:K+1,y=tt[collect(N+1:N+1:length(tt))],Geom.line,
+# 	Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
 
-p4=plot(x=1:K+1,y=lambda,Geom.line,
+p4=plot(x=1:K+1,y=lambdaUpperT[collect(N+1:N+1:length(lambdaUpperT))],Geom.line,
 	Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
 #display(p4)
 

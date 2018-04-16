@@ -4,7 +4,7 @@
 %from Mads Almassakhi code
 
 clc;clearvars;
-N   = 20;
+N   = 100;
 modelNum=2;
 penNum=2;
 %% model parameters 1:
@@ -43,8 +43,7 @@ if modelNum==2
     eta = Ts*Vac*a./b;        % 1/A, normalized battery sizes (0-1)
     tau = 1 - Ts/(Rh*C);       % no units, temp time constant: 1 - 1/RC
     rho = 1 - tau;            % no units, ambient-to-temp param: 1/RC
-    gamma = Ts*Rw/(C*Ntf);      % K/W, ohmic losses-to-temp parameter
-    
+    gamma = Ts*Rw/(C*Ntf);      % K/W, ohmic losses-to-temp parameter   
     %K=151;
     K=331;
 end
@@ -52,7 +51,7 @@ end
 %S = 3;
 S=50;
 %ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
-ItotalMax = 4000;   
+ItotalMax = 40000;   
 deltaI = ItotalMax/S;
 %% MPC Paramters
 %K1 = round(12*3600/Ts);            % Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
@@ -76,7 +75,7 @@ Sn=SOCmin;
 Kn=FullChargeTime;
 
 % Disturbances
-Dload_amplitude = 2;  % base-demand factor
+Dload_amplitude = 30000;  % base-demand factor
 Tamb_amplitude  = 303;   % assume hot night in summer (30 C)
 %% constraint matrices
 Et=gamma*deltaI*[1:2:(2*S-1)];
@@ -183,4 +182,4 @@ if( any(eta.*K.*FullChargeTime_relative.*imax+s0 < SOCmin) )
    disp('Some PEVs may not be able to meet SOC min level by desired time!');
 end
 
-save(sprintf("EVCscenarioN%d.mat",N),'-v7.3')
+%save(sprintf("EVCscenarioN%d.mat",N),'-v7.3')
