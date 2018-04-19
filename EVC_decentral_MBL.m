@@ -3,19 +3,19 @@
 %Spring 2018
 clc;clear all;
 
-N=20;
+N=6;
 testFolder=sprintf('N%d',N);
 scenarioFile=sprintf('EVCscenarioN%d.mat',N);
 load(fullfile(testFolder,scenarioFile)) %generated with EVC_scenario_MBL
 
 %initialize
 cvx_solver Gurobi
-lambdaGuess=1;
+lambdaGuess=0.1;
 lambda0=ones(K+1,1)*lambdaGuess;
 lambda=lambda0;
 alpha=.01;
 convChk = 0;
-numIteration=500;
+numIteration=1000;
 convIt=numIteration;
 steps=K+1;
 
@@ -104,7 +104,6 @@ steps=K+1;
 %         %grad of lagragian
 %         gradL=sum(U{p,1},2)+Ghat*w-Fhat*z;
         
-        
 
         %fast ascent
         ztotal=sum(U{p,1},2)+ w(1:2:length(w),1);
@@ -114,9 +113,7 @@ steps=K+1;
             Xt(k+1,p)=tau*Xt(k,p)+gamma*ztotal(k+1,1)^2+rho*w(k*2+2,1); %check this
         end
         gradL=Xt(:,p)-Tmax*ones(K+1,1);
-
-        
-        
+         
         
         %update lambda
         alpha_p = alpha/ceil(p/2);
@@ -165,6 +162,8 @@ end
 legend(lgd)
 subplot(4,1,3)
 plot(Xt(:,convIt))
+hold on
+plot([1 steps],[Tmax Tmax],'r--')
 ylabel("XFRM Temp (K)")
 xlim([1 steps])
 subplot(4,1,4)

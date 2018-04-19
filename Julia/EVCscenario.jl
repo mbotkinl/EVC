@@ -6,39 +6,44 @@
 using Distributions
 using JLD
 
-N   = 20;
+N   = 6
 
 #model parameters
-a   = rand(N,1)*.1 + 0.8;               # efficiency of Li-ion batts is ~80-90%
-b   = (6*rand(N,1)+12)*3.6e6;           # battery capacity (12-18 kWh = 43.3-64.8 MJ)
-m   = 2000;                             # transformer mass in kg
-C   = 450*m;                            # heat cap. thermal mass J/K ----- spec. heat cap. of C = {carbon steel, iron, veg. oil} = {490, 450, 1670} J/(kg*K)
-Rh   = 1070e-4/(35*5*(m/7870)^(2/3));   # heat outflow resistance K/W : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
-Rw  = 1;                                # coil winding resistance --- ohms:
-Vac = 240;                              # PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
-Vtf = 8320;                             # distr-level transformer rms voltage --- V [used in inelastic kW -> kA conv]
-Ntf   = Vtf/Vac;                        # pole-top transformer turns ratio
+a   = rand(N,1)*.1 + 0.8               # efficiency of Li-ion batts is ~80-90%
+b   = (6*rand(N,1)+12)*3.6e6           # battery capacity (12-18 kWh = 43.3-64.8 MJ)
+m   = 2000                             # transformer mass in kg
+C   = 450*m                            # heat cap. thermal mass J/K ----- spec. heat cap. of C = {carbon steel, iron, veg. oil} = {490, 450, 1670} J/(kg*K)
+Rh   = 1070e-4/(35*5*(m/7870)^(2/3))   # heat outflow resistance K/W : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
+Rw  = 1                                # coil winding resistance --- ohms:
+Vac = 240                              # PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
+Vtf = 8320                             # distr-level transformer rms voltage --- V [used in inelastic kW -> kA conv]
+Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
 
 # Discretization parameters:
-Ts = Rh*C/9;              # s, sampling time in seconds
-eta = Ts*Vac*a./b;        # 1/A, normalized battery sizes (0-1)
-tau = 1 - Ts/(Rh*C);      # no units, temp time constant: 1 - 1/RC
-rho = 1 - tau;            # no units, ambient-to-temp param: 1/RC
-#gamma = Ts*Rw/(C*Ntf);    # K/W, ohmic losses-to-temp parameter
+#Ts = Rh*C/9              # s, sampling time in seconds
+Ts=152.4
+#testingVar1 = Ts*Vac*a./b        # 1/A, normalized battery sizes (0-1)
+#testingVar=1-Ts
+tau = 1 - Ts/(Rh*C)      # no units, temp time constant: 1 - 1/RC
+rho = 1 - tau            # no units, ambient-to-temp param: 1/RC
+gamma = Ts*Rw/(C*Ntf)    # K/W, ohmic losses-to-temp parameter
 #gamma=.85/Ntf
-gamma=.0085/Ntf
+#gamma=.0085/Ntf
 
 
 # PWL Parameters:
 #S = 3;
-S=200;
+S=50;
 #ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
 ItotalMax = 4000;
 deltaI = ItotalMax/S;
+Et=gamma*deltaI*collect(1:2:(2*S-1))';
 
 ## MPC Paramters
-K1 = convert(Int,round(12*3600/Ts));            # Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
-K2 = convert(Int,round(2*3600/Ts));             # Additional time instants past control horizon
+T1=8
+T2=2
+K1 = round(Int,T1*3600/Ts);            # Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
+K2 = round(Int,T2*3600/Ts);             # Additional time instants past control horizon
 K  = K1+K2;                        # Total horizon (8 PM to 10 AM)Qs  = 10;              % Stage and terminal penalty on charge difference with respect to 1 (states s)
 #K=331
 #K=199
@@ -63,12 +68,8 @@ Kn=FullChargeTime
 
 # Disturbances
 #Dload_amplitude = 2;  # base-demand factor
-Dload_amplitude = 10000 #watts?
-#Tamb_amplitude  = 303;   # assume hot night in summer (30 C)
-Tamb_amplitude  = 303
-
-# constraint matrices
-Et=gamma*deltaI*collect(1:2:(2*S-1))';
+Dload_amplitude = 30000 #watts?
+Tamb_amplitude  = 303;   # assume hot night in summer (30 C)
 
 # Disturbance scenario:
 #FullinelasticDemand = [normpdf(0,linspace(0,8,round((K1-1)/2)),3) normpdf(0,linspace(-8,0,round(K1/2)),3)]; # let demand per household be peaking at 8PM and 8 PM with nadir inbetween
@@ -77,7 +78,7 @@ Et=gamma*deltaI*collect(1:2:(2*S-1))';
 #inelasticDemand = [normpdf(0,linspace(0,8,round(K/2)),3) normpdf(0,linspace(-8,0,round(K/2)),3)]; # let demand per household be peaking at 8PM and 8 PM with nadir inbetween
 
 #dist=[linspace(0,8,round(K/2));linspace(-8,0,round(K/2))]
-dist = [linspace(0,8,round(K1/2));linspace(-8,0,round(K1/2))]
+dist = [linspace(0,8,round(K1/2));linspace(-8,0,K1-round(K1/2))]
 d = Normal(0,3)
 inelasticDemand = pdf.(d,dist)
 FullinelasticDemand = 100*(200*(inelasticDemand-minimum(inelasticDemand))/(maximum(inelasticDemand)-minimum(inelasticDemand)) + 600)/1000; # total non-EV demand (in kW) = N/PEVpenetration*inelasticDemandperHouse
@@ -92,7 +93,7 @@ for i=1:K+1
 end
 
 # penalty matrix new (need to fix for k>Ki)
-Ru   = .1;              # Stage and terminal penalty on local power flow (inputs u)4
+Ru   = .1;              # Stage and terminal penalty on local power flow (inputs u)
 #RKi   = 10;            # Stage and terminal penalty on local power flow (inputs q), for k >= Ki
 Qs  = 10;               # Stage and terminal penalty on charge difference with respect to 1 (states s)
 QT  = 0;                # PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
@@ -103,8 +104,8 @@ Qsi=[Qs*(10*rand(N,1)+.01);QT];
 
 # save
 if any(eta.*K.*FullChargeTime_relative.*imax+s0 .< SOCmin)
-#if( any(eta.*K1.*FullChargeTime_relative.*imax+s0 < SOCmin) )
+#if any(eta.*K1.*FullChargeTime_relative.*imax+s0 .< SOCmin)
    println("Some PEVs may not be able to meet SOC min level by desired time!")
 end
 
-@save "EVCscenarioN$(N).jld"
+#@save "EVCscenarioN$(N).jld"

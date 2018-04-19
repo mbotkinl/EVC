@@ -3,7 +3,7 @@
 %Spring 2018
 clc;clearvars;
 
-N=20;
+N=6;
 %Testnum='new';
 testFolder=sprintf('N%d',N);
 scenarioFile=sprintf('EVCscenarioN%d.mat',N);
@@ -93,14 +93,14 @@ i=1;
     end
     subplot(4,1,3)
     plot(x(N+1:N+1:length(x)))
+    hold on
+    plot([1 steps],[Tmax Tmax],'r--')
     ylabel("XFRM Temp (K)")
     xlim([1 steps])
     subplot(4,1,4)
     plot(lambda(N+1:N+1:length(lambda)))
     ylabel("Lambda")
     xlim([1 steps])
-    
-    
     
     
     plotName='M_Central_25';

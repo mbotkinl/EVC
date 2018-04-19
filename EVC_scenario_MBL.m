@@ -4,7 +4,7 @@
 %from Mads Almassakhi code
 
 clc;clearvars;
-N   = 100;
+N   = 6;
 modelNum=2;
 penNum=2;
 %% model parameters 1:
@@ -182,4 +182,4 @@ if( any(eta.*K.*FullChargeTime_relative.*imax+s0 < SOCmin) )
    disp('Some PEVs may not be able to meet SOC min level by desired time!');
 end
 
-%save(sprintf("EVCscenarioN%d.mat",N),'-v7.3')
+save(sprintf("EVCscenarioN%d.mat",N),'-v7.3')
