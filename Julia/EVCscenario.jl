@@ -6,7 +6,7 @@
 using Distributions
 using JLD
 
-N   = 6
+N = 20
 
 #model parameters
 a   = rand(N,1)*.1 + 0.8               # efficiency of Li-ion batts is ~80-90%
@@ -20,10 +20,8 @@ Vtf = 8320                             # distr-level transformer rms voltage ---
 Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
 
 # Discretization parameters:
-#Ts = Rh*C/9              # s, sampling time in seconds
-Ts=152.4
-#testingVar1 = Ts*Vac*a./b        # 1/A, normalized battery sizes (0-1)
-#testingVar=1-Ts
+Ts = Rh*C/9              # s, sampling time in seconds
+eta = Ts*Vac*a./b        # 1/A, normalized battery sizes (0-1)
 tau = 1 - Ts/(Rh*C)      # no units, temp time constant: 1 - 1/RC
 rho = 1 - tau            # no units, ambient-to-temp param: 1/RC
 gamma = Ts*Rw/(C*Ntf)    # K/W, ohmic losses-to-temp parameter
@@ -33,14 +31,13 @@ gamma = Ts*Rw/(C*Ntf)    # K/W, ohmic losses-to-temp parameter
 
 # PWL Parameters:
 #S = 3;
-S=50;
+S=50
 #ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
-ItotalMax = 4000;
-deltaI = ItotalMax/S;
-Et=gamma*deltaI*collect(1:2:(2*S-1))';
+ItotalMax = 4000
+deltaI = ItotalMax/S
 
 ## MPC Paramters
-T1=8
+T1=12
 T2=2
 K1 = round(Int,T1*3600/Ts);            # Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
 K2 = round(Int,T2*3600/Ts);             # Additional time instants past control horizon
@@ -49,27 +46,26 @@ K  = K1+K2;                        # Total horizon (8 PM to 10 AM)Qs  = 10;     
 #K=199
 
 # Constraint parameters:
-Tmax = 393;                             # Short-term over-loading --> 120 C = 393 Kelvin
-imin = zeros(N,1);                      # A, q_min < 0 if V2G is allowed
-imax = (10 + 16*rand(N,1));             # A, charging with 10-24 A
-SOCmin = 1 - 0.20*rand(N,1);            # Required min final states of charge (~0.80-1)
-FullChargeTime_relative = .25*rand(N,1)+.75;
+Tmax = 393                             # Short-term over-loading --> 120 C = 393 Kelvin
+imin = zeros(N,1)                      # A, q_min < 0 if V2G is allowed
+imax = (10 + 16*rand(N,1))             # A, charging with 10-24 A
+SOCmin = 1 - 0.20*rand(N,1)            # Required min final states of charge (~0.80-1)
+FullChargeTime_relative = .25*rand(N,1)+.75
 #FullChargeTime = convert(Array{Int,2},round.(K*FullChargeTime_relative));
-FullChargeTime = convert(Array{Int,2},round.(K1*FullChargeTime_relative));
+FullChargeTime = convert(Array{Int,2},round.(K1*FullChargeTime_relative))
 
 # Initial conditions:
-s0 = 0.2*rand(N,1);      # initial states of charge (0 - 0.20)
-T0 = 368;                 # initial temp (~65 K below Tmax)
-x0=[s0;T0];
+s0 = 0.2*rand(N,1)      # initial states of charge (0 - 0.20)
+T0 = 368                 # initial temp (~65 K below Tmax)
 
 #desired states
-Sn=SOCmin;
+Sn=SOCmin
 Kn=FullChargeTime
 
 # Disturbances
 #Dload_amplitude = 2;  # base-demand factor
-Dload_amplitude = 30000 #watts?
-Tamb_amplitude  = 303;   # assume hot night in summer (30 C)
+Dload_amplitude = 80000 #watts?
+Tamb_amplitude  = 363   # assume hot night in summer (30 C)
 
 # Disturbance scenario:
 #FullinelasticDemand = [normpdf(0,linspace(0,8,round((K1-1)/2)),3) normpdf(0,linspace(-8,0,round(K1/2)),3)]; # let demand per household be peaking at 8PM and 8 PM with nadir inbetween
@@ -93,7 +89,7 @@ for i=1:K+1
 end
 
 # penalty matrix new (need to fix for k>Ki)
-Ru   = .1;              # Stage and terminal penalty on local power flow (inputs u)
+Ru   = 0.00001;              # Stage and terminal penalty on local power flow (inputs u)
 #RKi   = 10;            # Stage and terminal penalty on local power flow (inputs q), for k >= Ki
 Qs  = 10;               # Stage and terminal penalty on charge difference with respect to 1 (states s)
 QT  = 0;                # PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
