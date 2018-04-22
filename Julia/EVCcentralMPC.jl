@@ -142,7 +142,7 @@ for stepI=1:K
 	for k=1:horzLen+1
 		ztotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + w[(k-1)*2+(stepI*2-1),1]
 	end
-	Tactual[1,1]=tau*T0+gamma*ztotal[1,1]^2+rho*w[stepI*2,1]
+	Tactual[1,1]=tau*xt0+gamma*ztotal[1,1]^2+rho*w[stepI*2,1]
 
 	#do we need this for anything???
 	for k=1:horzLen
@@ -170,7 +170,7 @@ println("plotting....")
 # 	xPlot[:,ii]=xRaw[collect(ii:N+1:length(xRaw))]
 # end
 
-p1=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+p1mpc=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 		Coord.Cartesian(xmin=0,xmax=K+1),
 		Theme(background_color=colorant"white",key_position = :none))
@@ -181,13 +181,13 @@ p1=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 # 	uPlot[:,ii]=uRaw[collect(ii:N:length(uRaw))]
 # end
 
-p2=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+p2mpc=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current"),
 		Coord.Cartesian(xmin=0,xmax=K+1),
 		Theme(background_color=colorant"white",key_position = :none))
 #display(p2)
 
-p3=plot(layer(x=1:K,y=Xtmodel,Geom.line,Theme(default_color=colorant"blue")),
+p3mpc=plot(layer(x=1:K,y=Xtmodel,Geom.line,Theme(default_color=colorant"blue")),
 		layer(x=1:K,y=Xtactual,Geom.line,Theme(default_color=colorant"green")),
 		yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
@@ -195,7 +195,7 @@ p3=plot(layer(x=1:K,y=Xtmodel,Geom.line,Theme(default_color=colorant"blue")),
 		Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
 #display(p3)
 
-p4=plot(x=1:K,y=Lambda,Geom.line,
+p4mpc=plot(x=1:K,y=Lambda,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
 #display(p4)
@@ -207,7 +207,7 @@ fName="J_Central.png"
 
 
 #do this more elegantly
-aggPlot=plot(x=1:K,y=sum(Un[:,i] for i=1:N),Geom.line,
+aggPmpc=plot(x=1:K,y=sum(Un[:,i] for i=1:N),Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current"),
 		Coord.Cartesian(xmin=0,xmax=K+1),
 		Theme(background_color=colorant"white"))

@@ -204,7 +204,7 @@ for stepI=1:K
 			convIt=p
 			break
 		else
-			@printf "convGap %e after %g iterations\n" convGap p
+			#@printf "convGap %e after %g iterations\n" convGap p
 		end
 	end
 
@@ -228,19 +228,19 @@ end
 
 println("plotting....")
 
-pd1=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+pd1mpc=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 		Coord.Cartesian(xmin=0,xmax=K+1),
 		Theme(background_color=colorant"white",key_position = :none))
 #display(pd1)
 
-pd2=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+pd2mpc=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current"),
 		Coord.Cartesian(xmin=0,xmax=K+1),
 		Theme(background_color=colorant"white",key_position = :none))
 #display(pd2)
 
-pd3=plot(layer(x=1:K+1,y=Xtactual,Geom.line,Theme(default_color=colorant"green")),
+pd3mpc=plot(layer(x=1:K+1,y=Xtactual,Geom.line,Theme(default_color=colorant"green")),
 		yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),
 		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
@@ -252,7 +252,7 @@ end
 
 #display(pd3)
 
-pd4=plot(x=1:K+1,y=Lambda,Geom.line,
+pd4mpc=plot(x=1:K+1,y=Lambda,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)"),
 		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
 #display(pd4)
