@@ -97,7 +97,9 @@ for p=2:numIteration
     #@printf "iteration step %g of %g....\n" p numIteration
 
     #solve subproblem for each EV
-    for evInd=1:N
+    #for evInd=1:N
+	@parallel for evInd=1:N
+
         target=zeros((horzLen+1),1)
         #target[max(1,Kn[evInd]-(stepI-1)*Ts):1:length(target),1]=s0[evInd] #fix Ts for time loop???
         target[Kn[evInd,1]:1:length(target),1]=s0[evInd,1]

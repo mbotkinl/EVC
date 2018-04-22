@@ -78,9 +78,9 @@ lambda0=rand(d, K1+1)
 lambda=lambda0
 
 #convergence criteria
-alpha=.2
-convChk = 1e-6
-numIteration=100
+alpha=.1
+convChk = 1e-4
+numIteration=20
 convIt=numIteration
 
 
@@ -99,9 +99,11 @@ for stepI=1:K
 
 	horzLen=min(K1,K-stepI)
 
+
+	lambda=lambda[1:horzLen+1]
 	Conv=zeros(numIteration,1)
 	Lam=zeros(horzLen+1,numIteration) #(rows are time, columns are iteration)
-	Lam[:,1]=lambda[1:horzLen+1]
+	Lam[:,1]=lambda
 	Xtit=zeros(horzLen+1,1) #rows are time
 	Tactual=zeros(horzLen+1,1) #rows are time
 	Xnit=zeros(horzLen+1,N) #row are time, column are EV
@@ -113,7 +115,8 @@ for stepI=1:K
 	    #@printf "iteration step %g of %g....\n" p numIteration
 
 	    #solve subproblem for each EV
-	    for evInd=1:N
+
+	    @parallel for evInd=1:N
 	        target=zeros(horzLen+1,1)
 	        #target[max(1,Kn[evInd]-(stepI-1)*Ts):1:length(target),1]=s0[evInd] #fix Ts for time loop???
 	        target[Kn[evInd,1]:1:length(target),1]=xn0[evInd,1]
@@ -143,7 +146,6 @@ for stepI=1:K
 	            Unit[:,evInd]=getvalue(un) #current go
 	        end
 	    end
-
 
 		if updateMethod=="dualAscent"
 		    #solve coordinator problem
@@ -204,10 +206,9 @@ for stepI=1:K
 			convIt=p
 			break
 		else
-			#@printf "convGap %e after %g iterations\n" convGap p
+			@printf "convGap %e after %g iterations\n" convGap p
 		end
 	end
-
 
 	#save states
 	Xn[stepI,:]=Xnit[1,:]
@@ -239,19 +240,19 @@ pd2mpc=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Theme(background_color=colorant"white",key_position = :none))
 #display(pd2)
 
-pd3mpc=plot(layer(x=1:K+1,y=Xtactual,Geom.line,Theme(default_color=colorant"green")),
+pd3mpc=plot(layer(x=1:K,y=Xtactual,Geom.line,Theme(default_color=colorant"green")),
 		yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),
 		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
 if updateMethod=="dualAscent"
-	push!(pd3,layer(x=1:K+1,y=Xtmodel,Geom.line,Theme(default_color=colorant"blue")))
+	push!(pd3,layer(x=1:K,y=Xtmodel,Geom.line,Theme(default_color=colorant"blue")))
 	push!(pd3,Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
 	push!(pd3,Theme(key_position = :top,background_color=colorant"white"))
 end
 
 #display(pd3)
 
-pd4mpc=plot(x=1:K+1,y=Lambda,Geom.line,
+pd4mpc=plot(x=1:K,y=Lambda,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)"),
 		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
 #display(pd4)
