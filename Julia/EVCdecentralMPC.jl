@@ -101,7 +101,7 @@ for stepI=1:K
 
 	Conv=zeros(numIteration,1)
 	Lam=zeros(horzLen+1,numIteration) #(rows are time, columns are iteration)
-	Lam[:,1]=lambda0
+	Lam[:,1]=lambda[1:horzLen+1]
 	Xtit=zeros(horzLen+1,1) #rows are time
 	Tactual=zeros(horzLen+1,1) #rows are time
 	Xnit=zeros(horzLen+1,N) #row are time, column are EV
@@ -221,8 +221,7 @@ for stepI=1:K
 	#apply current and set new states
 	xn0=Xnit[1,:]
 	xt0=Tactual[1,1]
-	lambda0=Lam[1:horzLen+1,convIt]
-
+	lambda=Lam[1:horzLen+1,convIt]
 end
 
 
@@ -263,14 +262,6 @@ fName="J_Decentral_fast.png"
 # draw(PNG(path*fName, 13inch, 14inch), vstack(pd1,pd2,pd3,pd4))
 
 
-
-lamPlot=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
-			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white"))
-convPlot=plot(x=1:convIt,y=Conv[1:convIt,1],Geom.line,
-			Guide.xlabel("Iteration"), Guide.ylabel("Convergance Gap"),
-			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white"))
-# draw(PNG(path*"distPlots_fast.png", 13inch, 8inch), vstack(lamPlot,convPlot))
 
 
 #do this more elegantly
