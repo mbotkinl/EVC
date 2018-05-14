@@ -20,7 +20,7 @@ elseif datafile=="jld"
 	using JLD
 end
 
-if datafile in ["mat" "jld" "n"]
+if datafile in ["mat" "jld"]
 	println("Reading in Data...")
 
 	function string_as_varname(s::String,v::Any)
@@ -64,7 +64,9 @@ end
 
 
 #initialize
-
+#initialize with current states
+xn0=s0
+xt0=T0
 d = Truncated(Normal(0), 0, 0.5)
 lambda0=rand(d, K1+1)
 #lambdaGuess=2
@@ -73,8 +75,8 @@ lambda0=rand(d, K1+1)
 #lambda0=rand(K1+1)/2
 lambda=lambda0
 alpha=.1
-convChk = 1e-6
-numIteration=200
+convChk = 1e-2
+numIteration=100
 convIt=numIteration
 
 #MPC here???
@@ -234,7 +236,7 @@ fName="J_Decentral_fast.png"
 
 lamPlot=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
-			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white"))
+			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white"))
 convPlot=plot(x=1:convIt,y=Conv[1:convIt,1],Geom.line,
 			Guide.xlabel("Iteration"), Guide.ylabel("Convergance Gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white"))

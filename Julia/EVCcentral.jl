@@ -1,7 +1,7 @@
 #Micah Botkin-Levy
 #4/8/18
 N=20
-datafile="jld" #mat #"jld" #"n"
+datafile="n" #mat #"jld" #"n"
 
 println("Loading Packages...")
 
@@ -17,7 +17,7 @@ elseif datafile=="jld"
 	using JLD
 end
 
-if datafile in ["mat" "jld" "n"]
+if datafile in ["mat" "jld"]
 	println("Reading in Data...")
 
 	function string_as_varname(s::String,v::Any)
