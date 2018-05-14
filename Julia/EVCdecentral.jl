@@ -160,7 +160,7 @@ for p=2:numIteration
 		for k=1:horzLen+1
 			zSum[k,1]=sum(getvalue(z)[(k-1)*(S)+(1:S)])
 		end
-		gradL=sum(Un[:,ii] for ii=1:N)+w[1:2:length(w),1]-zSum
+		gradL=sum(Un[:,ii] for ii=1:N)+w[1:2:horzLen*2+1,1]-zSum
 	end
 
 	#calculate actual temperature from nonlinear model of XFRM
