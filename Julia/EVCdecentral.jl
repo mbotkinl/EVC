@@ -1,9 +1,10 @@
 #Micah Botkin-Levy
 #4/10/18
 
-N=20
-datafile="n" #"mat" #"jld" #"n"
-updateMethod="fastAscent" #dualAscent #fastAscent
+datafile="jld" #"mat" #"jld" #"n"
+updateMethod="dualAscent" #dualAscent #fastAscent
+drawFig=0
+if datafile in ["mat" "jld"]; N=30 end
 
 println("Loading Packages...")
 
@@ -62,24 +63,31 @@ if datafile in ["mat" "jld"]
 end
 
 
-
+tic()
 #initialize
 #initialize with current states
 xn0=s0
 xt0=T0
-d = Truncated(Normal(0), 0, 0.5)
+
+d = Truncated(Normal(0), 0, 50)
 lambda0=rand(d, K1+1)
 #lambdaGuess=2
 #lambda0=ones(K1+1,1)*lambdaGuess
 #lambda0=[0;linspace(7,0,K)]
 #lambda0=rand(K1+1)/2
 lambda=lambda0
-alpha=.1
-convChk = 1e-2
-numIteration=100
+if updateMethod=="fastAscent"
+	alpha = 0.1
+	#alpha=0.001
+else
+	alpha = 0.01
+	#alpha= 0.001
+end
+
+convChk = 1e-6
+numIteration=1000
 convIt=numIteration
 
-#MPC here???
 stepI = 1;
 horzLen=K1
 
@@ -167,7 +175,7 @@ for p=2:numIteration
 	ztotal=sum(Un[:,ii] for ii=1:N)+ w[1:2:horzLen*2+1,1]
 	Tactual[1,1]=tau*xt0+gamma*ztotal[1,1]^2+rho*w[2,1]
 	for k=1:horzLen
-		Tactual[k+1,1]=tau*Tactual[k,1]+gamma*ztotal[k+1,1]^2+rho*w[k*2+2,1] #check this????
+		Tactual[k+1,1]=tau*Tactual[k,1]+gamma*ztotal[k+1,1]^2+rho*w[k*2+2,1]
 	end
 
 	if updateMethod=="fastAscent"
@@ -176,8 +184,13 @@ for p=2:numIteration
 	end
 
     #update lambda
-    alpha_p = alpha/ceil(p/2)
-	#alpha_p = alpha/(p*5)
+	if updateMethod=="fastAscent"
+		alpha_p = alpha/ceil(p/2)
+		#alpha_p = alpha/(p*5)
+	else
+		alpha_p = alpha/ceil(p/2)
+		#alpha_p = alpha/(p*5)
+	end
 
     lambda_new=max.(lambda+alpha_p*gradL,0)
 	#lambda_new=lambda+alpha_p*gradL
@@ -195,49 +208,87 @@ for p=2:numIteration
 		@printf "convGap %e after %g iterations\n" convGap p
 	end
 end
+toc()
 
 println("plotting....")
 
 pd1=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
-		Theme(background_color=colorant"white",key_position = :none))
-#display(pd1)
+		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=3pt,
+		minor_label_font_size=20pt,key_label_font_size=20pt))
+if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_SOC.png", 24inch, 12inch), pd1) end
 
 pd2=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV Current"),
+		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
-		Theme(background_color=colorant"white",key_position = :none))
-#display(pd2)
+		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=3pt,
+		minor_label_font_size=20pt,key_label_font_size=20pt))
+if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Curr.png", 24inch, 12inch), pd2) end
 
-pd3=plot(layer(x=1:horzLen+1,y=Tactual,Geom.line,Theme(default_color=colorant"green")),
-		yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
+pd3=plot(layer(x=1:horzLen+1,y=Tactual,Geom.line,Theme(default_color=colorant"green",line_width=3pt)),
+		layer(yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),Theme(line_width=3pt)),
 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),
-		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white"))
+		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=24pt,
+		minor_label_font_size=20pt,key_label_font_size=20pt))
 if updateMethod=="dualAscent"
-	push!(pd3,layer(x=1:horzLen+1,y=getvalue(xt),Geom.line,Theme(default_color=colorant"blue")))
+	push!(pd3,layer(x=1:horzLen+1,y=getvalue(xt),Geom.line,Theme(default_color=colorant"blue",line_width=3pt)))
 	push!(pd3,Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
-	push!(pd3,Theme(key_position = :top,background_color=colorant"white"))
+	push!(pd3,Theme(key_position = :top,background_color=colorant"white",major_label_font_size=24pt,line_width=3pt,
+	minor_label_font_size=20pt,key_label_font_size=20pt))
 end
+if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Temp.png", 24inch, 12inch), pd3) end
 
-#display(pd3)
-
-pd4=plot(x=1:horzLen+1,y=Lam[:,convIt],Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)"),
-		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white"))
-#display(pd4)
+if updateMethod=="fastAscent"
+	lamLabel=raw"Lambda ($/K)"
+else
+	lamLabel=raw"Lambda ($/A)"
+end
+pd4=plot(layer(x=1:horzLen+1,y=Lam[:,convIt],Geom.line,Theme(line_width=3pt)),
+		Guide.xlabel("Time"), Guide.ylabel(lamLabel),
+		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=24pt,
+		minor_label_font_size=20pt,key_label_font_size=20pt))
+if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Lam.png", 24inch, 12inch), pd4) end
 
 
 #fName="J_Decentral_notfast.png"
-fName="J_Decentral_fast.png"
+#fName="J_Decentral_fast.png"
 #draw(PNG(path*fName, 13inch, 14inch), vstack(pd1,pd2,pd3,pd4))
 
 
 
 lamPlot=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
-			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white"))
-convPlot=plot(x=1:convIt,y=Conv[1:convIt,1],Geom.line,
-			Guide.xlabel("Iteration"), Guide.ylabel("Convergance Gap"),
-			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white"))
-#draw(PNG(path*"distPlots_fast.png", 13inch, 8inch), vstack(lamPlot,convPlot))
+			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+			minor_label_font_size=26pt,key_label_font_size=26pt))
+if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_LamConv.png", 36inch, 12inch), lamPlot) end
+
+convPlot=plot(x=1:convIt,y=Conv[1:convIt,1],Geom.line,Scale.y_log10,
+			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
+			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+			minor_label_font_size=26pt,key_label_font_size=26pt))
+if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Conv.png", 36inch, 12inch), convPlot) end
+
+
+
+#compare central and decentral current agg
+# aggU=plot(layer(x=1:horzLen+1,y=sum(uPlot[:,i] for i=1:N),Geom.line,Theme(default_color=colorant"blue")),
+# 		layer(x=1:horzLen+1,y=sum(Un[:,i] for i=1:N),Geom.line,Theme(default_color=colorant"green")),
+# 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
+# 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
+# 		Theme(background_color=colorant"white"),
+# 		Guide.manual_color_key("", ["Central", "Decentral (fast)"], ["blue", "green"]))
+#draw(PNG(path*"aggPlot_fast.png", 13inch, 8inch), aggU)
+
+
+#compare dual ascent and fast ascent convergence
+
+# dualConv=Conv
+
+# fastConv=Conv
+# convPlotcomp=plot(layer(x=1:convIt,y=dualConv[1:convIt,1],Geom.line,Theme(default_color=colorant"blue")),
+# 			  layer(x=1:convIt,y=fastConv[1:convIt,1],Geom.line,Theme(default_color=colorant"green")),
+# 			  Guide.xlabel("Iteration"), Guide.ylabel("Convergance Gap"),
+# 			  Coord.Cartesian(xmin=0,xmax=10),Theme(background_color=colorant"white"),
+# 		  	  Guide.manual_color_key("", ["Dual Ascent", "Fast Ascent"], ["blue", "green"]))
+# draw(PNG(path*"convComp_fast.png", 13inch, 8inch), aggU)

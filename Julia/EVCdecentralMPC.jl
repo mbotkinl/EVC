@@ -1,12 +1,12 @@
 #Micah Botkin-Levy
 #4/10/18
 
-
-datafile="n" #mat #"jld" #"n"
-
-if datafile in ["mat" "jld"]; N=20 end
-
+datafile="jld" #mat #"jld" #"n"
 updateMethod="fastAscent" #dualAscent #fastAscent
+drawFig=1
+
+if datafile in ["mat" "jld"]; N=30 end
+
 
 println("Loading Packages...")
 
@@ -78,9 +78,15 @@ lambda0=rand(d, K1+1)
 lambda=lambda0
 
 #convergence criteria
-alpha=.1
-convChk = 1e-4
-numIteration=20
+if updateMethod=="fastAscent"
+	#alpha = 0.2
+	alpha = 0.1
+else
+	alpha=.001
+	#alpha= 0.001
+end
+convChk = 1e-3
+numIteration=200
 convIt=numIteration
 
 
@@ -190,13 +196,18 @@ for stepI=1:K
 		end
 
 	    #update lambda
-	    alpha_p = alpha/ceil(p/2)
-		#alpha_p = alpha/(p*5)
+		if updateMethod=="fastAscent"
+			alpha_p = alpha/ceil(p/2)
+			#alpha_p = alpha/(p*5)
+		else
+			alpha_p = alpha/ceil(p/2)
+			#alpha_p = alpha/(p*2)
+		end
 
 	    lambda_new=max.(lambda+alpha_p*gradL,0)
 		#lambda_new=lambda+alpha_p*gradL
 	    Lam[:,p]=lambda_new
-	    lambda=lambda_new
+	    lambda=lambda_new[1:horzLen+1] #next lambda is one step past
 
 		#check convergence
 		convGap = norm(Lam[:,p]-Lam[:,p-1],2)
@@ -210,6 +221,11 @@ for stepI=1:K
 		end
 	end
 
+
+	# lamPlot=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+	# 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
+	# 			Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
+
 	#save states
 	Xn[stepI,:]=Xnit[1,:]
 	Un[stepI,:]=Unit[1,:]
@@ -222,7 +238,7 @@ for stepI=1:K
 	#apply current and set new states
 	xn0=Xnit[1,:]
 	xt0=Tactual[1,1]
-	lambda=Lam[1:horzLen+1,convIt]
+	lambda=[Lam[2:horzLen+1,convIt];Lam[horzLen+1,convIt]] #next lambda is one step past and repeat last
 end
 
 
@@ -231,42 +247,50 @@ println("plotting....")
 pd1mpc=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 		Coord.Cartesian(xmin=0,xmax=K+1),
-		Theme(background_color=colorant"white",key_position = :none))
-#display(pd1)
+		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=2pt,
+		minor_label_font_size=20pt,key_label_font_size=20pt))
+if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_MPC_SOC.png", 24inch, 12inch), pd1mpc) end
+
 
 pd2mpc=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV Current"),
+		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
 		Coord.Cartesian(xmin=0,xmax=K+1),
-		Theme(background_color=colorant"white",key_position = :none))
-#display(pd2)
+		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=2pt,
+		minor_label_font_size=20pt,key_label_font_size=20pt))
+if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_MPC_Curr.png", 24inch, 12inch), pd2mpc) end
 
-pd3mpc=plot(layer(x=1:K,y=Xtactual,Geom.line,Theme(default_color=colorant"green")),
-		yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
+pd3mpc=plot(layer(x=1:K,y=Xtactual,Geom.line,Theme(default_color=colorant"green",line_width=3pt)),
+		layer(yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),Theme(line_width=3pt)),
 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),
-		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
+		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white",major_label_font_size=24pt,
+		minor_label_font_size=20pt,key_label_font_size=20pt))
 if updateMethod=="dualAscent"
-	push!(pd3,layer(x=1:K,y=Xtmodel,Geom.line,Theme(default_color=colorant"blue")))
-	push!(pd3,Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
-	push!(pd3,Theme(key_position = :top,background_color=colorant"white"))
+	push!(pd3mpc,layer(x=1:K,y=Xtmodel,Geom.line,Theme(default_color=colorant"blue",line_width=3pt)))
+	push!(pd3mpc,Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
+	push!(pd3mpc,Theme(key_position = :top,background_color=colorant"white",major_label_font_size=24pt,
+	minor_label_font_size=20pt,key_label_font_size=20pt))
 end
+if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_MPC_Temp.png", 24inch, 12inch), pd3mpc) end
 
-#display(pd3)
+if updateMethod=="fastAscent"
+	lamLabel=raw"Lambda ($/K)"
+else
+	lamLabel=raw"Lambda ($/A)"
+end
+pd4mpc=plot(layer(x=1:K,y=Lambda,Geom.line,Theme(line_width=3pt)),
+		Guide.xlabel("Time"), Guide.ylabel(lamLabel),
+		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white",major_label_font_size=24pt,
+		minor_label_font_size=20pt,key_label_font_size=20pt))
+if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_MPC_Lam.png", 24inch, 12inch), pd4mpc) end
 
-pd4mpc=plot(x=1:K,y=Lambda,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)"),
-		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
-#display(pd4)
 
-
-#fName="J_Decentral_notfast.png"
-fName="J_Decentral_fast.png"
-# draw(PNG(path*fName, 13inch, 14inch), vstack(pd1,pd2,pd3,pd4))
-
-
+#fName="J_Decentral_notfast_MPC.png"
+fName="J_Decentral_"*updateMethod*"_MPC.png"
+draw(PNG(path*fName, 40inch, 20inch), vstack(pd1mpc,pd2mpc,pd3mpc,pd4mpc))
 
 
 #do this more elegantly
-aggPlot=plot(x=1:K+1,y=sum(Un[:,i] for i=1:N),Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV Current"),
+aggPlot=plot(x=1:K,y=sum(Un[:,i] for i=1:N),Geom.line,
+		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
 		Coord.Cartesian(xmin=0,xmax=K+1),
 		Theme(background_color=colorant"white"))

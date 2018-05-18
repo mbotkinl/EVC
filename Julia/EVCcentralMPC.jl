@@ -1,8 +1,9 @@
 #Micah Botkin-Levy
 #4/8/18
-datafile="n" #mat #"jld" #"n"
-
-if datafile in ["mat" "jld"]; N=20 end
+datafile="jld" #mat #"jld" #"n"
+noTlimit=1
+drawFig=0
+if datafile in ["mat" "jld"]; N=30 end
 
 println("Loading Packages...")
 
@@ -68,7 +69,8 @@ Xtmodel=zeros(K,1) #rows are time
 Xtactual=zeros(K,1) #rows are time
 Xn=zeros(K,N) #row are time, column are EV
 Un=zeros(K,N) #row are time, column are EV
-Lambda=zeros(K,1)
+Lambda1=zeros(K,1)
+Lambda2=zeros(K,1)
 
 for stepI=1:K
 	#stepI=1
@@ -108,7 +110,9 @@ for stepI=1:K
 	@constraint(m,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+(1:N)])-w[(k-1)*2+(stepI*2-1)]+sum(z[(k-1)*(S)+(1:S)]))
 	@constraint(m,xn.<=1)
 	@constraint(m,xn.>=target)
-	@constraint(m,upperTCon,xt.<=Tmax)
+	if noTlimit==0
+		@constraint(m,upperTCon,xt.<=Tmax)
+	end
 	@constraint(m,xt.>=0)
 	@constraint(m,upperCCon,u.<=repmat(imax,horzLen+1,1))
 	@constraint(m,u.>=repmat(imin,horzLen+1,1))
@@ -126,10 +130,14 @@ for stepI=1:K
 	end
 
 	#getobjectivevalue(m)
-	#lambdaCurr=getdual(currCon)
+	lambdaCurr=-getdual(currCon)
 	#lambdaTemp=[getdual(tempCon1);getdual(tempCon2)]
 	#lambdaState=[getdual(stateCon1)';getdual(stateCon2)]
-	lambdaUpperT=-getdual(upperTCon)
+	if noTlimit==0
+		lambdaUpperT=-getdual(upperTCon)
+	else
+		lambdaUpperT=zeros(horzLen+1,1)
+	end
 	#lambdaUpperC=-getdual(upperCCon)
 
 	uRaw=getvalue(u)
@@ -155,7 +163,8 @@ for stepI=1:K
 	Xtactual[stepI,1]=Tactual[1,1]
 	Xn[stepI,:]=xnRaw[1:N,1]
 	Un[stepI,:]=uRaw[1:N,1]
-	Lambda[stepI,1]=lambdaUpperT[1,1]
+	Lambda1[stepI,1]=lambdaUpperT[1,1]
+	Lambda2[stepI,1]=lambdaCurr[1,1]
 
 	#apply currents and assume new states
 	xn0=xnRaw[1:N,1]
@@ -170,44 +179,78 @@ println("plotting....")
 # 	xPlot[:,ii]=xRaw[collect(ii:N+1:length(xRaw))]
 # end
 
-p1mpc=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+p1mpc=plot(layer(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,Theme(line_width=3pt)),
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 		Coord.Cartesian(xmin=0,xmax=K+1),
-		Theme(background_color=colorant"white",key_position = :none))
-#display(p1)
+		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
+		minor_label_font_size=16pt,key_label_font_size=16pt))
 
 # uPlot=zeros(K+1,N)
 # for ii= 1:N
 # 	uPlot[:,ii]=uRaw[collect(ii:N:length(uRaw))]
 # end
 
-p2mpc=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV Current"),
+p2mpc=plot(layer(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,Theme(line_width=3pt)),
+		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
 		Coord.Cartesian(xmin=0,xmax=K+1),
-		Theme(background_color=colorant"white",key_position = :none))
-#display(p2)
+		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
+		minor_label_font_size=16pt,key_label_font_size=16pt))
 
-p3mpc=plot(layer(x=1:K,y=Xtmodel,Geom.line,Theme(default_color=colorant"blue")),
-		layer(x=1:K,y=Xtactual,Geom.line,Theme(default_color=colorant"green")),
+p3mpc=plot(layer(x=1:K,y=Xtmodel,Geom.line,Theme(default_color=colorant"blue",line_width=3pt)),
+		layer(x=1:K,y=Xtactual,Geom.line,Theme(default_color=colorant"green",line_width=3pt)),
 		yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
-		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white",key_position = :top),
+		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
+		minor_label_font_size=16pt,key_label_font_size=16pt),
 		Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
-#display(p3)
 
-p4mpc=plot(x=1:K,y=Lambda,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
-		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white"))
-#display(p4)
-
-fName="J_Central.png"
-#draw(PNG(path*fName, 13inch, 14inch), vstack(p1,p2,p3,p4))
+p4mpcb=plot(layer(x=1:K,y=Lambda1,Geom.line,Theme(line_width=3pt)),
+		Guide.xlabel("Time"), Guide.ylabel(raw"Temp Lambda ($/A)",orientation=:vertical),
+		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
+		minor_label_font_size=16pt,key_label_font_size=16pt))
+p4mpc=plot(layer(x=1:K,y=Lambda2,Geom.line,Theme(line_width=3pt)),
+		Guide.xlabel("Time"), Guide.ylabel(raw"Current Lambda ($/A)",orientation=:vertical),
+		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
+		minor_label_font_size=16pt,key_label_font_size=16pt))
+fName="J_Central_MPC.png"
+#draw(PNG(path*fName, 13inch, 14inch), vstack(p1mpc,p2mpc,p3mpc,p4mpc))
 
 #lambda0=lambdaUpperT[collect(N+1:N+1:length(lambdaUpperT))]
 
 
 #do this more elegantly
 aggPmpc=plot(x=1:K,y=sum(Un[:,i] for i=1:N),Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV Current"),
+		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
 		Coord.Cartesian(xmin=0,xmax=K+1),
-		Theme(background_color=colorant"white"))
+		Theme(background_color=colorant"white",major_label_font_size=18pt,
+		minor_label_font_size=16pt,key_label_font_size=16pt))
+
+
+#compare with and without temperature limit
+if noTlimit==1
+	UnNoLim=Un
+end
+#do this more elegantly
+# aggU=plot(layer(x=1:K,y=sum(Un[:,i] for i=1:N),Geom.line,Theme(default_color=colorant"blue",line_width=3pt)),
+# 		layer(x=1:K,y=sum(UnNoLim[:,i] for i=1:N),Geom.line,Theme(default_color=colorant"red",line_width=3pt)),
+# 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
+# 		Coord.Cartesian(xmin=0,xmax=K+1),
+# 		Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
+# 		minor_label_font_size=16pt,key_label_font_size=16pt),
+# 		Guide.manual_color_key("", ["Aggregate Current", "Unconstrained Aggregate Current"], ["blue","red"]))
+# fName="aggCentral_noLim.png"
+# draw(PNG(path*fName, 20inch, 12inch), aggU)
+
+if noTlimit==1
+	noLimitt=Xtactual
+end
+# p3nolimit=plot(layer(x=1:K,y=Xtmodel,Geom.line,Theme(default_color=colorant"blue",line_width=3pt)),
+# 		layer(x=1:K,y=Xtactual,Geom.line,Theme(default_color=colorant"green",line_width=3pt)),
+# 		layer(x=1:K,y=noLimitt,Geom.line,Theme(default_color=colorant"red",line_width=3pt)),
+# 		layer(yintercept=[Tmax],Geom.hline(color=["orange"],style=:dot),Theme(line_width=3pt)),
+# 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
+# 		Coord.Cartesian(xmin=0,xmax=K+1),Theme(background_color=colorant"white",major_label_font_size=18pt,key_position = :top,
+# 		minor_label_font_size=16pt,key_label_font_size=16pt),
+# 		Guide.manual_color_key("", ["PWL Temp", "Actual Temp","Unconstrained Temp"], ["blue", "green","red"]))
+# fName="Temp_w_nolimit.png"
+# draw(PNG(path*fName, 20inch, 12inch), p3nolimit)
