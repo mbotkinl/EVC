@@ -174,10 +174,14 @@ end
 
 
 println("plotting....")
-# xPlot=zeros(K+1,N)
-# for ii= 1:N
-# 	xPlot[:,ii]=xRaw[collect(ii:N+1:length(xRaw))]
-# end
+
+
+xPlot=zeros(K+1,N)
+for ii= 1:N
+	xPlot[:,ii]=(Sn[ii,1]-Xn[:,ii])./(Kn[ii,1]-(1:1:length(Xn[:,ii])))
+end
+
+
 
 p1mpc=plot(layer(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,Theme(line_width=3pt)),
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),

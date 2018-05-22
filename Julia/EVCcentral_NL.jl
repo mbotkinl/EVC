@@ -9,7 +9,7 @@ println("Loading Packages...")
 
 using Gadfly
 using JuMP
-using Gurobi
+using Ipopt
 using Cairo #for png output
 using Fontconfig
 
@@ -70,9 +70,8 @@ stepI=1
 horzLen=K1
 
 println("setting up model")
-m = Model(solver = GurobiSolver())
-#m = Model(solver = ClpSolver())
 #m = Model(solver = IpoptSolver())
+m = Model(solver = IpoptSolver(linear_solver = "ma86"))
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
 @variable(m,u[1:N*(horzLen+1)])
@@ -97,9 +96,8 @@ objFun(xn,xt,u)=sum(sum((xn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:
 println("constraints")
 @constraint(m,stateCon1,xn[1:N,1].==xn0[1:N,1]+eta[:,1].*u[1:N,1])
 @constraint(m,stateCon2[k=1:horzLen,n=1:N],xn[n+(k)*(N),1]==xn[n+(k-1)*(N),1]+eta[n,1]*u[n+(k)*(N),1])
-@constraint(m,tempCon1,xt[1,1]==tau*xt0+gamma*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rho*w[stepI*2,1])
-@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rho*w[stepI*2+k*2,1])
-@constraint(m,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+(1:N)])-w[(k-1)*2+1]+sum(z[(k-1)*(S)+(1:S)]))
+@constraint(m,tempCon1,xt[1,1]==tau*xt0+gamma*(sum(u[n,1] for n=1:N)+w[stepI,1])^2+rho*w[stepI*2,1])
+@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*(sum(u[N*k+n,1] for n=1:N)+w[2*k+stepI])^2+rho*w[stepI*2+k*2,1]) #check id index???
 @constraint(m,xn.<=1)
 @constraint(m,xn.>=target)
 if noTlimit==0
@@ -108,8 +106,6 @@ end
 @constraint(m,xt.>=0)
 @constraint(m,upperCCon,u.<=repmat(imax,horzLen+1,1))
 @constraint(m,u.>=repmat(imin,horzLen+1,1))
-@constraint(m,z.>=0)
-@constraint(m,z.<=deltaI)
 
 println("solving....")
 status = solve(m)
@@ -122,23 +118,9 @@ else
 	uRaw=getvalue(u)
 	xnRaw=getvalue(xn)
 	xtRaw=getvalue(xt)
-	zRaw=getvalue(z)
-	f=objFun(xnRaw,xtRaw,uRaw)
 
 
-	#calculate actual temp
-	Tactual=zeros(horzLen+1,1)
-	ztotal=zeros(horzLen+1,1)
-	for k=1:horzLen+1
-		ztotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + w[(k-1)*2+1,1]
-	end
-	Tactual[1,1]=tau*T0+gamma*ztotal[1,1]^2+rho*w[2,1]
-	for k=1:horzLen
-		Tactual[k+1,1]=tau*Tactual[k,1]+gamma*ztotal[k+1,1]^2+rho*w[k*2+2,1]
-	end
 
-	#getobjectivevalue(m)
-	lambdaCurr=-getdual(currCon)
 	#lambdaTemp=[getdual(tempCon1);getdual(tempCon2)]
 	#lambdaState=[getdual(stateCon1)';getdual(stateCon2)]
 	if noTlimit==0
@@ -149,11 +131,10 @@ else
 
 	#lambdaUpperC=-getdual(upperCCon)
 
-	xtStar=xtRaw
-    xnStar=xnRaw
-	zStar=zRaw
-    fStar=getobjectivevalue(m)
-    lamTempStar=lambdaUpperT
+    xtStarNL=xtRaw
+    xnStarNL=xnRaw
+    fStarNL=getobjectivevalue(m)
+    lamTempStarNL=lambdaUpperT
 
 	println("plotting....")
 	xPlot=zeros(horzLen+1,N)
@@ -166,17 +147,17 @@ else
 	#plot(x=1:horzLen+1,y=xPlot2[:,ii])
 	# plot(x=1:Kn[ii,1],y=xPlot2[1:Kn[ii,1],ii])
 
-	p1=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+	p1nl=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),
 			Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 			minor_label_font_size=16pt,key_label_font_size=16pt))
-	p1b=plot(xPlot2,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+	p1bnl=plot(xPlot2,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),
 			Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 			minor_label_font_size=16pt,key_label_font_size=16pt))
-	if drawFig==1 draw(PNG(path*"J_central_SOC.png", 24inch, 12inch), p1) end
+	if drawFig==1 draw(PNG(path*"J_centralNL_SOC.png", 24inch, 12inch), p1nl) end
 
 
 	uPlot=zeros(horzLen+1,N)
@@ -184,31 +165,25 @@ else
 		uPlot[:,ii]=uRaw[collect(ii:N:length(uRaw))]
 	end
 
-	p2=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+	p2nl=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),
 			Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 			minor_label_font_size=16pt,key_label_font_size=16pt))
-	if drawFig==1 draw(PNG(path*"J_central_Curr.png", 24inch, 12inch), p2) end
+	if drawFig==1 draw(PNG(path*"J_centralNL_Curr.png", 24inch, 12inch), p2nl) end
 
-	p3=plot(layer(x=1:horzLen+1,y=xtRaw,Geom.line,Theme(default_color=colorant"blue")),
-			layer(x=1:horzLen+1,y=Tactual,Geom.line,Theme(default_color=colorant"green")),
+	p3nl=plot(layer(x=1:horzLen+1,y=xtRaw,Geom.line,Theme(default_color=colorant"blue")),
 			yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
 			Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
-			minor_label_font_size=16pt,key_label_font_size=16pt),
-			Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
-	if drawFig==1 draw(PNG(path*"J_central_Temp.png", 24inch, 12inch), p3) end
+			minor_label_font_size=16pt,key_label_font_size=16pt))
+	if drawFig==1 draw(PNG(path*"J_centralNL_Temp.png", 24inch, 12inch), p3nl) end
 
-	p4b=plot(x=1:horzLen+1,y=lambdaUpperT,Geom.line,
+	p4nl=plot(x=1:horzLen+1,y=lambdaUpperT,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
 			minor_label_font_size=16pt,key_label_font_size=16pt))
-	p4=plot(x=1:horzLen+1,y=lambdaCurr	,Geom.line,
-			Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
-			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
-			minor_label_font_size=16pt,key_label_font_size=16pt))
-	if drawFig==1 draw(PNG(path*"J_central_Lam.png", 24inch, 12inch), p4) end
+	if drawFig==1 draw(PNG(path*"J_centralNL_Lam.png", 24inch, 12inch), p4nl) end
 
 	fName="J_Central.png"
 

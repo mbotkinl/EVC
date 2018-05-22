@@ -2,7 +2,7 @@
 #4/10/18
 
 datafile="jld" #"mat" #"jld" #"n"
-updateMethod="dualAscent" #dualAscent #fastAscent
+updateMethod="fastAscent" #dualAscent #fastAscent
 drawFig=0
 if datafile in ["mat" "jld"]; N=30 end
 
@@ -85,13 +85,14 @@ else
 end
 
 convChk = 1e-6
-numIteration=1000
+numIteration=200
 convIt=numIteration
 
 stepI = 1;
 horzLen=K1
 
 Conv=zeros(numIteration,1)
+itConv=zeros(numIteration,1)
 Lam=zeros((horzLen+1),numIteration) #(rows are time, columns are iteration)
 Lam[:,1]=lambda0
 xt=zeros((horzLen+1),1) #rows are time
@@ -198,14 +199,18 @@ for p=2:numIteration
     lambda=lambda_new
 
 	#check convergence
-	convGap = norm(Lam[:,p]-Lam[:,p-1],2)
+	itGap = norm(Lam[:,p]-Lam[:,p-1],2)
+	convGap = norm(Lam[:,p]-lamTempStar,2)
+	itConv[p,1]=itGap
 	Conv[p,1]=convGap
 	if(convGap <= convChk )
 		@printf "Converged after %g iterations\n" p
 		convIt=p
 		break
 	else
+		@printf "lastGap %e after %g iterations\n" itGap p
 		@printf "convGap %e after %g iterations\n" convGap p
+
 	end
 end
 toc()
@@ -263,6 +268,10 @@ lamPlot=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_LamConv.png", 36inch, 12inch), lamPlot) end
 
+convItPlot=plot(x=1:convIt,y=itConv[1:convIt,1],Geom.line,Scale.y_log10,
+			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
+			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+			minor_label_font_size=26pt,key_label_font_size=26pt))
 convPlot=plot(x=1:convIt,y=Conv[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
