@@ -151,9 +151,11 @@ else
 
 	xtStar=xtRaw
     xnStar=xnRaw
+	uStar=uRaw
 	zStar=zRaw
     fStar=getobjectivevalue(m)
     lamTempStar=lambdaUpperT
+	lamCurrStar=lambdaCurr
 
 	println("plotting....")
 	xPlot=zeros(horzLen+1,N)
