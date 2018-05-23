@@ -81,7 +81,7 @@ Conv=zeros(numIteration,1)
 itConv=zeros(numIteration,1)
 
 #admm  initial parameters and guesses
-rhoADMM=1 #what should this be???
+rhoADMM=10^2 #what should this be???
 d = Truncated(Normal(0), 0, 5)
 lambda0=rand(d, horzLen+1)
 #u0=repmat(imax,horzLen+1,1) #guess max charging
@@ -96,12 +96,12 @@ Xn=zeros(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
 Xt=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
 Z=zeros(S*(horzLen+1),numIteration)  #row are time,  columns are iteration
 #z0=rand(d, S*(horzLen+1))
-z0=zStar
+z0=zStar#+rand(d, S*(horzLen+1))
 Z[:,1]=z0
 
-for p=1:numIteration
+for p=1:numIteration-1
 
-	#xminimization
+	#central x minimization
 	#have guess of lambda and Z and solve for xn, xt, u
 	#desired SOC
 	target=zeros(N*(horzLen+1),1);
@@ -145,6 +145,7 @@ for p=1:numIteration
 		Un[:,p+1]=getvalue(u)
 	end
 
+
 	#zminimization
 	#have guess of lambda xn, xt, and u and solve for z
 	m = Model(solver = GurobiSolver())
@@ -173,16 +174,16 @@ for p=1:numIteration
 
 	#check convergence
 	itGap = norm(Lam[:,p+1]-Lam[:,p],2)
-	#convGap = norm(Lam[:,p]-lamTempStar,2)
+	convGap = norm(Lam[:,p]-lamTempStar,2)
 	itConv[p,1]=itGap
-	#Conv[p,1]=convGap
+	Conv[p,1]=convGap
 	if(itGap <= convChk )
 		@printf "Converged after %g iterations\n" p
 		convIt=p
 		break
 	else
 		@printf "lastGap %e after %g iterations\n" itGap p
-		#@printf "convGap %e after %g iterations\n" convGap p
+		@printf "convGap %e after %g iterations\n" convGap p
 
 	end
 end
@@ -198,12 +199,12 @@ end
 #plot(x=1:horzLen+1,y=xPlot2[:,ii])
 # plot(x=1:Kn[ii,1],y=xPlot2[1:Kn[ii,1],ii])
 
-p1=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+p1admm=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_ADMM_SOC.png", 24inch, 12inch), p1) end
+if drawFig==1 draw(PNG(path*"J_central_ADMM_SOC.png", 24inch, 12inch), p1admm) end
 
 
 uPlot=zeros(horzLen+1,N)
@@ -211,43 +212,43 @@ for ii= 1:N
 	uPlot[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
 end
 
-p2=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+p2admm=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_Curr.png", 24inch, 12inch), p2) end
+if drawFig==1 draw(PNG(path*"J_central_ADMM_Curr.png", 24inch, 12inch), p2admm) end
 
-p3=plot(layer(x=1:horzLen+1,y=Xt[:,convIt],Geom.line,Theme(default_color=colorant"blue")),
+p3admm=plot(layer(x=1:horzLen+1,y=Xt[:,convIt],Geom.line,Theme(default_color=colorant"blue")),
 		#layer(x=1:horzLen+1,y=Tactual,Geom.line,Theme(default_color=colorant"green")),
 		yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
 		#Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
-if drawFig==1 draw(PNG(path*"J_central_Temp.png", 24inch, 12inch), p3) end
+if drawFig==1 draw(PNG(path*"J_central_ADMM_Temp.png", 24inch, 12inch), p3admm) end
 
-p4=plot(x=1:horzLen+1,y=Lam[:,convIt],Geom.line,
+p4admm=plot(x=1:horzLen+1,y=Lam[:,convIt],Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_Lam.png", 24inch, 12inch), p4) end
+if drawFig==1 draw(PNG(path*"J_central_ADMM_Lam.png", 24inch, 12inch), p4admm) end
 
 fName="J_Central.png"
 
 
-lamPlot=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+lamPlotadmm=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_LamConv.png", 36inch, 12inch), lamPlot) end
+if drawFig==1 draw(PNG(path*"J_ADMM_LamConv.png", 36inch, 12inch), lamPlotadmm) end
 
-convItPlot=plot(x=1:convIt,y=itConv[1:convIt,1],Geom.line,Scale.y_log10,
+convItPlotadmm=plot(x=1:convIt,y=itConv[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-convPlot=plot(x=1:convIt,y=Conv[1:convIt,1],Geom.line,Scale.y_log10,
+convPlotadmm=plot(x=1:convIt,y=Conv[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Conv.png", 36inch, 12inch), convPlot) end
+if drawFig==1 draw(PNG(path*"J_ADMM_Conv.png", 36inch, 12inch), convPlotadmm) end
