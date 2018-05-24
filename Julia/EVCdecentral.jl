@@ -77,33 +77,42 @@ lambda0=rand(d, K1+1)
 #lambda0=rand(K1+1)/2
 lambda=lambda0
 if updateMethod=="fastAscent"
-	alpha = 0.1
+	alpha = 0.2
 	#alpha=0.001
 else
 	alpha = 0.01
 	#alpha= 0.001
 end
 
-convChk = 1e-6
-numIteration=300
-convIt=numIteration
-
 stepI = 1;
 horzLen=K1
-
+convChk = 1e-16
+numIteration=50
+convIt=numIteration
 Conv=zeros(numIteration,1)
 itConv=zeros(numIteration,1)
+constConv=zeros(numIteration,1)
+fConv=zeros(numIteration,1)
+xnConv=zeros(numIteration,1)
+
+#u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
 Lam=zeros((horzLen+1),numIteration) #(rows are time, columns are iteration)
 Lam[:,1]=lambda0
-xt=zeros((horzLen+1),1) #rows are time
-Tactual=zeros((horzLen+1),1) #rows are time
+Xt=zeros((horzLen+1),numIteration) #rows are time
+Tactual=zeros((horzLen+1),numIteration) #rows are time
 #Xt[1,1]=T0
-Xn=zeros((horzLen+1),N) #row are time, column are EV
-#Xn[1,:]=s0'
-Un=zeros((horzLen+1),N) #row are time, column are EV
+#Xn=zeros(N*(horzLen+1),numIteration) #row are time,columns are iteration
+#Xn=zeros((horzLen+1),N) #row are time,columns are iteration
+#Xn[:,1]=s0
+#Un=zeros(N*(horzLen+1),numIteration) #row are time, columns are iteration
+#Un=zeros((horzLen+1),N) #row are time, columns are iteration
+
+
+Xn=zeros(N*(horzLen+1),1)
+Un=zeros(N*(horzLen+1),1)
 
 #iterate at each time step until convergence
-for p=2:numIteration
+for p=1:numIteration-1
 
     #@printf "iteration step %g of %g....\n" p numIteration
 
@@ -112,8 +121,7 @@ for p=2:numIteration
 	@parallel for evInd=1:N
 
         target=zeros((horzLen+1),1)
-        #target[max(1,Kn[evInd]-(stepI-1)*Ts):1:length(target),1]=s0[evInd] #fix Ts for time loop???
-        target[Kn[evInd,1]:1:length(target),1]=Sn[evInd,1]
+		target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Sn[evInd,1]
         evM=Model(solver = GurobiSolver(OutputFlag=0))
         @variable(evM,un[1:horzLen+1])
         @variable(evM,xn[1:horzLen+1])
@@ -136,8 +144,11 @@ for p=2:numIteration
 		if status!=:Optimal
             break
         else
-            Xn[:,evInd]=getvalue(xn) #solved state goes in next time slot
-            Un[:,evInd]=getvalue(un) #current go
+
+			#Xn[:,evInd]=getvalue(xn) #solved state goes in next time slot
+			#Un[:,evInd]=getvalue(un) #current go
+            Xn[collect(evInd:N:length(Xn[:,1])),1]=getvalue(xn) #solved state goes in next time slot
+            Un[collect(evInd:N:length(Un[:,1])),1]=getvalue(un) #current go
         end
     end
 
@@ -161,28 +172,43 @@ for p=2:numIteration
 	    if status!=:Optimal
 	        break
 		else
-			 Xt=getvalue(xt);
+			 Xt[:,p+1]=getvalue(xt);
 		end
 
 	    #grad of lagragian
 		zSum=zeros(horzLen+1,1)
+		gradL=zeros(horzLen+1,1)
 		for k=1:horzLen+1
 			zSum[k,1]=sum(getvalue(z)[(k-1)*(S)+(1:S)])
+			gradL[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - zSum[k,1]
 		end
-		gradL=sum(Un[:,ii] for ii=1:N)+w[1:2:horzLen*2+1,1]-zSum
 	end
 
 	#calculate actual temperature from nonlinear model of XFRM
-	ztotal=sum(Un[:,ii] for ii=1:N)+ w[1:2:horzLen*2+1,1]
-	Tactual[1,1]=tau*xt0+gamma*ztotal[1,1]^2+rho*w[2,1]
+	ztotal=zeros(horzLen+1,1)
+	utotal=zeros(horzLen+1,1)
 	for k=1:horzLen
-		Tactual[k+1,1]=tau*Tactual[k,1]+gamma*ztotal[k+1,1]^2+rho*w[k*2+2,1]
+		utotal[k,1]=sum(Un[(k-1)*N+n,1] for n=1:N)
+		ztotal[k,1]=utotal[k,1] + w[(k-1)*2+(stepI*2-1),1]
 	end
+	#ztotal=sum(Un[:,ii] for ii=1:N)+ w[1:2:horzLen*2+1,1]
+
+	Tactual[1,p+1]=tau*xt0+gamma*ztotal[1,1]^2+rho*w[2,1] #fix for mpc
+	for k=1:horzLen
+		Tactual[k+1,p+1]=tau*Tactual[k,p+1]+gamma*ztotal[k+1,1]^2+rho*w[k*2+2,1]  #fix for mpc
+	end
+
 
 	if updateMethod=="fastAscent"
 		#fast ascent
-		gradL=Tactual-Tmax*ones(horzLen+1,1)
+		gradL=Tactual[:,p+1]-Tmax*ones(horzLen+1,1)
+
+		#add some amount of future lambda
+		# for k=1:(horzLen+1-4)
+		# 	gradL[k,1]=.5*gradL[k,1]+.2*gradL[k+1,1]+.2*gradL[k+2,1]+.1*gradL[k+3,1]+.1*gradL[k+4,1]
+		# end
 	end
+
 
     #update lambda
 	if updateMethod=="fastAscent"
@@ -195,14 +221,21 @@ for p=2:numIteration
 
     lambda_new=max.(lambda+alpha_p*gradL,0)
 	#lambda_new=lambda+alpha_p*gradL
-    Lam[:,p]=lambda_new
+    Lam[:,p+1]=lambda_new
     lambda=lambda_new
 
 	#check convergence
-	itGap = norm(Lam[:,p]-Lam[:,p-1],2)
-	convGap = norm(Lam[:,p]-lamTempStar,2)
+	objFun(xn,u)=sum(sum((xn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
+					sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
+	#fGap= objFun(Xn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar
+	#fGap= objFun(Xn[:,p+1],Un[:,p+1])-fStar
+	#xnGap=norm((Xn[:,p+1]-xnStar),2)
+	itGap = norm(Lam[:,p+1]-Lam[:,p],2)
+	convGap = norm(Lam[:,p+1]-lamTempStar,2)
+	#fConv[p,1]=fGap
+	#xnConv[p,1]=xnGap
 	itConv[p,1]=itGap
-	Conv[p,1]=convGap
+	#Conv[p,1]=convGap
 	if(convGap <= convChk )
 		@printf "Converged after %g iterations\n" p
 		convIt=p
@@ -210,34 +243,46 @@ for p=2:numIteration
 	else
 		@printf "lastGap %e after %g iterations\n" itGap p
 		@printf "convGap %e after %g iterations\n" convGap p
+        #@printf "xnGap %e after %g iterations\n" xnGap p
+		#@printf("fGap %e after %g iterations\n\n",fGap,p)
 
 	end
 end
 toc()
 
 println("plotting....")
+xPlot=zeros(horzLen+1,N)
+for ii= 1:N
+	xPlot[:,ii]=Xn[collect(ii:N:length(Xn[:,convIt])),convIt]
+end
 
-pd1=plot(Xn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+pd1=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=3pt,
 		minor_label_font_size=20pt,key_label_font_size=20pt))
 if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_SOC.png", 24inch, 12inch), pd1) end
 
-pd2=plot(Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+
+uPlot=zeros(horzLen+1,N)
+for ii= 1:N
+	uPlot[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
+end
+
+pd2=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=3pt,
 		minor_label_font_size=20pt,key_label_font_size=20pt))
 if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Curr.png", 24inch, 12inch), pd2) end
 
-pd3=plot(layer(x=1:horzLen+1,y=Tactual,Geom.line,Theme(default_color=colorant"green",line_width=3pt)),
+pd3=plot(layer(x=1:horzLen+1,y=Tactual[:,convIt],Geom.line,Theme(default_color=colorant"green",line_width=3pt)),
 		layer(yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),Theme(line_width=3pt)),
 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=24pt,
 		minor_label_font_size=20pt,key_label_font_size=20pt))
 if updateMethod=="dualAscent"
-	push!(pd3,layer(x=1:horzLen+1,y=getvalue(xt),Geom.line,Theme(default_color=colorant"blue",line_width=3pt)))
+	push!(pd3,layer(x=1:horzLen+1,y=Xt[:,convIt],Geom.line,Theme(default_color=colorant"blue",line_width=3pt)))
 	push!(pd3,Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
 	push!(pd3,Theme(key_position = :top,background_color=colorant"white",major_label_font_size=24pt,line_width=3pt,
 	minor_label_font_size=20pt,key_label_font_size=20pt))
