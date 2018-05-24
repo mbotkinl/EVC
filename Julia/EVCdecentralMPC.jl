@@ -121,8 +121,8 @@ for stepI=1:K
 	    #@printf "iteration step %g of %g....\n" p numIteration
 
 	    #solve subproblem for each EV
-
-	    @parallel for evInd=1:N
+		#@parallel for evInd=1:N
+	    for evInd=1:N
 	        target=zeros(horzLen+1,1)
 	        target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Sn[evInd,1]
 	        evM=Model(solver = GurobiSolver(OutputFlag=0))

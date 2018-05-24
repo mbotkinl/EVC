@@ -77,7 +77,7 @@ lambda0=rand(d, K1+1)
 #lambda0=rand(K1+1)/2
 lambda=lambda0
 if updateMethod=="fastAscent"
-	alpha = 0.2
+	alpha = 0.1
 	#alpha=0.001
 else
 	alpha = 0.01
@@ -87,7 +87,7 @@ end
 stepI = 1;
 horzLen=K1
 convChk = 1e-16
-numIteration=20
+numIteration=100
 convIt=numIteration
 Conv=zeros(numIteration,1)
 itConv=zeros(numIteration,1)
@@ -113,12 +113,10 @@ Un=zeros(N*(horzLen+1),numIteration)
 
 #iterate at each time step until convergence
 for p=1:numIteration-1
-
-    #@printf "iteration step %g of %g....\n" p numIteration
-
     #solve subproblem for each EV
-    #for evInd=1:N
-	@parallel for evInd=1:N
+	#@parallel for evInd=1:N
+	for evInd=1:N
+
 
         target=zeros((horzLen+1),1)
 		target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Sn[evInd,1]
@@ -144,11 +142,8 @@ for p=1:numIteration-1
 		if status!=:Optimal
             break
         else
-
-			#Xn[:,evInd]=getvalue(xn) #solved state goes in next time slot
-			#Un[:,evInd]=getvalue(un) #current go
-            Xn[collect(evInd:N:length(Xn[:,p+1])),p+1]=getvalue(xn) #solved state goes in next time slot
-            Un[collect(evInd:N:length(Un[:,1])),1]=getvalue(un) #current go
+            Xn[collect(evInd:N:N*(horzLen+1)),p+1]=getvalue(xn) #solved state goes in next time slot
+            Un[collect(evInd:N:N*(horzLen+1)),p+1]=getvalue(un) #current go
         end
     end
 
@@ -186,14 +181,9 @@ for p=1:numIteration-1
 
 	#calculate actual temperature from nonlinear model of XFRM
 	ztotal=zeros(horzLen+1,1)
-	utotal=zeros(horzLen+1,1)
-
 	for k=1:horzLen+1
-		utotal[k,1]=sum(Un[(k-1)*N+n,1] for n=1:N)
-		ztotal[k,1]=utotal[k,1] + w[(k-1)*2+(stepI*2-1),1]
+		ztotal[k,1]=sum(Un[(k-1)*N+n,p+1]    for n=1:N) + w[(k-1)*2+(stepI*2-1),1]
 	end
-	#ztotal=sum(Un[:,ii] for ii=1:N)+ w[1:2:horzLen*2+1,1]
-
 	Tactual[1,p+1]=tau*xt0+gamma*ztotal[1,1]^2+rho*w[2,1] #fix for mpc
 	for k=1:horzLen
 		Tactual[k+1,p+1]=tau*Tactual[k,p+1]+gamma*ztotal[k+1,1]^2+rho*w[k*2+2,1]  #fix for mpc
@@ -228,15 +218,15 @@ for p=1:numIteration-1
 	#check convergence
 	objFun(xn,u)=sum(sum((xn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
 					sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-	#fGap= objFun(Xn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar
-	#fGap= objFun(Xn[:,p+1],Un[:,p+1])-fStar
-	#xnGap=norm((Xn[:,p+1]-xnStar),2)
+	fGap= objFun(Xn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar
+	fGap= objFun(Xn[:,p+1],Un[:,p+1])-fStar
+	xnGap=norm((Xn[:,p+1]-xnStar),2)
 	itGap = norm(Lam[:,p+1]-Lam[:,p],2)
 	convGap = norm(Lam[:,p+1]-lamTempStar,2)
-	#fConv[p,1]=fGap
-	#xnConv[p,1]=xnGap
+	fConv[p,1]=fGap
+	xnConv[p,1]=xnGap
 	itConv[p,1]=itGap
-	#Conv[p,1]=convGap
+	Conv[p,1]=convGap
 	if(convGap <= convChk )
 		@printf "Converged after %g iterations\n" p
 		convIt=p
@@ -244,8 +234,8 @@ for p=1:numIteration-1
 	else
 		@printf "lastGap %e after %g iterations\n" itGap p
 		@printf "convGap %e after %g iterations\n" convGap p
-        #@printf "xnGap %e after %g iterations\n" xnGap p
-		#@printf("fGap %e after %g iterations\n\n",fGap,p)
+        @printf "xnGap %e after %g iterations\n" xnGap p
+		@printf("fGap %e after %g iterations\n\n",fGap,p)
 
 	end
 end
