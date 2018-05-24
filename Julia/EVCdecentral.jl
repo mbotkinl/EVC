@@ -85,7 +85,7 @@ else
 end
 
 convChk = 1e-6
-numIteration=200
+numIteration=300
 convIt=numIteration
 
 stepI = 1;
@@ -113,7 +113,7 @@ for p=2:numIteration
 
         target=zeros((horzLen+1),1)
         #target[max(1,Kn[evInd]-(stepI-1)*Ts):1:length(target),1]=s0[evInd] #fix Ts for time loop???
-        target[Kn[evInd,1]:1:length(target),1]=s0[evInd,1]
+        target[Kn[evInd,1]:1:length(target),1]=Sn[evInd,1]
         evM=Model(solver = GurobiSolver(OutputFlag=0))
         @variable(evM,un[1:horzLen+1])
         @variable(evM,xn[1:horzLen+1])

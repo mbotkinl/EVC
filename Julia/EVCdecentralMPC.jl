@@ -124,8 +124,7 @@ for stepI=1:K
 
 	    @parallel for evInd=1:N
 	        target=zeros(horzLen+1,1)
-	        #target[max(1,Kn[evInd]-(stepI-1)*Ts):1:length(target),1]=s0[evInd] #fix Ts for time loop???
-	        target[Kn[evInd,1]:1:length(target),1]=xn0[evInd,1]
+	        target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Sn[evInd,1]
 	        evM=Model(solver = GurobiSolver(OutputFlag=0))
 	        @variable(evM,un[1:horzLen+1])
 	        @variable(evM,xn[1:horzLen+1])
@@ -133,7 +132,7 @@ for stepI=1:K
 	        			sum((u[k,1])^2*Ri[evInd,1]    for k=1:horzLen+1) +
 	                    sum(lambda[k,1]*u[k,1]        for k=1:horzLen+1)
 	        @objective(evM,Min, objFun(xn,un))
-			@constraint(evM,xn[1,1]==xn0[evInd,1]+eta[evInd,1]*un[1,1]) #fix for MPC loop
+			@constraint(evM,xn[1,1]==xn0[evInd,1]+eta[evInd,1]*un[1,1])
 			@constraint(evM,[k=1:horzLen],xn[k+1,1]==xn[k,1]+eta[evInd,1]*un[k+1,1]) #check K+1
 	        @constraint(evM,xn.<=1)
 	        @constraint(evM,xn.>=target)
@@ -159,7 +158,7 @@ for stepI=1:K
 		    @variable(coorM,z[1:S*(horzLen+1)])
 		    @variable(coorM,xt[1:horzLen+1])
 		    @objective(coorM,Min,-sum(lambda[k,1]*sum(z[(k-1)*S+ii,1] for ii=1:S) for k=1:horzLen+1))
-			@constraint(coorM,xt[1,1]==tau*xt0+gamma*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rho*w[stepI*2,1]) #fix for MPC loop
+			@constraint(coorM,xt[1,1]==tau*xt0+gamma*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rho*w[stepI*2,1])
 			@constraint(coorM,[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rho*w[k*2+stepI*2,1])
 		    @constraint(coorM,xt.<=Tmax)
 		    @constraint(coorM,xt.>=0)
