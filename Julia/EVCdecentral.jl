@@ -87,7 +87,7 @@ end
 stepI = 1;
 horzLen=K1
 convChk = 1e-16
-numIteration=50
+numIteration=20
 convIt=numIteration
 Conv=zeros(numIteration,1)
 itConv=zeros(numIteration,1)
@@ -108,8 +108,8 @@ Tactual=zeros((horzLen+1),numIteration) #rows are time
 #Un=zeros((horzLen+1),N) #row are time, columns are iteration
 
 
-Xn=zeros(N*(horzLen+1),1)
-Un=zeros(N*(horzLen+1),1)
+Xn=zeros(N*(horzLen+1),numIteration)
+Un=zeros(N*(horzLen+1),numIteration)
 
 #iterate at each time step until convergence
 for p=1:numIteration-1
@@ -147,7 +147,7 @@ for p=1:numIteration-1
 
 			#Xn[:,evInd]=getvalue(xn) #solved state goes in next time slot
 			#Un[:,evInd]=getvalue(un) #current go
-            Xn[collect(evInd:N:length(Xn[:,1])),1]=getvalue(xn) #solved state goes in next time slot
+            Xn[collect(evInd:N:length(Xn[:,p+1])),p+1]=getvalue(xn) #solved state goes in next time slot
             Un[collect(evInd:N:length(Un[:,1])),1]=getvalue(un) #current go
         end
     end
@@ -187,7 +187,8 @@ for p=1:numIteration-1
 	#calculate actual temperature from nonlinear model of XFRM
 	ztotal=zeros(horzLen+1,1)
 	utotal=zeros(horzLen+1,1)
-	for k=1:horzLen
+
+	for k=1:horzLen+1
 		utotal[k,1]=sum(Un[(k-1)*N+n,1] for n=1:N)
 		ztotal[k,1]=utotal[k,1] + w[(k-1)*2+(stepI*2-1),1]
 	end
