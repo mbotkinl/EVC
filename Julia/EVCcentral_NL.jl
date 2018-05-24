@@ -70,8 +70,8 @@ stepI=1
 horzLen=K1
 
 println("setting up model")
-#m = Model(solver = IpoptSolver())
-m = Model(solver = IpoptSolver(linear_solver = "ma86"))
+m = Model(solver = IpoptSolver())
+#m = Model(solver = IpoptSolver(linear_solver = "ma86"))
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
 @variable(m,u[1:N*(horzLen+1)])

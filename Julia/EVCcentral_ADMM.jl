@@ -75,7 +75,7 @@ xt0=T0
 stepI = 1;
 horzLen=K1
 convChk = 1e-6
-numIteration=30
+numIteration=50
 convIt=numIteration
 Conv=zeros(numIteration,1)
 itConv=zeros(numIteration,1)
@@ -84,12 +84,10 @@ fConv=zeros(numIteration,1)
 xnConv=zeros(numIteration,1)
 
 #admm  initial parameters and guesses
-rhoADMM=10^2
+rhoADMM=10^4
 d = Truncated(Normal(0), 0, 5)
 lambda0=rand(d, horzLen+1)
-#u0=repmat(imax,horzLen+1,1) #guess max charging
-#u0=rand(d, N*(horzLen+1)) #make better guess here (and has to be within limit)
-
+#lambda0=lamCurrStar
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
 Un=zeros(N*(horzLen+1),numIteration) #row are time,  columns are iteration
 #Un[:,1]=u0
@@ -99,6 +97,8 @@ Xn=zeros(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
 Xt=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
 Z=zeros(S*(horzLen+1),numIteration)  #row are time,  columns are iteration
 z0=max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
+#z0=rand(Truncated(Normal(0), 0, deltaI),S*(horzLen+1))
+#z0=zStar
 Z[:,1]=z0
 
 for p=1:numIteration-1
@@ -119,8 +119,8 @@ for p=1:numIteration-1
 	objFun(xn,xt,u)=sum(sum((xn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
 					sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
 					sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-	constFun1(u,w,z)=sum(Lam[k,p]*(sum(u[(k-1)*N+n,1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - sum(z[(k-1)*(S)+(1:S),1]))  for k=1:horzLen+1)
-	constFun2(u,w,z)=rhoADMM/2*sum((sum(u[(k-1)*N+n,1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - sum(z[(k-1)*(S)+(1:S),1]))^2  for k=1:horzLen+1)
+	constFun1(u,w,z)=sum(Lam[k,p]*(sum(u[(k-1)*N+n,1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - sum(z[(k-1)*(S)+s,1] for s=1:S))  for k=1:horzLen+1)
+	constFun2(u,w,z)=rhoADMM/2*sum((sum(u[(k-1)*N+n,1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - sum(z[(k-1)*(S)+s,1] for s=1:S))*(sum(u[(k-1)*N+n,1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - sum(z[(k-1)*(S)+s,1] for s=1:S)) for k=1:horzLen+1)
 	@objective(m,Min, objFun(xn,xt,u)+constFun1(u,w,Z[:,p])+constFun2(u,w,Z[:,p])) #check 2 norm
 	@constraint(m,stateCon1,xn[1:N,1].==xn0[1:N,1]+eta[:,1].*u[1:N,1])
 	@constraint(m,stateCon2[k=1:horzLen,n=1:N],xn[n+(k)*(N),1]==xn[n+(k-1)*(N),1]+eta[n,1]*u[n+(k)*(N),1])
@@ -172,16 +172,17 @@ for p=1:numIteration-1
 	#dual update
 	currConst=zeros(horzLen+1,1)
 	for k=1:horzLen+1
-		currConst[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - sum(Z[(k-1)*(S)+(1:S),p+1])
+		currConst[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - sum(Z[(k-1)*(S)+s,p+1] for s=1:S)
+		#Lam[k,p+1]=max.(Lam[k,p]+rhoADMM*(currConst[k,1]),0)
 		Lam[k,p+1]=Lam[k,p]+rhoADMM*(currConst[k,1])
 	end
 
 	#check convergence
-	fGap= objFun(Xn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar
-	xnGap=norm((Xn[:,p+1]-xnStar),2)
+	fGap= objFun(Xn[:,p],Xt[:,p],Un[:,p])-fStar
+	xnGap=norm((Xn[:,p]-xnStar),2)
 	constGap=norm(currConst,2)
 	itGap = norm(Lam[:,p+1]-Lam[:,p],2)
-	convGap = norm(Lam[:,p+1]-lamCurrStar,2)
+	convGap = norm(Lam[:,p]-lamCurrStar,2)
 	fConv[p,1]=fGap
 	xnConv[p,1]=xnGap
 	constConv[p,1]=constGap
@@ -194,6 +195,8 @@ for p=1:numIteration-1
 	else
 		@printf "lastGap %e after %g iterations\n" itGap p
 		@printf "convGap %e after %g iterations\n" convGap p
+		@printf "fGap %e after %g iterations\n" fGap p
+		@printf "xnGap %e after %g iterations\n\n" xnGap p
 
 	end
 end
