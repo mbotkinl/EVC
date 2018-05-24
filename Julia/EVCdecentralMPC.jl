@@ -3,7 +3,7 @@
 
 datafile="jld" #mat #"jld" #"n"
 updateMethod="fastAscent" #dualAscent #fastAscent
-drawFig=1
+drawFig=0
 
 if datafile in ["mat" "jld"]; N=30 end
 
@@ -157,7 +157,7 @@ for stepI=1:K
 		    coorM=Model(solver = GurobiSolver(OutputFlag=0))
 		    @variable(coorM,z[1:S*(horzLen+1)])
 		    @variable(coorM,xt[1:horzLen+1])
-		    @objective(coorM,Min,-sum(lambda[k,1]*sum(z[(k-1)*S+ii,1] for ii=1:S) for k=1:horzLen+1))
+		    @objective(coorM,Min,-sum(lambda[k,1]*sum(z[(k-1)*S+s,1] for s=1:S) for k=1:horzLen+1))
 			@constraint(coorM,xt[1,1]==tau*xt0+gamma*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rho*w[stepI*2,1])
 			@constraint(coorM,[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rho*w[k*2+stepI*2,1])
 		    @constraint(coorM,xt.<=Tmax)
@@ -177,7 +177,7 @@ for stepI=1:K
 		    #grad of lagragian
 			zSum=zeros(horzLen+1,1)
 			for k=1:horzLen+1
-				zSum[k,1]=sum(getvalue(z)[(k-1)*(S)+(1:S)])
+				zSum[k,1]=sum(getvalue(z)[(k-1)*(S)+s] for s=1:S)
 			end
 			gradL=sum(Unit[:,ii] for ii=1:N)+w[stepI*2-1:2:stepI*2+horzLen*2,1]-zSum
 		end
@@ -192,6 +192,11 @@ for stepI=1:K
 		if updateMethod=="fastAscent"
 			#fast ascent
 			gradL=Tactual-Tmax*ones(horzLen+1,1)
+
+			#add some amount of future lambda
+			for k=1:(horzLen+1-4)
+				gradL[k,1]=.5*gradL[k,1]+.2*gradL[k+1,1]+.2*gradL[k+2,1]+.1*gradL[k+3,1]+.1*gradL[k+4,1]
+			end
 		end
 
 	    #update lambda

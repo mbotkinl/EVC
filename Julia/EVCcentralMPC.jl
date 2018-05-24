@@ -107,7 +107,7 @@ for stepI=1:K
 	@constraint(m,stateCon2[k=1:horzLen,n=1:N],xn[n+(k)*(N),1]==xn[n+(k-1)*(N),1]+eta[n,1]*u[n+(k)*(N),1])
 	@constraint(m,tempCon1,xt[1,1]==tau*xt0+gamma*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rho*w[stepI*2,1])
 	@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rho*w[stepI*2+k*2,1])
-	@constraint(m,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+(1:N)])-w[(k-1)*2+(stepI*2-1)]+sum(z[(k-1)*(S)+(1:S)]))
+	@constraint(m,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-w[(k-1)*2+(stepI*2-1)]+sum(z[(k-1)*(S)+s] for s=1:S))
 	@constraint(m,xn.<=1)
 	@constraint(m,xn.>=target)
 	if noTlimit==0
