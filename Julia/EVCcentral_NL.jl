@@ -77,7 +77,6 @@ m = Model(solver = IpoptSolver())
 @variable(m,u[1:N*(horzLen+1)])
 @variable(m,xn[1:(N)*(horzLen+1)])
 @variable(m,xt[1:(horzLen+1)])
-@variable(m,z[1:S*(horzLen+1)])
 
 #desired SOC
 target=zeros(N*(horzLen+1),1);

@@ -16,6 +16,7 @@ println("Loading Packages...")
 using Gadfly
 using JuMP
 using Gurobi
+using Ipopt
 using Cairo #for png output
 using Fontconfig
 using Distributions
@@ -74,7 +75,7 @@ xt0=T0
 stepI = 1;
 horzLen=K1
 convChk = 1e-6
-numIteration=500
+numIteration=100
 convIt=numIteration
 Conv=zeros(numIteration,1)
 itConv=zeros(numIteration,1)
@@ -84,7 +85,7 @@ xnConv=zeros(numIteration,1)
 
 #admm  initial parameters and guesses
 #rhoADMM=10.0^(0)
-rhoADMM=0.1
+rhoADMM=1
 d = Truncated(Normal(0), 0, 5)
 lambda0=rand(d, horzLen+1)
 #lambda0=lamCurrStar
@@ -102,12 +103,12 @@ Vn=zeros((N)*(horzLen+1),numIteration) #row are time,  columns are iteration
 Vn[:,1]=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 #Vn[:,1]=uStar
 
-Vz=zeros(S*(horzLen+1),numIteration)
+Vz=zeros((horzLen+1),numIteration)
 #Vz=zeros((horzLen+1),numIteration)
 #Vz[:,1]=max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
 #Vz[:,1]=-max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
 #Vz[:,1]=rand(Truncated(Normal(0), 0, deltaI), (horzLen+1))
-Vz[:,1]=-ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
+Vz[:,1]=-ItotalMax*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
 #Vz[:,1]=zStar
 
 
@@ -118,7 +119,7 @@ ZS=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
 
 for p in 1:numIteration-1
 	#rho_p = rhoADMM/ceil(p/2)
-	rho_p = rhoADMM
+    rho_p = rhoADMM
 
     #x minimization eq 7.66 in Bertsekas
     @sync @parallel for evInd=1:N
@@ -154,23 +155,23 @@ for p in 1:numIteration-1
 
 
     #N+1 decoupled problem aka transformer current
-    tM = Model(solver = GurobiSolver())
-    @variable(tM,z[1:(S)*(horzLen+1)])
+    tM = Model(solver = IpoptSolver())
+    #@variable(tM,z[1:(S)*(horzLen+1)])
     @variable(tM,xt[1:(horzLen+1)])
-    #@variable(tM,zSum[1:(horzLen+1)])
-    constFun1(u,v)=sum(Lam[k,p]*sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
-    constFun2(u,v)=rho_p/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S)  for k=1:(horzLen+1))
-	#constFun1(u,v)=sum(Lam[k,p]*(u[k,1]-v[k,1])  for k=1:(horzLen+1))
-	#constFun2(u,v)=rhoADMM/2*sum((u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
-    @objective(tM,Min, constFun1(-z,Vz[:,p])+constFun2(-z,Vz[:,p]))
-    @constraint(tM,tempCon1,xt[1,1]==tau*xt0+gamma*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rho*w[stepI*2,1])
-    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rho*w[stepI*2+k*2,1])
+    @variable(tM,zSum[1:(horzLen+1)])
+    #constFun1(u,v)=sum(Lam[k,p]*sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
+    #constFun2(u,v)=rho_p/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S)  for k=1:(horzLen+1))
+	constFun1(u,v)=sum(Lam[k,p]*(u[k,1]-v[k,1])  for k=1:(horzLen+1))
+	constFun2(u,v)=rhoADMM/2*sum((u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
+    @objective(tM,Min, constFun1(-zSum,Vz[:,p])+constFun2(-zSum,Vz[:,p]))
+    @constraint(tM,tempCon1,xt[1,1]==tau*xt0+gamma*(zSum[1,1])^2+rho*w[stepI*2,1])
+    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*(zSum[k+1,1])^2+rho*w[stepI*2+k*2,1])
     if noTlimit==0
     	@constraint(tM,upperTCon,xt.<=Tmax)
     end
     @constraint(tM,xt.>=0)
-    @constraint(tM,z.>=0)
-    @constraint(tM,z.<=deltaI)
+    #@constraint(tM,z.>=0)
+    #@constraint(tM,z.<=deltaI)
     #@constraint(tM,zC[k=1:horzLen+1],zSum[k,1]==sum(z[(k-1)*(S)+s] for s=1:S))
 
     TT = STDOUT # save original STDOUT stream
@@ -187,10 +188,10 @@ for p in 1:numIteration-1
 
     #lambda update eq 7.68
     currConst=zeros(horzLen+1,1)
-	zSum=zeros(horzLen+1,1)
-	#zSum=getvalue(zSum)
+	#zSum=zeros(horzLen+1,1)
+	zSum=getvalue(zSum)
 	for k=1:horzLen+1
-		zSum[k,1]=sum(Z[(k-1)*(S)+s,p+1] for s=1:S)
+		#zSum[k,1]=sum(Z[(k-1)*(S)+s,p+1] for s=1:S)
 		currConst[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - zSum[k,1]
 		#Lam[k,p+1]=max.(Lam[k,p]+rhoADMM/(horzLen+1)*(currConst[k,1]),0)
 		Lam[k,p+1]=Lam[k,p]+rho_p/(S*(N))*(currConst[k,1])
@@ -202,8 +203,8 @@ for p in 1:numIteration-1
     #v upate eq 7.67
     for k=1:horzLen+1
         Vn[(k-1)*N+collect(1:N),p+1]=Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/rho_p
-        Vz[(k-1)*(S)+collect(1:S),p+1]=-Z[(k-1)*(S)+collect(1:S),p+1]+(Lam[k,p]-Lam[k,p+1])/rho_p
-		#Vz[k,p+1]=-zSum[k,1]+(Lam[k,p]-Lam[k,p+1])/rhoADMM
+        #Vz[(k-1)*(S)+collect(1:S),p+1]=-Z[(k-1)*(S)+collect(1:S),p+1]+(Lam[k,p]-Lam[k,p+1])/rho_p
+		Vz[k,p+1]=-zSum[k,1]+(Lam[k,p]-Lam[k,p+1])/rho_p
     end
 
 
@@ -211,7 +212,7 @@ for p in 1:numIteration-1
 	objFun(xn,xt,u)=sum(sum((xn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
 					sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
 					sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-	fGap= abs(objFun(Xn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar)
+	fGap= objFun(Xn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar
 	#fGap= objFun(Xn[:,p],Xt[:,p],Un[:,p])-fStar
 	xnGap=norm((Xn[:,p+1]-xnStar),2)
 	constGap=norm(currConst,2)
@@ -249,12 +250,12 @@ end
 #plot(x=1:horzLen+1,y=xPlot2[:,ii])
 # plot(x=1:Kn[ii,1],y=xPlot2[1:Kn[ii,1],ii])
 
-pd1admm=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+pd1NLadmm=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_ADMM_SOC.png", 24inch, 12inch), pd1admm) end
+if drawFig==1 draw(PNG(path*"J_centralNL_ADMM_SOC.png", 24inch, 12inch), pd1NLadmm) end
 
 
 uPlot=zeros(horzLen+1,N)
@@ -262,59 +263,55 @@ for ii= 1:N
 	uPlot[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
 end
 
-pd2admm=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+pd2NLadmm=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_ADMM_Curr.png", 24inch, 12inch), pd2admm) end
+if drawFig==1 draw(PNG(path*"J_centralNL_ADMM_Curr.png", 24inch, 12inch), pd2NLadmm) end
 
-pd3admm=plot(layer(x=1:horzLen+1,y=Xt[:,convIt],Geom.line,Theme(default_color=colorant"blue")),
+pd3NLadmm=plot(layer(x=1:horzLen+1,y=Xt[:,convIt],Geom.line,Theme(default_color=colorant"blue")),
 		#layer(x=1:horzLen+1,y=Tactual,Geom.line,Theme(default_color=colorant"green")),
 		yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
 		#Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
-if drawFig==1 draw(PNG(path*"J_central_ADMM_Temp.png", 24inch, 12inch), pd3admm) end
+if drawFig==1 draw(PNG(path*"J_centralNL_ADMM_Temp.png", 24inch, 12inch), pd3NLadmm) end
 
-pd4admm=plot(x=1:horzLen+1,y=Lam[:,convIt],Geom.line,
+pd4NLadmm=plot(x=1:horzLen+1,y=Lam[:,convIt],Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_ADMM_Lam.png", 24inch, 12inch), pd4admm) end
+if drawFig==1 draw(PNG(path*"J_centralNL_ADMM_Lam.png", 24inch, 12inch), pd4NLadmm) end
 
 fName="J_Central.png"
 
 
-lamPlotadmm=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+lamPlotNLadmm=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-constPlotadmm2=plot(CC[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+constPlotNLadmm2=plot(CC[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("curr constraint diff"),Guide.ColorKey(title="Iteration"),
-			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-			minor_label_font_size=26pt,key_label_font_size=26pt))
-zSumPlotadmm=plot(ZS[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_ADMM_LamConv.png", 36inch, 12inch), lamPlotadmm) end
 
-convItPlotadmm=plot(x=1:convIt,y=itConv[1:convIt,1],Geom.line,Scale.y_log10,
+convItPlotNLadmm=plot(x=1:convIt,y=itConv[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-convPlotadmm=plot(x=1:convIt,y=Conv[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("central lambda gap"),
+convPlotNLadmm=plot(x=1:convIt,y=Conv[1:convIt,1],Geom.line,Scale.y_log10,
+			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 fPlotadmm=plot(x=1:convIt-1,y=fConv[1:convIt-1,1],Geom.line,#Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("obj function gap"),
+			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 constPlotadmm=plot(x=1:convIt,y=constConv[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("curr constraint Gap"),
+			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_ADMM_Conv.png", 36inch, 12inch), convPlotadmm) end
