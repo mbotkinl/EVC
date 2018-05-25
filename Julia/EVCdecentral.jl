@@ -87,7 +87,7 @@ end
 stepI = 1;
 horzLen=K1
 convChk = 1e-16
-numIteration=100
+numIteration=40
 convIt=numIteration
 Conv=zeros(numIteration,1)
 itConv=zeros(numIteration,1)
@@ -108,16 +108,18 @@ Tactual=zeros((horzLen+1),numIteration) #rows are time
 #Un=zeros((horzLen+1),N) #row are time, columns are iteration
 
 
-Xn=zeros(N*(horzLen+1),numIteration)
-Un=zeros(N*(horzLen+1),numIteration)
+# Xn=zeros(N*(horzLen+1),numIteration)
+# Un=zeros(N*(horzLen+1),numIteration)
+
+
+Xn=SharedArray{Float64}(N*(horzLen+1),numIteration)
+Un=SharedArray{Float64}(N*(horzLen+1),numIteration)
 
 #iterate at each time step until convergence
 for p=1:numIteration-1
     #solve subproblem for each EV
-	#@parallel for evInd=1:N
-	for evInd=1:N
-
-
+	@sync @parallel for evInd=1:N
+	#for evInd=1:N
         target=zeros((horzLen+1),1)
 		target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Sn[evInd,1]
         evM=Model(solver = GurobiSolver(OutputFlag=0))
@@ -195,9 +197,10 @@ for p=1:numIteration-1
 		gradL=Tactual[:,p+1]-Tmax*ones(horzLen+1,1)
 
 		#add some amount of future lambda
-		# for k=1:(horzLen+1-4)
-		# 	gradL[k,1]=.5*gradL[k,1]+.2*gradL[k+1,1]+.2*gradL[k+2,1]+.1*gradL[k+3,1]+.1*gradL[k+4,1]
-		# end
+		for k=1:(horzLen+1-2)
+			gradL[k,1]=.6*gradL[k,1]+.3*gradL[k+1,1]+.1*gradL[k+2,1]
+			#gradL[k,1]=.5*gradL[k,1]+.2*gradL[k+1,1]+.2*gradL[k+2,1]+.1*gradL[k+3,1]+.1*gradL[k+4,1]
+		end
 	end
 
 

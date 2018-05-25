@@ -84,7 +84,7 @@ fConv=zeros(numIteration,1)
 xnConv=zeros(numIteration,1)
 
 #admm  initial parameters and guesses
-rhoADMM=10^4
+rhoADMM=10^1
 d = Truncated(Normal(0), 0, 5)
 lambda0=rand(d, horzLen+1)
 #lambda0=lamCurrStar
@@ -96,8 +96,8 @@ Lam[:,1]=lambda0
 Xn=zeros(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
 Xt=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
 Z=zeros(S*(horzLen+1),numIteration)  #row are time,  columns are iteration
-z0=max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
-#z0=rand(Truncated(Normal(0), 0, deltaI),S*(horzLen+1))
+#z0=max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
+z0=rand(Truncated(Normal(0), 0, deltaI),S*(horzLen+1))
 #z0=zStar
 Z[:,1]=z0
 
@@ -161,7 +161,12 @@ for p=1:numIteration-1
 	@constraint(m,z.<=deltaI)
 	TT = STDOUT # save original STDOUT stream
 	redirect_stdout()
-	status = solve(m)
+	try
+		status = solve(m)
+	catch e
+		println("Z minimization error $e")
+		break
+	end
 	redirect_stdout(TT)
 	if status!=:Optimal
 	    return

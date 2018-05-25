@@ -112,8 +112,8 @@ for stepI=1:K
 	Lam[:,1]=lambda
 	Xtit=zeros(horzLen+1,1) #rows are time
 	Tactual=zeros(horzLen+1,1) #rows are time
-	Xnit=zeros(horzLen+1,N) #row are time, column are EV
-	Unit=zeros(horzLen+1,N) #row are time, column are EV
+	Xnit=SharedArray{Float64}(horzLen+1,N) #row are time, column are EV
+	Unit=SharedArray{Float64}(horzLen+1,N) #row are time, column are EV
 
 	#iterate at each time step until convergence
 	for p=2:numIteration
@@ -121,8 +121,8 @@ for stepI=1:K
 	    #@printf "iteration step %g of %g....\n" p numIteration
 
 	    #solve subproblem for each EV
-		#@parallel for evInd=1:N
-	    for evInd=1:N
+		@sync @parallel for evInd=1:N
+	    #for evInd=1:N
 	        target=zeros(horzLen+1,1)
 	        target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Sn[evInd,1]
 	        evM=Model(solver = GurobiSolver(OutputFlag=0))
