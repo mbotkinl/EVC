@@ -85,18 +85,18 @@ avgN=zeros(numIteration,1)
 
 #ALADIN tuning and initial guess
 #H=Qsi
-H=vcat(.00001*Qsi[1:N,1],10)
+H=vcat(.001*Qsi[1:N,1],1)
 #H=vcat(10*ones(N,1),1)
 
 
-vn0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
+#vn0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 #vn0=uStar
-#vn0=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N*(horzLen+1)),0)
-vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
+vn0=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N*(horzLen+1)),0)
+#vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
 #vz0=zStar
-#vz0=max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
-#lambda0=rand(Truncated(Normal(0), 0, 5), horzLen+1)
-lambda0=lamCurrStar
+vz0=max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
+lambda0=rand(Truncated(Normal(0), 0, 5), horzLen+1)
+#lambda0=lamCurrStar
 #lambda0=zeros(horzLen+1,1)
 
 #save matrices
@@ -113,6 +113,7 @@ Vz[:,1]=vz0
 Lam=zeros((horzLen+1),numIteration) #(rows are time, columns are iteration)
 Lam[:,1]=lambda0
 
+ZS=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
 
 for p=1:numIteration-1
 
@@ -181,6 +182,10 @@ for p=1:numIteration-1
         Gz[:,p+1]=H[N+1,1]*(Vz[:,p]-getvalue(z))-repeat(-Lam[:,p],inner=S)
     end
 
+	for k=1:horzLen+1
+		ZS[k,p+1]=sum(Z[(k-1)*(S)+s,p+1] for s=1:S)
+	end
+
     #check for convergence
     convCheck=norm.(vcat(Vn[:,p]-Un[:,p+1],Vz[:,p]-Z[:,p+1]))
     avgN[p,1]=mean(convCheck)
@@ -189,15 +194,15 @@ for p=1:numIteration-1
                     sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
     fGap= abs(objFun(Xn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar)
     xnGap=norm((Xn[:,p+1]-xnStar),2)
-    itGap = norm(Lam[:,p+1]-Lam[:,p],2)
-    convGap = norm(Lam[:,p+1]-lamCurrStar,2)
+    itGap = norm(Lam[:,p]-Lam[:,max(p-1,1)],2)
+    convGap = norm(Lam[:,p]-lamCurrStar,2)
     fConv[p,1]=fGap
     xnConv[p,1]=xnGap
     itConv[p,1]=itGap
     Conv[p,1]=convGap
     if all(convCheck.<=epsilon)
-        @printf "Converged after %g iterations\n" k
-        convIt=k
+        @printf "Converged after %g iterations\n" p
+        convIt=p+1
         break
     else
         @printf "lastGap %e after %g iterations\n" itGap p
@@ -216,6 +221,10 @@ for p=1:numIteration-1
                             coupledObj(dZ,H[N+1,1],Gz[:,p+1])))
     @constraint(cM,currCon[k=1:horzLen+1],0==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-w[(k-1)*2+1]+
                                              sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
+ 	@constraint(cM,(Z[:,p+1]+dZ).>=0)
+    @constraint(cM,(Z[:,p+1]+dZ).<=deltaI)
+	@constraint(cM,(Un[:,p+1]+dUn).<=repmat(imax,horzLen+1,1))
+	@constraint(cM,(Un[:,p+1]+dUn).>=repmat(imin,horzLen+1,1))
     TT = STDOUT # save original STDOUT stream
     redirect_stdout()
     status = solve(cM)
@@ -270,7 +279,8 @@ pd3alad=plot(layer(x=1:horzLen+1,y=Xt[:,convIt],Geom.line,Theme(default_color=co
 		#Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
 if drawFig==1 draw(PNG(path*"J_central_ALADIN_Temp.png", 24inch, 12inch), pd3alad) end
 
-pd4alad=plot(x=1:horzLen+1,y=Lam[:,convIt],Geom.line,
+pd4alad=plot(layer(x=1:horzLen+1,y=Lam[:,convIt],Geom.line),
+		layer(x=1:horzLen+1,y=lamCurrStar,Geom.line,Theme(default_color=colorant"black")),
 		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
@@ -278,7 +288,13 @@ if drawFig==1 draw(PNG(path*"J_central_ALADIN_Lam.png", 24inch, 12inch), pd4alad
 
 
 lamPlotalad=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+			layer(x=1:horzLen+1,y=lamCurrStar,Geom.line,Theme(default_color=colorant"black")),
 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
+			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+			minor_label_font_size=26pt,key_label_font_size=26pt))
+zSumPlotalad=plot(ZS[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+				layer(x=1:horzLen+1,y=zSumStar,Geom.line,Theme(default_color=colorant"black")),
+			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_ALADIN_LamConv.png", 36inch, 12inch), lamPlotalad) end

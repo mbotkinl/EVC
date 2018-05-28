@@ -158,6 +158,13 @@ else
     lamTempStar=lambdaUpperT
 	lamCurrStar=lambdaCurr
 
+	zSumStar=zeros(horzLen+1,1)
+	for k=1:horzLen+1
+		zSumStar[k,1]=sum(zStar[(k-1)*(S)+s,1] for s=1:S)
+	end
+
+
+
 	println("plotting....")
 	xPlot=zeros(horzLen+1,N)
 	xPlot2=zeros(horzLen+1,N)
