@@ -66,7 +66,6 @@ if datafile in ["mat" "jld"]
 	end
 end
 
-
 tic()
 #initialize with current states
 xn0=s0
@@ -74,7 +73,7 @@ xt0=T0
 
 stepI = 1;
 horzLen=K1
-epsilon = 1e-6
+epsilon = 1e-4
 numIteration=20
 convIt=numIteration
 Conv=zeros(numIteration,1)
@@ -86,19 +85,23 @@ avgN=zeros(numIteration,1)
 
 #ALADIN tuning and initial guess
 #H=Qsi
-#H=vcat(Qsi[1:N,1],1)
-H=vcat(ones(N,1),1)
+H=vcat(.00001*Qsi[1:N,1],10)
+#H=vcat(10*ones(N,1),1)
+
 
 vn0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
-#vn0=xnStar
-vz0=-ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
+#vn0=uStar
+#vn0=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N*(horzLen+1)),0)
+vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
 #vz0=zStar
-lambda0=rand(Truncated(Normal(0), 0, 5), horzLen+1)
-#lambda0=lamCurrStar
+#vz0=max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
+#lambda0=rand(Truncated(Normal(0), 0, 5), horzLen+1)
+lambda0=lamCurrStar
+#lambda0=zeros(horzLen+1,1)
 
 #save matrices
 Gn=SharedArray{Float64}(N*(horzLen+1),numIteration) #row are time (N states for k=1, them N states for k=2),  columns are iteration
-Gz=SharedArray{Float64}(S*(horzLen+1),numIteration) #row are time (N states for k=1, them N states for k=2),  columns are iteration
+Gz=zeros(S*(horzLen+1),numIteration) #row are time (N states for k=1, them N states for k=2),  columns are iteration
 Un=SharedArray{Float64}(N*(horzLen+1),numIteration) #row are time (N states for k=1, them N states for k=2),  columns are iteration
 Xn=SharedArray{Float64}(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
 Xt=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
@@ -145,7 +148,7 @@ for p=1:numIteration-1
         else
             Xn[collect(evInd:N:length(Xn[:,p+1])),p+1]=getvalue(xn)
     		Un[collect(evInd:N:length(Un[:,p+1])),p+1]=getvalue(u)
-            Gn[collect(evInd:N:length(Un[:,p+1])),p+1]=H[evInd,1]*(evV-getvalue(u))-lambda
+            Gn[collect(evInd:N:length(Gn[:,p+1])),p+1]=H[evInd,1]*(evV-getvalue(u))-lambda
             #update H here???
         end
     end
@@ -155,9 +158,9 @@ for p=1:numIteration-1
     tM = Model(solver = GurobiSolver())
     @variable(tM,z[1:(S)*(horzLen+1)])
     @variable(tM,xt[1:(horzLen+1)])
-    constFun1(u,v)=sum(Lam[k,p]*sum(u[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
-    constFun2(u,v)=1/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*H[N+1,1]*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S)  for k=1:(horzLen+1))
-    @objective(tM,Min, constFun1(-z,Vz[:,p])+constFun2(-z,Vz[:,p]))
+    constFun1(u,v)=sum(Lam[k,p]*sum(-u[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
+    constFun2(u,v)=1/2*sum(sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S)*H[N+1,1]*sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S) for k=1:(horzLen+1))
+    @objective(tM,Min, constFun1(z,Vz[:,p])+constFun2(z,Vz[:,p]))
     @constraint(tM,tempCon1,xt[1,1]==tau*xt0+gamma*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rho*w[stepI*2,1])
     @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rho*w[stepI*2+k*2,1])
     if noTlimit==0
@@ -179,7 +182,7 @@ for p=1:numIteration-1
     end
 
     #check for convergence
-    convCheck=norm.(vcat(Vn[:,p+1]-Xn[:,p+1],Vz[:,p+1]-Z[:,p+1]))
+    convCheck=norm.(vcat(Vn[:,p]-Un[:,p+1],Vz[:,p]-Z[:,p+1]))
     avgN[p,1]=mean(convCheck)
     objFun(xn,xt,u)=sum(sum((xn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                     sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
@@ -206,12 +209,12 @@ for p=1:numIteration-1
 
     #coupled QP
     cM = Model(solver = GurobiSolver())
-    @variable(cM,dXn[1:(N)*(horzLen+1)])
+    @variable(cM,dUn[1:(N)*(horzLen+1)])
     @variable(cM,dZ[1:(S)*(horzLen+1)])
     coupledObj(deltaY,Hi,gi)=1/2*deltaY'*Hi*deltaY+gi'*deltaY
-    @objective(cM,Min, sum(sum(coupledObj(dXn[collect(n:N:length(Xn[:,p+1])),1],H[n,1],Gn[collect(n:N:length(Xn[:,p+1])),p+1]) for n=1:N)+
+    @objective(cM,Min, sum(sum(coupledObj(dUn[collect(n:N:length(dUn[:,1])),1],H[n,1],Gn[collect(n:N:length(Gn[:,p+1])),p+1]) for n=1:N)+
                             coupledObj(dZ,H[N+1,1],Gz[:,p+1])))
-    @constraint(cM,currCon[k=1:horzLen+1],0==-sum(Un[(k-1)*(N)+n,p+1]+dXn[(k-1)*(N)+n,1] for n=1:N)-w[(k-1)*2+1]+
+    @constraint(cM,currCon[k=1:horzLen+1],0==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-w[(k-1)*2+1]+
                                              sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
     TT = STDOUT # save original STDOUT stream
     redirect_stdout()
@@ -223,7 +226,7 @@ for p=1:numIteration-1
 
     #update step
     Lam[:,p+1]=-getdual(currCon)
-    Vn[:,p+1]=Xn[:,p+1]+getvalue(dXn)
+    Vn[:,p+1]=Un[:,p+1]+getvalue(dUn)
     Vz[:,p+1]=Z[:,p+1]+getvalue(dZ)
 
 end
