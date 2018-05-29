@@ -7,7 +7,7 @@
 #current constraint is coupling
 
 datafile="jld" #"mat" #"jld" #"n"
-drawFig=0
+drawFig=1
 noTlimit=0
 if datafile in ["mat" "jld"]; N=30 end
 
@@ -74,7 +74,7 @@ xt0=T0
 stepI = 1;
 horzLen=K1
 convChk = 1e-6
-numIteration=500
+numIteration=700
 convIt=numIteration
 Conv=zeros(numIteration,1)
 itConv=zeros(numIteration,1)
@@ -84,9 +84,9 @@ xnConv=zeros(numIteration,1)
 
 #admm  initial parameters and guesses
 #rhoADMM=10.0^(0)
-rhoADMM=0.1
-d = Truncated(Normal(0), 0, 5)
-lambda0=rand(d, horzLen+1)
+rhoADMM=1
+d = Truncated(Normal(0), 0, 1)
+lambda0=5*rand(d, horzLen+1)
 #lambda0=lamCurrStar
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
@@ -99,7 +99,7 @@ Xt=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
 Z=zeros(S*(horzLen+1),numIteration)  #row are time,  columns are iteration
 Vn=zeros((N)*(horzLen+1),numIteration) #row are time,  columns are iteration
 #Vn[:,1]=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N*(horzLen+1)),0)
-Vn[:,1]=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
+Vn[:,1]=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 #Vn[:,1]=uStar
 
 Vz=zeros(S*(horzLen+1),numIteration)
@@ -108,7 +108,7 @@ Vz=zeros(S*(horzLen+1),numIteration)
 #Vz[:,1]=-max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
 #Vz[:,1]=rand(Truncated(Normal(0), 0, deltaI), (horzLen+1))
 Vz[:,1]=-ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
-#Vz[:,1]=zStar
+#Vz[:,1]=-zStar
 
 
 #for debugging
@@ -201,8 +201,8 @@ for p in 1:numIteration-1
 
     #v upate eq 7.67
     for k=1:horzLen+1
-        Vn[(k-1)*N+collect(1:N),p+1]=Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/rho_p
-        Vz[(k-1)*(S)+collect(1:S),p+1]=-Z[(k-1)*(S)+collect(1:S),p+1]+(Lam[k,p]-Lam[k,p+1])/rho_p
+        Vn[(k-1)*N+collect(1:N),p+1]=min.(max.(Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/rho_p,imin),imax)
+        Vz[(k-1)*(S)+collect(1:S),p+1]=max.(min.(-Z[(k-1)*(S)+collect(1:S),p+1]+(Lam[k,p]-Lam[k,p+1])/rho_p,0),-deltaI)
 		#Vz[k,p+1]=-zSum[k,1]+(Lam[k,p]-Lam[k,p+1])/rhoADMM
     end
 
@@ -254,7 +254,7 @@ pd1admm=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_ADMM_SOC.png", 24inch, 12inch), pd1admm) end
+if drawFig==1 draw(PNG(path*"J_decentral_ADMM_SOC.png", 24inch, 12inch), pd1admm) end
 
 
 uPlot=zeros(horzLen+1,N)
@@ -267,7 +267,7 @@ pd2admm=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_ADMM_Curr.png", 24inch, 12inch), pd2admm) end
+if drawFig==1 draw(PNG(path*"J_decentral_ADMM_Curr.png", 24inch, 12inch), pd2admm) end
 
 pd3admm=plot(layer(x=1:horzLen+1,y=Xt[:,convIt],Geom.line,Theme(default_color=colorant"blue")),
 		#layer(x=1:horzLen+1,y=Tactual,Geom.line,Theme(default_color=colorant"green")),
@@ -276,18 +276,18 @@ pd3admm=plot(layer(x=1:horzLen+1,y=Xt[:,convIt],Geom.line,Theme(default_color=co
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
 		#Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
-if drawFig==1 draw(PNG(path*"J_central_ADMM_Temp.png", 24inch, 12inch), pd3admm) end
+if drawFig==1 draw(PNG(path*"J_decentral_ADMM_Temp.png", 24inch, 12inch), pd3admm) end
 
 pd4admm=plot(x=1:horzLen+1,y=Lam[:,convIt],Geom.line,
+		layer(x=1:horzLen+1,y=lamCurrStar,Geom.line,Theme(default_color=colorant"black")),
 		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_ADMM_Lam.png", 24inch, 12inch), pd4admm) end
-
-fName="J_Central.png"
+if drawFig==1 draw(PNG(path*"J_decentral_ADMM_Lam.png", 24inch, 12inch), pd4admm) end
 
 
 lamPlotadmm=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+			layer(x=1:horzLen+1,y=lamCurrStar,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
@@ -295,7 +295,7 @@ constPlotadmm2=plot(CC[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.
 			Guide.xlabel("Time"), Guide.ylabel("curr constraint diff"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-zSumPlotadmm=plot(ZS[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+zSumPlotadmm=plot(ZS[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
@@ -317,4 +317,4 @@ constPlotadmm=plot(x=1:convIt,y=constConv[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("curr constraint Gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-if drawFig==1 draw(PNG(path*"J_ADMM_Conv.png", 36inch, 12inch), convPlotadmm) end
+if drawFig==1 draw(PNG(path*"J_ADMM_Conv.png", 36inch, 12inch), vstack(convItPlotadmm,convPlotadmm,fPlotadmm,constPlotadmm)) end
