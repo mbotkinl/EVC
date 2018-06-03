@@ -74,7 +74,7 @@ xt0=T0
 stepI = 1;
 horzLen=K1
 epsilon = 1e-4
-numIteration=20
+numIteration=100
 convIt=numIteration
 Conv=zeros(numIteration,1)
 itConv=zeros(numIteration,1)
@@ -86,18 +86,18 @@ avgN=zeros(numIteration,1)
 #ALADIN tuning and initial guess
 #H=Qsi
 H=vcat(.001*Qsi[1:N,1],1)
-#H=vcat(10*ones(N,1),1)
+#H=vcat(ones(N,1),1)
 
 
-#vn0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
+vn0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 #vn0=uStar
-vn0=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N*(horzLen+1)),0)
-#vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
+#vn0=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N*(horzLen+1)),0)
+vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
 #vz0=zStar
-vz0=max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
-lambda0=rand(Truncated(Normal(0), 0, 5), horzLen+1)
-#lambda0=lamCurrStar
-#lambda0=zeros(horzLen+1,1)
+#vz0=max.(zStar-50*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1)),0)
+#lambda0=5*rand(Truncated(Normal(0), 0, 1), horzLen+1)
+#lambda0=max.(lamCurrStar-rand(Truncated(Normal(0), 0, 1), (horzLen+1)),0)
+lambda0=zeros(horzLen+1,1)
 
 #save matrices
 Gn=SharedArray{Float64}(N*(horzLen+1),numIteration) #row are time (N states for k=1, them N states for k=2),  columns are iteration
@@ -159,9 +159,9 @@ for p=1:numIteration-1
     tM = Model(solver = GurobiSolver())
     @variable(tM,z[1:(S)*(horzLen+1)])
     @variable(tM,xt[1:(horzLen+1)])
-    constFun1(u,v)=sum(Lam[k,p]*sum(-u[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
+    constFun1(u,v)=sum(Lam[k,p]*sum(u[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
     constFun2(u,v)=1/2*sum(sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S)*H[N+1,1]*sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S) for k=1:(horzLen+1))
-    @objective(tM,Min, constFun1(z,Vz[:,p])+constFun2(z,Vz[:,p]))
+    @objective(tM,Min, constFun1(-z,Vz[:,p])+constFun2(z,Vz[:,p]))
     @constraint(tM,tempCon1,xt[1,1]==tau*xt0+gamma*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rho*w[stepI*2,1])
     @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rho*w[stepI*2+k*2,1])
     if noTlimit==0
@@ -217,8 +217,13 @@ for p=1:numIteration-1
     @variable(cM,dUn[1:(N)*(horzLen+1)])
     @variable(cM,dZ[1:(S)*(horzLen+1)])
     coupledObj(deltaY,Hi,gi)=1/2*deltaY'*Hi*deltaY+gi'*deltaY
-    @objective(cM,Min, sum(sum(coupledObj(dUn[collect(n:N:length(dUn[:,1])),1],H[n,1],Gn[collect(n:N:length(Gn[:,p+1])),p+1]) for n=1:N)+
-                            coupledObj(dZ,H[N+1,1],Gz[:,p+1])))
+	objExp=coupledObj(dZ,H[N+1,1],Gz[:,p+1])
+	for n=1:N
+		append!(objExp,coupledObj(dUn[collect(n:N:length(dUn[:,1])),1],H[n,1],Gn[collect(n:N:length(Gn[:,p+1])),p+1]))
+	end
+	@objective(cM,Min, objExp)
+    #@objective(cM,Min, sum(sum(coupledObj(dUn[collect(n:N:length(dUn[:,1])),1],H[n,1],Gn[collect(n:N:length(Gn[:,p+1])),p+1]) for n=1:N)+
+                            #coupledObj(dZ,H[N+1,1],Gz[:,p+1])))
     @constraint(cM,currCon[k=1:horzLen+1],0==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-w[(k-1)*2+1]+
                                              sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
  	@constraint(cM,(Z[:,p+1]+dZ).>=0)
@@ -255,7 +260,7 @@ pd1alad=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_ALADIN_SOC.png", 24inch, 12inch), pd1alad) end
+if drawFig==1 draw(PNG(path*"J_decentral_ALADIN_SOC.png", 24inch, 12inch), pd1alad) end
 
 
 uPlot=zeros(horzLen+1,N)
@@ -268,7 +273,7 @@ pd2alad=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_ALADIN_Curr.png", 24inch, 12inch), pd2alad) end
+if drawFig==1 draw(PNG(path*"J_decentral_ALADIN_Curr.png", 24inch, 12inch), pd2alad) end
 
 pd3alad=plot(layer(x=1:horzLen+1,y=Xt[:,convIt],Geom.line,Theme(default_color=colorant"blue")),
 		#layer(x=1:horzLen+1,y=Tactual,Geom.line,Theme(default_color=colorant"green")),
@@ -277,23 +282,23 @@ pd3alad=plot(layer(x=1:horzLen+1,y=Xt[:,convIt],Geom.line,Theme(default_color=co
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
 		#Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
-if drawFig==1 draw(PNG(path*"J_central_ALADIN_Temp.png", 24inch, 12inch), pd3alad) end
+if drawFig==1 draw(PNG(path*"J_decentral_ALADIN_Temp.png", 24inch, 12inch), pd3alad) end
 
 pd4alad=plot(layer(x=1:horzLen+1,y=Lam[:,convIt],Geom.line),
-		layer(x=1:horzLen+1,y=lamCurrStar,Geom.line,Theme(default_color=colorant"black")),
+		layer(x=1:horzLen+1,y=lamCurrStar,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
 		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_ALADIN_Lam.png", 24inch, 12inch), pd4alad) end
+if drawFig==1 draw(PNG(path*"J_decentral_ALADIN_Lam.png", 24inch, 12inch), pd4alad) end
 
 
 lamPlotalad=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-			layer(x=1:horzLen+1,y=lamCurrStar,Geom.line,Theme(default_color=colorant"black")),
+			layer(x=1:horzLen+1,y=lamCurrStar,Geom.line,Theme(default_color=colorant"black",line_width=4pt)),
 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-zSumPlotalad=plot(ZS[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-				layer(x=1:horzLen+1,y=zSumStar,Geom.line,Theme(default_color=colorant"black")),
+zSumPlotalad=plot(ZS[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+			layer(x=1:horzLen+1,y=zSumStar,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
@@ -311,4 +316,4 @@ fPlotalad=plot(x=1:convIt-1,y=fConv[1:convIt-1,1],Geom.line,#Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("obj function gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-if drawFig==1 draw(PNG(path*"J_ALADIN_Conv.png", 36inch, 12inch), convPlotalad) end
+if drawFig==1 draw(PNG(path*"J_ALADIN_Conv.png", 36inch, 12inch), vstack(convItPlotalad,convPlotalad,fPlotalad)) end
