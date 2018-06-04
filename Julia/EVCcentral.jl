@@ -1,79 +1,16 @@
 #Micah Botkin-Levy
 #4/8/18
-datafile="jld" #mat #"jld" #"n"
-noTlimit=0
-drawFig=0
-if datafile in ["mat" "jld"]; N=30 end
-
-println("Loading Packages...")
-
-using Gadfly
-using JuMP
-using Gurobi
-using Cairo #for png output
-using Fontconfig
-
-if datafile=="mat"
-	using MAT #to read in scenarios from matlab
-elseif datafile=="jld"
-	using JLD
-end
-
-
-if datafile in ["mat" "jld"]
-	println("Reading in Data...")
-
-	function string_as_varname(s::String,v::Any)
-		 s=Symbol(s)
-		 @eval (($s) = ($v))
-	end
-
-	#read in mat scenario
-	path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N$(N)\\"
-	file="EVCscenarioN$(N)."*datafile
-	if datafile=="mat"
-		vars = matread(path*file)
-	elseif datafile=="jld"
-		vars=load(path*file)
-	end
-	varnames=keys(vars)
-	varNum=length(varnames)
-	varKeys=collect(varnames)
-	varValues=collect(values(vars))
-
-	for i =1:varNum
-		n=varKeys[i]
-		v=varValues[i]
-		if datafile=="mat"
-			if n in ["N" "K" "S"]
-				v=convert(Int, v)
-			end
-		end
-		#if isa(v,Array)
-		#	v=convert(DataFrame, v)
-		#end
-		string_as_varname(n,v)
-	end
-	println("done reading in")
-
-	if datafile=="mat"
-		Kn=convert(Array{Int,2},Kn)
-	end
-end
 
 tic()
 #initialize with current states
 xn0=s0
 xt0=T0
 
-#add mpc loop here ??
 stepI=1
 horzLen=K1
 
 println("setting up model")
 m = Model(solver = GurobiSolver())
-#m = Model(solver = ClpSolver())
-#m = Model(solver = IpoptSolver())
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
 @variable(m,u[1:N*(horzLen+1)])

@@ -6,65 +6,6 @@
 #u, xn, xt, and z are all in "x" v is the auxilliary variable corresponding to z in literature
 #current constraint is coupling
 
-datafile="jld" #"mat" #"jld" #"n"
-drawFig=1
-noTlimit=0
-if datafile in ["mat" "jld"]; N=30 end
-
-println("Loading Packages...")
-
-using Gadfly
-using JuMP
-using Gurobi
-using Cairo #for png output
-using Fontconfig
-using Distributions
-#using ProximalOperators
-
-if datafile=="mat"
-	using MAT #to read in scenarios from matlab
-elseif datafile=="jld"
-	using JLD
-end
-
-if datafile in ["mat" "jld"]
-	println("Reading in Data...")
-
-	function string_as_varname(s::String,v::Any)
-		 s=Symbol(s)
-		 @eval (($s) = ($v))
-	end
-
-	#read in mat scenario
-	path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N$(N)\\"
-	file="EVCscenarioN$(N)."*datafile
-	if datafile=="mat"
-		vars = matread(path*file)
-	elseif datafile=="jld"
-		vars=load(path*file)
-	end
-	varnames=keys(vars)
-	varNum=length(varnames)
-	varKeys=collect(varnames)
-	varValues=collect(values(vars))
-
-	for i =1:varNum
-		n=varKeys[i]
-		v=varValues[i]
-		if datafile=="mat"
-			if n in ["N" "K" "S"]
-				v=convert(Int, v)
-			end
-		end
-		string_as_varname(n,v)
-	end
-	println("done reading in")
-
-	if datafile=="mat"
-		Kn=convert(Array{Int,2},Kn)
-	end
-end
-
 
 tic()
 #initialize with current states
@@ -74,13 +15,14 @@ xt0=T0
 stepI = 1;
 horzLen=K1
 convChk = 1e-6
-numIteration=700
+numIteration=200
 convIt=numIteration
-Conv=zeros(numIteration,1)
-itConv=zeros(numIteration,1)
-constConv=zeros(numIteration,1)
-fConv=zeros(numIteration,1)
-xnConv=zeros(numIteration,1)
+ConvADMM=zeros(numIteration,1)
+itConvADMM=zeros(numIteration,1)
+constConvADMM=zeros(numIteration,1)
+fConvADMM=zeros(numIteration,1)
+xnConvADMM=zeros(numIteration,1)
+unConvADMM=zeros(numIteration,1)
 
 #admm  initial parameters and guesses
 #rhoADMM=10.0^(0)
@@ -97,11 +39,11 @@ Lam[:,1]=lambda0
 Xn=SharedArray{Float64}(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
 Xt=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
 Z=zeros(S*(horzLen+1),numIteration)  #row are time,  columns are iteration
+
 Vn=zeros((N)*(horzLen+1),numIteration) #row are time,  columns are iteration
 #Vn[:,1]=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N*(horzLen+1)),0)
 Vn[:,1]=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 #Vn[:,1]=uStar
-
 Vz=zeros(S*(horzLen+1),numIteration)
 #Vz=zeros((horzLen+1),numIteration)
 #Vz[:,1]=max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
@@ -214,14 +156,16 @@ for p in 1:numIteration-1
 	fGap= abs(objFun(Xn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar)
 	#fGap= objFun(Xn[:,p],Xt[:,p],Un[:,p])-fStar
 	xnGap=norm((Xn[:,p+1]-xnStar),2)
+	unGap=norm((Un[:,p+1]-uStar),2)
 	constGap=norm(currConst,2)
 	itGap = norm(Lam[:,p+1]-Lam[:,p],2)
 	convGap = norm(Lam[:,p+1]-lamCurrStar,2)
-	fConv[p,1]=fGap
-	xnConv[p,1]=xnGap
-	constConv[p,1]=constGap
-	itConv[p,1]=itGap
-	Conv[p,1]=convGap
+	fConvADMM[p,1]=fGap
+	xnConvADMM[p,1]=xnGap
+	unConvADMM[p,1]=unGap
+	constConvADMM[p,1]=constGap
+	itConvADMM[p,1]=itGap
+	ConvADMM[p,1]=convGap
 	if(itGap <= convChk )
 		@printf "Converged after %g iterations\n" p
 		convIt=p+1
@@ -231,6 +175,7 @@ for p in 1:numIteration-1
 		@printf "convGap %e after %g iterations\n" convGap p
 		@printf "constGap %e after %g iterations\n" constGap p
         @printf "xnGap %e after %g iterations\n" xnGap p
+		@printf "unGap %e after %g iterations\n" unGap p
 		@printf("fGap %e after %g iterations\n\n",fGap,p)
 
 	end
@@ -301,19 +246,19 @@ zSumPlotadmm=plot(ZS[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.li
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_ADMM_LamConv.png", 36inch, 12inch), lamPlotadmm) end
 
-convItPlotadmm=plot(x=1:convIt,y=itConv[1:convIt,1],Geom.line,Scale.y_log10,
+convItPlotadmm=plot(x=1:convIt,y=itConvADMM[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-convPlotadmm=plot(x=1:convIt,y=Conv[1:convIt,1],Geom.line,Scale.y_log10,
+convPlotadmm=plot(x=1:convIt,y=ConvADMM[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("central lambda gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-fPlotadmm=plot(x=1:convIt-1,y=fConv[1:convIt-1,1],Geom.line,#Scale.y_log10,
+fPlotadmm=plot(x=1:convIt-1,y=fConvADMM[1:convIt-1,1],Geom.line,#Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("obj function gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-constPlotadmm=plot(x=1:convIt,y=constConv[1:convIt,1],Geom.line,Scale.y_log10,
+constPlotadmm=plot(x=1:convIt,y=constConvADMM[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("curr constraint Gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
