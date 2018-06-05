@@ -25,7 +25,7 @@ end
 stepI = 1;
 horzLen=K1
 convChk = 1e-16
-numIteration=1000
+numIteration=200
 convIt=numIteration
 ConvDual=zeros(numIteration,1)
 itConvDual=zeros(numIteration,1)
@@ -168,8 +168,7 @@ for p=1:numIteration-1
 	#check convergence
 	objFun(xn,u)=sum(sum((xn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
 					sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-	fGap= objFun(Xn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar
-	fGap= objFun(Xn[:,p+1],Un[:,p+1])-fStar
+	fGap= norm(objFun(Xn[:,p+1],Un[:,p+1])-fStar,2)
 	xnGap=norm((Xn[:,p+1]-xnStar),2)
 	unGap=norm((Un[:,p+1]-uStar),2)
 	itGap = norm(Lam[:,p+1]-Lam[:,p],2)
@@ -187,6 +186,7 @@ for p=1:numIteration-1
 		@printf "lastGap %e after %g iterations\n" itGap p
 		@printf "convGap %e after %g iterations\n" convGap p
         @printf "xnGap %e after %g iterations\n" xnGap p
+		@printf "unGap %e after %g iterations\n" unGap p
 		@printf("fGap %e after %g iterations\n\n",fGap,p)
 
 	end
