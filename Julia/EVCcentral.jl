@@ -116,8 +116,8 @@ else
 	p1=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),
-			Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
-			minor_label_font_size=16pt,key_label_font_size=16pt))
+			Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=3pt,
+			minor_label_font_size=20pt,key_label_font_size=20pt))
 	p1b=plot(xPlot2,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),
@@ -134,8 +134,8 @@ else
 	p2=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),
-			Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
-			minor_label_font_size=16pt,key_label_font_size=16pt))
+			Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,
+			minor_label_font_size=20pt,line_width=3pt,key_label_font_size=20pt))
 	if drawFig==1 draw(PNG(path*"J_central_Curr.png", 24inch, 12inch), p2) end
 
 	p3=plot(layer(x=1:horzLen+1,y=xtRaw,Geom.line,Theme(default_color=colorant"blue")),

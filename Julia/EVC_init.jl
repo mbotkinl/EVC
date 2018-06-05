@@ -58,3 +58,11 @@ if datafile in ["mat" "jld"]
 		Kn=convert(Array{Int,2},Kn)
 	end
 end
+
+#temp backwards capability
+if isdefined(:etaP)==false
+	etaP=eta
+	gammaP=gamma
+	rhoP=rho
+	tauP=tau
+end
