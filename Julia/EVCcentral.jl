@@ -10,7 +10,7 @@ stepI=1
 horzLen=K1
 
 println("setting up model")
-m = Model(solver = GurobiSolver())
+m = Model(solver = GurobiSolver(Presolve=0))
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
 @variable(m,u[1:N*(horzLen+1)])
@@ -33,10 +33,10 @@ objFun(xn,xt,u)=sum(sum((xn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:
 @objective(m,Min, objFun(xn,xt,u))
 
 println("constraints")
-@constraint(m,stateCon1,xn[1:N,1].==xn0[1:N,1]+eta[:,1].*u[1:N,1])
-@constraint(m,stateCon2[k=1:horzLen,n=1:N],xn[n+(k)*(N),1]==xn[n+(k-1)*(N),1]+eta[n,1]*u[n+(k)*(N),1])
-@constraint(m,tempCon1,xt[1,1]==tau*xt0+gamma*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rho*w[stepI*2,1])
-@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rho*w[stepI*2+k*2,1])
+@constraint(m,stateCon1,xn[1:N,1].==xn0[1:N,1]+etaP[:,1].*u[1:N,1])
+@constraint(m,stateCon2[k=1:horzLen,n=1:N],xn[n+(k)*(N),1]==xn[n+(k-1)*(N),1]+etaP[n,1]*u[n+(k)*(N),1])
+@constraint(m,tempCon1,xt[1,1]==tauP*xt0+gammaP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[stepI*2,1])
+@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rhoP*w[stepI*2+k*2,1])
 @constraint(m,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-w[(k-1)*2+1]+sum(z[(k-1)*(S)+s] for s=1:S))
 @constraint(m,xn.<=1)
 @constraint(m,xn.>=target)
@@ -50,9 +50,9 @@ end
 @constraint(m,z.<=deltaI)
 
 println("solving....")
-status = solve(m)
-if status!=:Optimal
-	@printf "Failed %s \n" status
+statusM = solve(m)
+if statusM!=:Optimal
+	@printf "Failed %s \n" statusM
     return
 else
 	toc()
@@ -70,9 +70,9 @@ else
 	for k=1:horzLen+1
 		ztotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + w[(k-1)*2+1,1]
 	end
-	Tactual[1,1]=tau*T0+gamma*ztotal[1,1]^2+rho*w[2,1]
+	Tactual[1,1]=tauP*T0+gammaP*ztotal[1,1]^2+rhoP*w[2,1]
 	for k=1:horzLen
-		Tactual[k+1,1]=tau*Tactual[k,1]+gamma*ztotal[k+1,1]^2+rho*w[k*2+2,1]
+		Tactual[k+1,1]=tauP*Tactual[k,1]+gammaP*ztotal[k+1,1]^2+rhoP*w[k*2+2,1]
 	end
 
 	#getobjectivevalue(m)
