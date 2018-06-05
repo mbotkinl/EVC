@@ -1,65 +1,6 @@
 #Micah Botkin-Levy
 #4/8/18
-datafile="jld" #mat #"jld" #"n"
-noTlimit=0
-drawFig=0
-if datafile in ["mat" "jld"]; N=30 end
-
-println("Loading Packages...")
-
-using Gadfly
-using JuMP
 using Ipopt
-using Cairo #for png output
-using Fontconfig
-
-if datafile=="mat"
-	using MAT #to read in scenarios from matlab
-elseif datafile=="jld"
-	using JLD
-end
-
-if datafile in ["mat" "jld"]
-	println("Reading in Data...")
-
-	function string_as_varname(s::String,v::Any)
-		 s=Symbol(s)
-		 @eval (($s) = ($v))
-	end
-
-	#read in mat scenario
-	path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N$(N)\\"
-	file="EVCscenarioN$(N)."*datafile
-	if datafile=="mat"
-		vars = matread(path*file)
-	elseif datafile=="jld"
-		vars=load(path*file)
-	end
-	varnames=keys(vars)
-	varNum=length(varnames)
-	varKeys=collect(varnames)
-	varValues=collect(values(vars))
-
-	for i =1:varNum
-		n=varKeys[i]
-		v=varValues[i]
-		if datafile=="mat"
-			if n in ["N" "K" "S"]
-				v=convert(Int, v)
-			end
-		end
-		#if isa(v,Array)
-		#	v=convert(DataFrame, v)
-		#end
-		string_as_varname(n,v)
-	end
-	println("done reading in")
-
-	if datafile=="mat"
-		Kn=convert(Array{Int,2},Kn)
-	end
-end
-
 tic()
 #initialize with current states
 xn0=s0
@@ -93,10 +34,10 @@ objFun(xn,xt,u)=sum(sum((xn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:
 @objective(m,Min, objFun(xn,xt,u))
 
 println("constraints")
-@constraint(m,stateCon1,xn[1:N,1].==xn0[1:N,1]+eta[:,1].*u[1:N,1])
-@constraint(m,stateCon2[k=1:horzLen,n=1:N],xn[n+(k)*(N),1]==xn[n+(k-1)*(N),1]+eta[n,1]*u[n+(k)*(N),1])
-@constraint(m,tempCon1,xt[1,1]==tau*xt0+gamma*(sum(u[n,1] for n=1:N)+w[stepI,1])^2+rho*w[stepI*2,1])
-@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*(sum(u[N*k+n,1] for n=1:N)+w[2*k+stepI])^2+rho*w[stepI*2+k*2,1]) #check id index???
+@constraint(m,stateCon1,xn[1:N,1].==xn0[1:N,1]+etaP[:,1].*u[1:N,1])
+@constraint(m,stateCon2[k=1:horzLen,n=1:N],xn[n+(k)*(N),1]==xn[n+(k-1)*(N),1]+etaP[n,1]*u[n+(k)*(N),1])
+@constraint(m,tempCon1,xt[1,1]==tauP*xt0+gammaP*(sum(u[n,1] for n=1:N)+w[stepI,1])^2+rhoP*w[stepI*2,1])
+@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*(sum(u[N*k+n,1] for n=1:N)+w[2*k+stepI])^2+rhoP*w[stepI*2+k*2,1]) #check id index???
 @constraint(m,xn.<=1)
 @constraint(m,xn.>=target)
 if noTlimit==0
@@ -117,7 +58,6 @@ else
 	uRaw=getvalue(u)
 	xnRaw=getvalue(xn)
 	xtRaw=getvalue(xt)
-
 
 
 	#lambdaTemp=[getdual(tempCon1);getdual(tempCon2)]
