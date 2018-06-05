@@ -1,70 +1,6 @@
 #Micah Botkin-Levy
 #4/10/18
 
-datafile="jld" #mat #"jld" #"n"
-updateMethod="fastAscent" #dualAscent #fastAscent
-drawFig=0
-
-if datafile in ["mat" "jld"]; N=30 end
-
-
-println("Loading Packages...")
-
-using Gadfly
-using JuMP
-using Gurobi
-using Cairo #for png output
-using Fontconfig
-using Distributions
-
-if datafile=="mat"
-	using MAT #to read in scenarios from matlab
-elseif datafile=="jld"
-	using JLD
-end
-
-if datafile in ["mat" "jld"]
-	println("Reading in Data...")
-
-	function string_as_varname(s::String,v::Any)
-		 s=Symbol(s)
-		 @eval (($s) = ($v))
-	end
-
-	#read in mat scenario
-	path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N$(N)\\"
-	file="EVCscenarioN$(N)."*datafile
-	if datafile=="mat"
-		vars = matread(path*file)
-	elseif datafile=="jld"
-		vars=load(path*file)
-	end
-	varnames=keys(vars)
-	varNum=length(varnames)
-	varKeys=collect(varnames)
-	varValues=collect(values(vars))
-
-	for i =1:varNum
-		n=varKeys[i]
-		v=varValues[i]
-		if datafile=="mat"
-			if n in ["N" "K" "S"]
-				v=convert(Int, v)
-			end
-		end
-		#if isa(v,Array)
-		#	v=convert(DataFrame, v)
-		#end
-		string_as_varname(n,v)
-	end
-	println("done reading in")
-
-	if datafile=="mat"
-		Kn=convert(Array{Int,2},Kn)
-	end
-end
-
-
 
 #initialize
 xn0=s0
@@ -132,8 +68,8 @@ for stepI=1:K
 	        			sum((u[k,1])^2*Ri[evInd,1]    for k=1:horzLen+1) +
 	                    sum(lambda[k,1]*u[k,1]        for k=1:horzLen+1)
 	        @objective(evM,Min, objFun(xn,un))
-			@constraint(evM,xn[1,1]==xn0[evInd,1]+eta[evInd,1]*un[1,1])
-			@constraint(evM,[k=1:horzLen],xn[k+1,1]==xn[k,1]+eta[evInd,1]*un[k+1,1]) #check K+1
+			@constraint(evM,xn[1,1]==xn0[evInd,1]+etaP[evInd,1]*un[1,1])
+			@constraint(evM,[k=1:horzLen],xn[k+1,1]==xn[k,1]+etaP[evInd,1]*un[k+1,1]) #check K+1
 	        @constraint(evM,xn.<=1)
 	        @constraint(evM,xn.>=target)
 	        @constraint(evM,un.<=imax[evInd,1])
@@ -158,8 +94,8 @@ for stepI=1:K
 		    @variable(coorM,z[1:S*(horzLen+1)])
 		    @variable(coorM,xt[1:horzLen+1])
 		    @objective(coorM,Min,-sum(lambda[k,1]*sum(z[(k-1)*S+s,1] for s=1:S) for k=1:horzLen+1))
-			@constraint(coorM,xt[1,1]==tau*xt0+gamma*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rho*w[stepI*2,1])
-			@constraint(coorM,[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rho*w[k*2+stepI*2,1])
+			@constraint(coorM,xt[1,1]==tauP*xt0+gammaP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[stepI*2,1])
+			@constraint(coorM,[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rhoP*w[k*2+stepI*2,1])
 		    @constraint(coorM,xt.<=Tmax)
 		    @constraint(coorM,xt.>=0)
 		    @constraint(coorM,z.<=deltaI)
@@ -184,9 +120,9 @@ for stepI=1:K
 
 		#calculate actual temperature from nonlinear model of XFRM
 		ztotal=sum(Unit[:,ii] for ii=1:N) + w[stepI*2-1:2:stepI*2+horzLen*2,1]
-		Tactual[1,1]=tau*xt0+gamma*ztotal[1,1]^2+rho*w[stepI*2,1]#fix for MPC loop
+		Tactual[1,1]=tauP*xt0+gammaP*ztotal[1,1]^2+rhoP*w[stepI*2,1]#fix for MPC loop
 		for k=1:horzLen
-			Tactual[k+1,1]=tau*Tactual[k,1]+gamma*ztotal[k+1,1]^2+rho*w[k*2+stepI*2,1] #check this????
+			Tactual[k+1,1]=tauP*Tactual[k,1]+gammaP*ztotal[k+1,1]^2+rhoP*w[k*2+stepI*2,1] #check this????
 		end
 
 		if updateMethod=="fastAscent"

@@ -1,64 +1,6 @@
 #Micah Botkin-Levy
 #4/8/18
-datafile="jld" #mat #"jld" #"n"
-noTlimit=1
-drawFig=0
-if datafile in ["mat" "jld"]; N=30 end
 
-println("Loading Packages...")
-
-using Gadfly
-using JuMP
-using Gurobi
-using Cairo #for png output
-using Fontconfig
-
-if datafile=="mat"
-	using MAT #to read in scenarios from matlab
-elseif datafile=="jld"
-	using JLD
-end
-
-if datafile in ["mat" "jld"]
-	println("Reading in Data...")
-
-	function string_as_varname(s::String,v::Any)
-		 s=Symbol(s)
-		 @eval (($s) = ($v))
-	end
-
-	#read in mat scenario
-	path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N$(N)\\"
-	file="EVCscenarioN$(N)."*datafile
-	if datafile=="mat"
-		vars = matread(path*file)
-	elseif datafile=="jld"
-		vars=load(path*file)
-	end
-	varnames=keys(vars)
-	varNum=length(varnames)
-	varKeys=collect(varnames)
-	varValues=collect(values(vars))
-
-	for i =1:varNum
-		n=varKeys[i]
-		v=varValues[i]
-		if datafile=="mat"
-			if n in ["N" "K" "S"]
-				v=convert(Int, v)
-			end
-		end
-		#if isa(v,Array)
-		#	v=convert(DataFrame, v)
-		#end
-		string_as_varname(n,v)
-	end
-	println("done reading in")
-
-	if datafile=="mat"
-		Kn=convert(Array{Int,2},Kn)
-	end
-end
 
 #initialize with current states
 xn0=s0
@@ -103,10 +45,10 @@ for stepI=1:K
 	@objective(m,Min, objFun(xn,xt,u))
 
 	#println("constraints")
-	@constraint(m,stateCon1,xn[1:N,1].==xn0[1:N,1]+eta[:,1].*u[1:N,1])
-	@constraint(m,stateCon2[k=1:horzLen,n=1:N],xn[n+(k)*(N),1]==xn[n+(k-1)*(N),1]+eta[n,1]*u[n+(k)*(N),1])
-	@constraint(m,tempCon1,xt[1,1]==tau*xt0+gamma*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rho*w[stepI*2,1])
-	@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rho*w[stepI*2+k*2,1])
+	@constraint(m,stateCon1,xn[1:N,1].==xn0[1:N,1]+etaP[:,1].*u[1:N,1])
+	@constraint(m,stateCon2[k=1:horzLen,n=1:N],xn[n+(k)*(N),1]==xn[n+(k-1)*(N),1]+etaP[n,1]*u[n+(k)*(N),1])
+	@constraint(m,tempCon1,xt[1,1]==tauP*xt0+gammaP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[stepI*2,1])
+	@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rhoP*w[stepI*2+k*2,1])
 	@constraint(m,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-w[(k-1)*2+(stepI*2-1)]+sum(z[(k-1)*(S)+s] for s=1:S))
 	@constraint(m,xn.<=1)
 	@constraint(m,xn.>=target)
@@ -150,11 +92,11 @@ for stepI=1:K
 	for k=1:horzLen+1
 		ztotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + w[(k-1)*2+(stepI*2-1),1]
 	end
-	Tactual[1,1]=tau*xt0+gamma*ztotal[1,1]^2+rho*w[stepI*2,1]
+	Tactual[1,1]=tauP*xt0+gammaP*ztotal[1,1]^2+rhoP*w[stepI*2,1]
 
 	#do we need this for anything???
 	for k=1:horzLen
-		Tactual[k+1,1]=tau*Tactual[k,1]+gamma*ztotal[k+1,1]^2+rho*w[k*2+stepI*2,1]
+		Tactual[k+1,1]=tauP*Tactual[k,1]+gammaP*ztotal[k+1,1]^2+rhoP*w[k*2+stepI*2,1]
 	end
 
 
