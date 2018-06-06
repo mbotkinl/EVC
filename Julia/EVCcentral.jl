@@ -23,7 +23,7 @@ target=zeros(N*(horzLen+1),1);
 for ii=1:N
    cur=Kn[ii]-(stepI-1)
    ind=max(0,(cur-1)*N)+ii:N:length(target)
-   target[ind]=Sn[ii,1]
+   target[ind]=Snmin[ii,1]
 end
 
 println("obj")

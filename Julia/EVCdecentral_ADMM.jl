@@ -70,7 +70,7 @@ for p in 1:numIteration-1
 	        evV=Vn[collect(evInd:N:length(Vn[:,p])),p]
 			#evV=zeros(horzLen+1,1)
 	        target=zeros((horzLen+1),1)
-			target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Sn[evInd,1]
+			target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
 	    	evM = Model(solver = GurobiSolver())
 	    	@variable(evM,xn[1:(horzLen+1)])
 	    	@variable(evM,u[1:(horzLen+1)])

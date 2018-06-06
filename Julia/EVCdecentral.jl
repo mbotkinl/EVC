@@ -25,7 +25,7 @@ end
 stepI = 1;
 horzLen=K1
 convChk = 1e-16
-numIteration=2000
+numIteration=500
 convIt=numIteration
 
 
@@ -41,17 +41,6 @@ Lam=zeros((horzLen+1),numIteration) #(rows are time, columns are iteration)
 Lam[:,1]=lambda0
 Xt=zeros((horzLen+1),numIteration) #rows are time
 Tactual=zeros((horzLen+1),numIteration) #rows are time
-#Xt[1,1]=T0
-#Xn=zeros(N*(horzLen+1),numIteration) #row are time,columns are iteration
-#Xn=zeros((horzLen+1),N) #row are time,columns are iteration
-#Xn[:,1]=s0
-#Un=zeros(N*(horzLen+1),numIteration) #row are time, columns are iteration
-#Un=zeros((horzLen+1),N) #row are time, columns are iteration
-
-
-# Xn=zeros(N*(horzLen+1),numIteration)
-# Un=zeros(N*(horzLen+1),numIteration)
-
 
 Xn=SharedArray{Float64}(N*(horzLen+1),numIteration)
 Un=SharedArray{Float64}(N*(horzLen+1),numIteration)
@@ -62,7 +51,7 @@ for p=1:numIteration-1
 	@sync @parallel for evInd=1:N
 	#for evInd=1:N
         target=zeros((horzLen+1),1)
-		target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Sn[evInd,1]
+		target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
         evM=Model(solver = GurobiSolver(OutputFlag=0))
         @variable(evM,un[1:horzLen+1])
         @variable(evM,xn[1:horzLen+1])

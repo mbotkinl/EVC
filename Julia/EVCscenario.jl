@@ -21,10 +21,10 @@ Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
 
 # Discretization parameters:
 Ts = Rh*C/9              # s, sampling time in seconds
-eta = Ts*Vac*a./b        # 1/A, normalized battery sizes (0-1)
-tau = 1 - Ts/(Rh*C)      # no units, temp time constant: 1 - 1/RC
-rho = 1 - tau            # no units, ambient-to-temp param: 1/RC
-gamma = Ts*Rw/(C*Ntf)    # K/W, ohmic losses-to-temp parameter
+etaP = Ts*Vac*a./b        # 1/A, normalized battery sizes (0-1)
+tauP = 1 - Ts/(Rh*C)      # no units, temp time constant: 1 - 1/RC
+rhoP = 1 - tauP            # no units, ambient-to-temp param: 1/RC
+gammaP = Ts*Rw/(C*Ntf)    # K/W, ohmic losses-to-temp parameter
 #gamma=.85/Ntf
 #gamma=.0085/Ntf
 
@@ -59,7 +59,7 @@ s0 = 0.2*rand(N,1)      # initial states of charge (0 - 0.20)
 T0 = 368                 # initial temp (~65 K below Tmax)
 
 #desired states
-Sn=SOCmin
+Snmin=SOCmin
 Kn=FullChargeTime
 
 # Disturbances
@@ -99,7 +99,7 @@ Qsi=[Qs*(10*rand(N,1)+.01);QT];
 
 
 # save
-if any(eta.*K.*FullChargeTime_relative.*imax+s0 .< SOCmin)
+if any(etaP.*K.*FullChargeTime_relative.*imax+s0 .< SOCmin)
 #if any(eta.*K1.*FullChargeTime_relative.*imax+s0 .< SOCmin)
    println("Some PEVs may not be able to meet SOC min level by desired time!")
 end
