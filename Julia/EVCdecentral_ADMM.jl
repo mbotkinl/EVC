@@ -260,7 +260,7 @@ zSumPlotadmm=plot(ZS[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.li
 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-uSumPlotadmm=plot(uSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+uSumPlotadmm=plot(US[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			layer(x=1:horzLen+1,y=uSumStar,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
 			Guide.xlabel("Time"), Guide.ylabel("U sum"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
