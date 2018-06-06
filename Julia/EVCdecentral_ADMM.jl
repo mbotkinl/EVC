@@ -137,7 +137,7 @@ for p in 1:numIteration-1
 		for k=1:horzLen+1
 			uSum[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
 			zSum[k,1]=sum(Z[(k-1)*(S)+s,p+1] for s=1:S)
-			currConst[k,1]= + w[(k-1)*2+(stepI*2-1),1] - zSum[k,1]
+			currConst[k,1]= uSum[k,1] + w[(k-1)*2+(stepI*2-1),1] - zSum[k,1]
 			#Lam[k,p+1]=max.(Lam[k,p]+rhoADMM/(horzLen+1)*(currConst[k,1]),0)
 			Lam[k,p+1]=Lam[k,p]+rhoI/(S*(N))*(currConst[k,1])
 		end
