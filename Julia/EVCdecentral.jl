@@ -4,7 +4,7 @@
 tic()
 #initialize
 #initialize with current states
-xn0=s0
+sn0=s0
 xt0=T0
 
 d = Truncated(Normal(0), 0, 50)
@@ -25,7 +25,7 @@ end
 stepI = 1;
 horzLen=K1
 convChk = 1e-16
-numIteration=500
+numIteration=2000
 convIt=numIteration
 
 
@@ -33,7 +33,7 @@ ConvDual=zeros(numIteration,1)
 itConvDual=zeros(numIteration,1)
 constConvDual=zeros(numIteration,1)
 fConvDual=zeros(numIteration,1)
-xnConvDual=zeros(numIteration,1)
+snConvDual=zeros(numIteration,1)
 unConvDual=zeros(numIteration,1)
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
@@ -42,7 +42,7 @@ Lam[:,1]=lambda0
 Xt=zeros((horzLen+1),numIteration) #rows are time
 Tactual=zeros((horzLen+1),numIteration) #rows are time
 
-Xn=SharedArray{Float64}(N*(horzLen+1),numIteration)
+Sn=SharedArray{Float64}(N*(horzLen+1),numIteration)
 Un=SharedArray{Float64}(N*(horzLen+1),numIteration)
 
 #iterate at each time step until convergence
@@ -54,15 +54,15 @@ for p=1:numIteration-1
 		target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
         evM=Model(solver = GurobiSolver(OutputFlag=0))
         @variable(evM,un[1:horzLen+1])
-        @variable(evM,xn[1:horzLen+1])
+        @variable(evM,sn[1:horzLen+1])
         objFun(x,u)=sum((x[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
         			sum((u[k,1])^2*Ri[evInd,1]    for k=1:horzLen+1) +
                     sum(lambda[k,1]*u[k,1]        for k=1:horzLen+1)
-        @objective(evM,Min, objFun(xn,un))
-		@constraint(evM,xn[1,1]==xn0[evInd,1]+etaP[evInd,1]*un[1,1]) #fix for MPC loop
-		@constraint(evM,[k=1:horzLen],xn[k+1,1]==xn[k,1]+etaP[evInd,1]*un[k+1,1]) #check K+1
-        @constraint(evM,xn.<=1)
-        @constraint(evM,xn.>=target)
+        @objective(evM,Min, objFun(sn,un))
+		@constraint(evM,sn[1,1]==sn0[evInd,1]+etaP[evInd,1]*un[1,1]) #fix for MPC loop
+		@constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+etaP[evInd,1]*un[k+1,1]) #check K+1
+        @constraint(evM,sn.<=1)
+        @constraint(evM,sn.>=target)
         @constraint(evM,un.<=imax[evInd,1])
         @constraint(evM,un.>=imin[evInd,1])
 
@@ -74,7 +74,7 @@ for p=1:numIteration-1
 		if status!=:Optimal
             break
         else
-            Xn[collect(evInd:N:N*(horzLen+1)),p+1]=getvalue(xn) #solved state goes in next time slot
+            Sn[collect(evInd:N:N*(horzLen+1)),p+1]=getvalue(sn) #solved state goes in next time slot
             Un[collect(evInd:N:N*(horzLen+1)),p+1]=getvalue(un) #current go
         end
     end
@@ -157,15 +157,15 @@ for p=1:numIteration-1
     lambda=lambda_new
 
 	#check convergence
-	objFun(xn,u)=sum(sum((xn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
+	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
 					sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-	fGap= objFun(Xn[:,p+1],Un[:,p+1])-fStar
-	xnGap=norm((Xn[:,p+1]-xnStar),2)
+	fGap= objFun(Sn[:,p+1],Un[:,p+1])-fStar
+	snGap=norm((Sn[:,p+1]-snStar),2)
 	unGap=norm((Un[:,p+1]-uStar),2)
 	itGap = norm(Lam[:,p+1]-Lam[:,p],2)
 	convGap = norm(Lam[:,p+1]-lamTempStar,2)
 	fConvDual[p,1]=norm(fGap,2)
-	xnConvDual[p,1]=xnGap
+	snConvDual[p,1]=snGap
 	unConvDual[p,1]=unGap
 	itConvDual[p,1]=itGap
 	ConvDual[p,1]=convGap
@@ -176,14 +176,14 @@ for p=1:numIteration-1
 	else
 		@printf "lastGap %e after %g iterations\n" itGap p
 		@printf "convGap %e after %g iterations\n" convGap p
-        @printf "xnGap %e after %g iterations\n" xnGap p
+        @printf "snGap %e after %g iterations\n" snGap p
 		@printf "unGap %e after %g iterations\n" unGap p
 		@printf("fGap %e after %g iterations\n\n",fGap,p)
 
 	end
 end
 
-for name in ["f","xn","un","it",""]
+for name in ["f","sn","un","it",""]
 	s=Symbol(@sprintf("%sConvDual_%s",name,updateMethod))
 	v=Symbol(@sprintf("%sConvDual",name))
 	@eval(($s)=($v))
@@ -192,7 +192,7 @@ end
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
 for ii= 1:N
-	xPlot[:,ii]=Xn[collect(ii:N:length(Xn[:,convIt])),convIt]
+	xPlot[:,ii]=Sn[collect(ii:N:length(Sn[:,convIt])),convIt]
 end
 
 pd1=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
