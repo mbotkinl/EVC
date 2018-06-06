@@ -95,9 +95,11 @@ else
     lamTempStar=lambdaUpperT
 	lamCurrStar=lambdaCurr
 
+    uSumStar=zeros(horzLen+1,1)
 	zSumStar=zeros(horzLen+1,1)
 	for k=1:horzLen+1
 		zSumStar[k,1]=sum(zStar[(k-1)*(S)+s,1] for s=1:S)
+        uSumStar[k,1]=sum(uStar[(k-1)*N+n,1] for n=1:N)
 	end
 
 
@@ -107,7 +109,7 @@ else
 	xPlot2=zeros(horzLen+1,N)
 	for ii= 1:N
 		xPlot[:,ii]=snRaw[collect(ii:N:length(snRaw))]
-		xPlot2[:,ii]=(Sn[ii,1]-xPlot[:,ii])./(Kn[ii,1]-(1:1:length(xPlot[:,ii])))
+		xPlot2[:,ii]=(Snmin[ii,1]-xPlot[:,ii])./(Kn[ii,1]-(1:1:length(xPlot[:,ii])))
 	end
 
 	#plot(x=1:horzLen+1,y=xPlot2[:,ii])

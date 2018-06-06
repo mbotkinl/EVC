@@ -3,25 +3,25 @@
 #5/22/18
 
 #formulation try 2
-#u, xn, xt, and z are all in "x" v is the auxilliary variable corresponding to z in literature
+#u, sn, xt, and z are all in "x" v is the auxilliary variable corresponding to z in literature
 #current constraint is coupling
 
 
 tic()
 #initialize with current states
-xn0=s0
+sn0=s0
 xt0=T0
 
 stepI = 1;
 horzLen=K1
 convChk = 1e-6
-numIteration=2000
+numIteration=200
 convIt=numIteration
 ConvADMM=zeros(numIteration,1)
 itConvADMM=zeros(numIteration,1)
 constConvADMM=zeros(numIteration,1)
 fConvADMM=zeros(numIteration,1)
-xnConvADMM=zeros(numIteration,1)
+snConvADMM=zeros(numIteration,1)
 unConvADMM=zeros(numIteration,1)
 
 #admm  initial parameters and guesses
@@ -36,7 +36,7 @@ Un=SharedArray{Float64}(N*(horzLen+1),numIteration) #row are time,  columns are 
 #Un[:,1]=u0
 Lam=zeros((horzLen+1),numIteration) #(rows are time, columns are iteration)
 Lam[:,1]=lambda0
-Xn=SharedArray{Float64}(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
+Sn=SharedArray{Float64}(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
 Xt=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
 Z=zeros(S*(horzLen+1),numIteration)  #row are time,  columns are iteration
 Tactual=zeros((horzLen+1),numIteration) #rows are time
@@ -57,6 +57,7 @@ Vz[:,1]=-ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
 #for debugging
 CC=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
 ZS=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
+US=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
 
 
 for p in 1:numIteration-1
@@ -72,15 +73,15 @@ for p in 1:numIteration-1
 	        target=zeros((horzLen+1),1)
 			target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
 	    	evM = Model(solver = GurobiSolver())
-	    	@variable(evM,xn[1:(horzLen+1)])
+	    	@variable(evM,sn[1:(horzLen+1)])
 	    	@variable(evM,u[1:(horzLen+1)])
-	    	objFun(xn,u)=sum((xn[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
+	    	objFun(sn,u)=sum((sn[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
 	        			    sum((u[k,1])^2*Ri[evInd,1]     for k=1:horzLen+1)
-			@objective(evM,Min, sum(objFun(xn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+rhoI/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
-	        @constraint(evM,xn[1,1]==xn0[evInd,1]+etaP[evInd,1]*u[1,1])
-	        @constraint(evM,[k=1:horzLen],xn[k+1,1]==xn[k,1]+etaP[evInd,1]*u[k+1,1])
-	    	@constraint(evM,xn.<=1)
-	    	@constraint(evM,xn.>=target)
+			@objective(evM,Min, sum(objFun(sn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+rhoI/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
+	        @constraint(evM,sn[1,1]==sn0[evInd,1]+etaP[evInd,1]*u[1,1])
+	        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+etaP[evInd,1]*u[k+1,1])
+	    	@constraint(evM,sn.<=1)
+	    	@constraint(evM,sn.>=target)
 	        @constraint(evM,u.<=imax[evInd,1])
 	        @constraint(evM,u.>=imin[evInd,1])
 	    	TT = STDOUT # save original STDOUT stream
@@ -90,7 +91,7 @@ for p in 1:numIteration-1
 	    	if status!=:Optimal
 	    	    return
 	    	else
-	    		Xn[collect(evInd:N:length(Xn[:,p+1])),p+1]=getvalue(xn)
+	    		Sn[collect(evInd:N:length(Sn[:,p+1])),p+1]=getvalue(sn)
 	    		Un[collect(evInd:N:length(Un[:,p+1])),p+1]=getvalue(u)
 	    	end
 	    end
@@ -131,10 +132,12 @@ for p in 1:numIteration-1
 	    #lambda update eq 7.68
 	    currConst=zeros(horzLen+1,1)
 		zSum=zeros(horzLen+1,1)
+		uSum=zeros(horzLen+1,1)
 		#zSum=getvalue(zSum)
 		for k=1:horzLen+1
+			uSum[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
 			zSum[k,1]=sum(Z[(k-1)*(S)+s,p+1] for s=1:S)
-			currConst[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - zSum[k,1]
+			currConst[k,1]= + w[(k-1)*2+(stepI*2-1),1] - zSum[k,1]
 			#Lam[k,p+1]=max.(Lam[k,p]+rhoADMM/(horzLen+1)*(currConst[k,1]),0)
 			Lam[k,p+1]=Lam[k,p]+rhoI/(S*(N))*(currConst[k,1])
 		end
@@ -148,6 +151,7 @@ for p in 1:numIteration-1
 
 		CC[:,p+1]=currConst
 		ZS[:,p+1]=zSum
+		US[:,p+1]=uSum
 
 	    #v upate eq 7.67
 	    for k=1:horzLen+1
@@ -158,18 +162,18 @@ for p in 1:numIteration-1
 
 
 	    #check convergence
-		objFun(xn,xt,u)=sum(sum((xn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
+		objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
 						sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
 						sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-		fGap= abs(objFun(Xn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar)
-		#fGap= objFun(Xn[:,p],Xt[:,p],Un[:,p])-fStar
-		xnGap=norm((Xn[:,p+1]-xnStar),2)
+		fGap= abs(objFun(Sn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar)
+		#fGap= objFun(Sn[:,p],Xt[:,p],Un[:,p])-fStar
+		snGap=norm((Sn[:,p+1]-snStar),2)
 		unGap=norm((Un[:,p+1]-uStar),2)
 		constGap=norm(currConst,2)
 		itGap = norm(Lam[:,p+1]-Lam[:,p],2)
 		convGap = norm(Lam[:,p+1]-lamCurrStar,2)
 		fConvADMM[p,1]=fGap
-		xnConvADMM[p,1]=xnGap
+		snConvADMM[p,1]=snGap
 		unConvADMM[p,1]=unGap
 		constConvADMM[p,1]=constGap
 		itConvADMM[p,1]=itGap
@@ -182,7 +186,7 @@ for p in 1:numIteration-1
 			@printf "lastGap %e after %g iterations\n" itGap p
 			@printf "convGap %e after %g iterations\n" convGap p
 			@printf "constGap %e after %g iterations\n" constGap p
-	        @printf "xnGap %e after %g iterations\n" xnGap p
+	        @printf "snGap %e after %g iterations\n" snGap p
 			@printf "unGap %e after %g iterations\n" unGap p
 			@printf("fGap %e after %g iterations\n\n",fGap,p)
 
@@ -200,7 +204,7 @@ toc()
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
 for ii= 1:N
-	xPlot[:,ii]=Xn[collect(ii:N:length(Xn[:,convIt])),convIt]
+	xPlot[:,ii]=Sn[collect(ii:N:length(Sn[:,convIt])),convIt]
 end
 
 #plot(x=1:horzLen+1,y=xPlot2[:,ii])
@@ -254,6 +258,11 @@ constPlotadmm2=plot(CC[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 zSumPlotadmm=plot(ZS[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
+			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+			minor_label_font_size=26pt,key_label_font_size=26pt))
+uSumPlotadmm=plot(uSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+			layer(x=1:horzLen+1,y=uSumStar,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
+			Guide.xlabel("Time"), Guide.ylabel("U sum"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_ADMM_LamConv.png", 36inch, 12inch), lamPlotadmm) end
