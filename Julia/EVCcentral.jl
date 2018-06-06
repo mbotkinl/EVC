@@ -3,7 +3,7 @@
 
 tic()
 #initialize with current states
-xn0=s0
+sn0=s0
 xt0=T0
 
 stepI=1
@@ -14,7 +14,7 @@ m = Model(solver = GurobiSolver(Presolve=0))
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
 @variable(m,u[1:N*(horzLen+1)])
-@variable(m,xn[1:(N)*(horzLen+1)])
+@variable(m,sn[1:(N)*(horzLen+1)])
 @variable(m,xt[1:(horzLen+1)])
 @variable(m,z[1:S*(horzLen+1)])
 
@@ -27,19 +27,19 @@ for ii=1:N
 end
 
 println("obj")
-objFun(xn,xt,u)=sum(sum((xn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
+objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
 				sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
 				sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-@objective(m,Min, objFun(xn,xt,u))
+@objective(m,Min, objFun(sn,xt,u))
 
 println("constraints")
-@constraint(m,stateCon1,xn[1:N,1].==xn0[1:N,1]+etaP[:,1].*u[1:N,1])
-@constraint(m,stateCon2[k=1:horzLen,n=1:N],xn[n+(k)*(N),1]==xn[n+(k-1)*(N),1]+etaP[n,1]*u[n+(k)*(N),1])
+@constraint(m,stateCon1,sn[1:N,1].==sn0[1:N,1]+etaP[:,1].*u[1:N,1])
+@constraint(m,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+etaP[n,1]*u[n+(k)*(N),1])
 @constraint(m,tempCon1,xt[1,1]==tauP*xt0+gammaP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[stepI*2,1])
 @constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rhoP*w[stepI*2+k*2,1])
 @constraint(m,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-w[(k-1)*2+1]+sum(z[(k-1)*(S)+s] for s=1:S))
-@constraint(m,xn.<=1)
-@constraint(m,xn.>=target)
+@constraint(m,sn.<=1)
+@constraint(m,sn.>=target)
 if noTlimit==0
 	@constraint(m,upperTCon,xt.<=Tmax)
 end
@@ -58,10 +58,10 @@ else
 	toc()
 
 	uRaw=getvalue(u)
-	xnRaw=getvalue(xn)
+	snRaw=getvalue(sn)
 	xtRaw=getvalue(xt)
 	zRaw=getvalue(z)
-	f=objFun(xnRaw,xtRaw,uRaw)
+	f=objFun(snRaw,xtRaw,uRaw)
 
 
 	#calculate actual temp
@@ -88,7 +88,7 @@ else
 	#lambdaUpperC=-getdual(upperCCon)
 
 	xtStar=xtRaw
-    xnStar=xnRaw
+    snStar=snRaw
 	uStar=uRaw
 	zStar=zRaw
     fStar=getobjectivevalue(m)
@@ -106,7 +106,7 @@ else
 	xPlot=zeros(horzLen+1,N)
 	xPlot2=zeros(horzLen+1,N)
 	for ii= 1:N
-		xPlot[:,ii]=xnRaw[collect(ii:N:length(xnRaw))]
+		xPlot[:,ii]=snRaw[collect(ii:N:length(snRaw))]
 		xPlot2[:,ii]=(Sn[ii,1]-xPlot[:,ii])./(Kn[ii,1]-(1:1:length(xPlot[:,ii])))
 	end
 
