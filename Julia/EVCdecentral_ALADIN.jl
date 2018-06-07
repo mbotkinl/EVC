@@ -14,7 +14,7 @@ xt0=T0
 stepI = 1;
 horzLen=K1
 epsilon = 1e-4
-tolC = 1e-4
+tolC = 1e-4 #check this???
 numIteration=30
 convIt=numIteration
 ConvALAD=zeros(numIteration,1)
@@ -30,29 +30,35 @@ Hu=Ri
 Hn=Qsi[1:N,1]
 Hz=Qsi[N+1,1]
 Ht=0
-sigmaU=10
-sigmaN=100
-sigmaZ=10
-sigmaT=1
+sigmaU=Hu
+sigmaN=Hn
+sigmaZ=Hz
+sigmaT=Ht
+# sigmaU=10*ones(N,1)
+# sigmaN=100*ones(N,1)
+# sigmaZ=10
+# sigmaT=1
+#sigmaZ=10^8
+#sigmaT=10^8
 rhoALAD=10^7
 muALAD=10^8
 #rhoALAD=10^4
 #H=vcat(ones(N,1),1)
 
-vn0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
-#vn0=snStar
+#vn0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
+vn0=snStar
 #vn0=max.(snStar + rand(Truncated(Normal(0), -0.02, 0.02), N*(horzLen+1)),0)
-vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
-#vu0=uStar
+#vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
+vu0=uStar
 #vu0=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N*(horzLen+1)),0)
-vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
-#vz0=zStar
+#vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
+vz0=zStar
 #vz0=max.(zStar-2*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1)),0)
-vt0=Tmax*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
-#vt0=xtStar
+#vt0=Tmax*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
+vt0=xtStar
 #vt0=max.(xtStar-10*rand(Truncated(Normal(0), 0, 1), (horzLen+1)),0)
-lambda0=5*rand(Truncated(Normal(0), 0, 1), horzLen+1)
-#lambda0=lamCurrStar
+#lambda0=5*rand(Truncated(Normal(0), 0, 1), horzLen+1)
+lambda0=lamCurrStar
 #lambda0=max.(lamCurrStar-rand(Truncated(Normal(0), 0, 1), (horzLen+1)),0)
 #lambda0=zeros(horzLen+1,1)
 
@@ -104,12 +110,12 @@ for p=1:numIteration-1
         @variable(evM,sn[1:(horzLen+1)])
         @variable(evM,u[1:(horzLen+1)])
         objFun(sn,u)=sum((sn[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
-                        sum((u[k,1])^2*Ri[evInd,1]     for k=1:horzLen+1)
+                     sum((u[k,1])^2*Ri[evInd,1]     for k=1:horzLen+1)
         #@objective(evM,Min, sum(objFun(sn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+rho_p/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
         @objective(evM,Min, sum(objFun(sn,u)+
                                 sum(lambda[k,1]*(u[k,1]) for k=1:horzLen+1)+
-                                rhoALAD/2*sum((u[k,1]-evVu[k,1])*sigmaU*(u[k,1]-evVu[k,1]) for k=1:horzLen+1)+
-                                rhoALAD/2*sum((sn[k,1]-evVn[k,1])*sigmaN*(sn[k,1]-evVn[k,1]) for k=1:horzLen+1)))
+                                rhoALAD/2*sum((u[k,1]-evVu[k,1])*sigmaU[evInd,1]*(u[k,1]-evVu[k,1]) for k=1:horzLen+1)+
+                                rhoALAD/2*sum((sn[k,1]-evVn[k,1])*sigmaN[evInd,1]*(sn[k,1]-evVn[k,1]) for k=1:horzLen+1)))
         @constraint(evM,sn[1,1]==sn0[evInd,1]+etaP[evInd,1]*u[1,1])
         @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+etaP[evInd,1]*u[k+1,1])
         @constraint(evM,socKappaMax,sn.<=1)
@@ -124,7 +130,7 @@ for p=1:numIteration-1
         redirect_stdout(TT)
         if status!=:Optimal
             println("solver issues with EV NLP")
-            break
+            return
         else
 			kappaMax=-getdual(curKappaMax)
 			kappaMin=-getdual(curKappaMin)
@@ -152,10 +158,10 @@ for p=1:numIteration-1
 
             Sn[collect(evInd:N:length(Sn[:,p+1])),p+1]=snVal
     		Un[collect(evInd:N:length(Un[:,p+1])),p+1]=uVal
-            Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=2*Qsi[evInd,1]*uVal-2*Qsi[evInd,1]
-            Gn[collect(evInd:N:length(Gn[:,p+1])),p+1]=2*Ri[evInd,1]*snVal
-            #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=sigmaU*(evVu-uVal)+lambda
-            #Gn[collect(evInd:N:length(Gn[:,p+1])),p+1]=sigmaN*(evVn-snVal)-lambda
+            Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=2*Ri[evInd,1]*uVal
+            Gn[collect(evInd:N:length(Gn[:,p+1])),p+1]=2*Qsi[evInd,1]*snVal-2*Qsi[evInd,1]
+            #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=sigmaU[evInd,1]*(evVu-uVal)+lambda
+            #Gn[collect(evInd:N:length(Gn[:,p+1])),p+1]=sigmaN[evInd,1]*(evVn-snVal)-lambda
         end
     end
 
@@ -164,7 +170,6 @@ for p=1:numIteration-1
     @variable(tM,z[1:(S)*(horzLen+1)])
     @variable(tM,xt[1:(horzLen+1)])
     constFun1(u,v)=sum(Lam[k,p]*sum(u[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
-    #constFun2(u,v)=rhoALAD/2*sum(sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S)*Hz*sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S) for k=1:(horzLen+1))
 	constFun2(u,v)=rhoALAD/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*sigmaZ*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S) for k=1:(horzLen+1))
     constFun3(u,v)=rhoALAD/2*sum((u[k,1]-v[k,1])*sigmaT*(u[k,1]-v[k,1]) for k=1:(horzLen+1))
     @objective(tM,Min, constFun1(-z,Vz[:,p])+constFun2(z,Vz[:,p])+constFun3(xt,Vt[:,p]))
@@ -182,12 +187,12 @@ for p=1:numIteration-1
     redirect_stdout(TT)
     if status!=:Optimal
         println("solver issues with XFRM NLP")
-        break
+        return
     else
-		kappaMax=-getdual(pwlKappaMax)
-		kappaMin=-getdual(pwlKappaMin)
-        tMax=-getdual(upperTCon)
-        tMin=-getdual(lowerTCon)
+		#kappaMax=-getdual(pwlKappaMax)
+		#kappaMin=-getdual(pwlKappaMin)
+        #tMax=-getdual(upperTCon)
+        #tMin=-getdual(lowerTCon)
         zVal=getvalue(z)
         xtVal=getvalue(xt)
 
@@ -223,7 +228,7 @@ for p=1:numIteration-1
 
     #check for convergence
     constGap=norm(currConst[:,p+1],1)
-    convCheck=rhoALAD*norm.(vcat(sigmaU*(Vu[:,p]-Un[:,p+1]),sigmaZ*(Vz[:,p]-Z[:,p+1])),1)
+    convCheck=rhoALAD*norm.(vcat(repmat(sigmaU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),sigmaZ*(Vz[:,p]-Z[:,p+1])),1)
     avgN[p,1]=mean(convCheck)
     objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                     sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
@@ -244,7 +249,7 @@ for p=1:numIteration-1
     else
         @printf "lastGap %e after %g iterations\n" itGap p
         @printf "convLamGap %e after %g iterations\n" convGap p
-        @printf "convCheck %e after %g iterations\n" convCheck p
+        @printf "convCheck %e after %g iterations\n" norm(convCheck,1) p
         @printf "constGap %e after %g iterations\n" constGap p
         @printf "snGap %e after %g iterations\n" snGap p
         @printf("fGap %e after %g iterations\n\n",fGap,p)
@@ -265,12 +270,12 @@ for p=1:numIteration-1
         objExp=objExp+coupledObj(dUn[collect(n:N:(N)*(horzLen+1)),1],Hu[n,1],Gu[collect(n:N:(N)*(horzLen+1)),p+1])+
                       coupledObj(dSn[collect(n:N:(N)*(horzLen+1)),1],Hn[n,1],Gn[collect(n:N:(N)*(horzLen+1)),p+1])
 	end
-    objExp=Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
+    #objExp=Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
 	@objective(cM,Min, objExp)
     #@objective(cM,Min, sum(sum(coupledObj(dUn[collect(n:N:length(dUn[:,1])),1],H[n,1],Gn[collect(n:N:length(Gn[:,p+1])),p+1]) for n=1:N)+
                             #coupledObj(dZ,H[N+1,1],Gz[:,p+1])))
-    @constraint(cM,currCon[k=1:horzLen+1],0==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-w[(k-1)*2+1]+
-                                             sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S)+relaxS[k,1])
+    @constraint(cM,currCon[k=1:horzLen+1],-w[(k-1)*2+1]==sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
+                                             sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))#+relaxS[k,1])
 
 
     #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
@@ -310,12 +315,13 @@ for p=1:numIteration-1
     alpha1=1
     alpha2=1
     alpha3=1
+    #alpha3=alpha/ceil(p/2)
     Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
 
-    Vu[:,p+1]=Vu[:,p]+alpha1*(Un[:,p+1]-Vu[:,p])+alpha2*getvalue(dUn)
-    Vz[:,p+1]=Vz[:,p]+alpha1*(Z[:,p+1]-Vz[:,p])+alpha2*getvalue(dZ)
-    Vn[:,p+1]=Vn[:,p]+alpha1*(Sn[:,p+1]-Vn[:,p])+alpha2*getvalue(dSn)
-    Vt[:,p+1]=Vt[:,p]+alpha1*(Xt[:,p+1]-Vt[:,p])+alpha2*getvalue(dXt)
+    Vu[:,p+1]=max.(min.(Vu[:,p]+alpha1*(Un[:,p+1]-Vu[:,p])+alpha2*getvalue(dUn),repmat(imax,horzLen+1,1)),repmat(imin,horzLen+1,1))
+    Vz[:,p+1]=max.(min.(Vz[:,p]+alpha1*(Z[:,p+1]-Vz[:,p])+alpha2*getvalue(dZ),deltaI),0)
+    Vn[:,p+1]=max.(min.(Vn[:,p]+alpha1*(Sn[:,p+1]-Vn[:,p])+alpha2*getvalue(dSn),1),0)
+    Vt[:,p+1]=max.(min.(Vt[:,p]+alpha1*(Xt[:,p+1]-Vt[:,p])+alpha2*getvalue(dXt),Tmax),0)
 
     # Vu[:,p+1]=Un[:,p+1]+getvalue(dUn)
     # Vz[:,p+1]=Z[:,p+1]+getvalue(dZ)
