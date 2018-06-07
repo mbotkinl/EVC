@@ -28,12 +28,12 @@ avgN=zeros(numIteration,1)
 #H=Qsi
 Hu=Ri
 Hn=Qsi[1:N,1]
-Hz=Qsi[N+1,1]
-Ht=0
-sigmaU=Hu
-sigmaN=Hn
-sigmaZ=Hz
-sigmaT=Ht
+Hz=1e-10
+Ht=1e-10
+sigmaU=10*ones(N,1)
+sigmaN=100*ones(N,1)
+sigmaZ=10
+sigmaT=1
 # sigmaU=10*ones(N,1)
 # sigmaN=100*ones(N,1)
 # sigmaZ=10
@@ -247,12 +247,12 @@ for p=1:numIteration-1
         convIt=p+1
         break
     else
-        @printf "lastGap %e after %g iterations\n" itGap p
+        @printf "lastGap    %e after %g iterations\n" itGap p
         @printf "convLamGap %e after %g iterations\n" convGap p
-        @printf "convCheck %e after %g iterations\n" norm(convCheck,1) p
-        @printf "constGap %e after %g iterations\n" constGap p
-        @printf "snGap %e after %g iterations\n" snGap p
-        @printf("fGap %e after %g iterations\n\n",fGap,p)
+        @printf "convCheck  %e after %g iterations\n" norm(convCheck,1) p
+        @printf "constGap   %e after %g iterations\n" constGap p
+        @printf "snGap      %e after %g iterations\n" snGap p
+        @printf("fGap       %e after %g iterations\n\n",fGap,p)
 
     end
 
@@ -270,12 +270,12 @@ for p=1:numIteration-1
         objExp=objExp+coupledObj(dUn[collect(n:N:(N)*(horzLen+1)),1],Hu[n,1],Gu[collect(n:N:(N)*(horzLen+1)),p+1])+
                       coupledObj(dSn[collect(n:N:(N)*(horzLen+1)),1],Hn[n,1],Gn[collect(n:N:(N)*(horzLen+1)),p+1])
 	end
-    #objExp=Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
+    objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
 	@objective(cM,Min, objExp)
     #@objective(cM,Min, sum(sum(coupledObj(dUn[collect(n:N:length(dUn[:,1])),1],H[n,1],Gn[collect(n:N:length(Gn[:,p+1])),p+1]) for n=1:N)+
                             #coupledObj(dZ,H[N+1,1],Gz[:,p+1])))
-    @constraint(cM,currCon[k=1:horzLen+1],-w[(k-1)*2+1]==sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
-                                             sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))#+relaxS[k,1])
+    @constraint(cM,currCon[k=1:horzLen+1],-w[(k-1)*2+1]+relaxS[k,1]==sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
+                                             sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
 
 
     #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
@@ -318,10 +318,10 @@ for p=1:numIteration-1
     #alpha3=alpha/ceil(p/2)
     Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
 
-    Vu[:,p+1]=max.(min.(Vu[:,p]+alpha1*(Un[:,p+1]-Vu[:,p])+alpha2*getvalue(dUn),repmat(imax,horzLen+1,1)),repmat(imin,horzLen+1,1))
-    Vz[:,p+1]=max.(min.(Vz[:,p]+alpha1*(Z[:,p+1]-Vz[:,p])+alpha2*getvalue(dZ),deltaI),0)
-    Vn[:,p+1]=max.(min.(Vn[:,p]+alpha1*(Sn[:,p+1]-Vn[:,p])+alpha2*getvalue(dSn),1),0)
-    Vt[:,p+1]=max.(min.(Vt[:,p]+alpha1*(Xt[:,p+1]-Vt[:,p])+alpha2*getvalue(dXt),Tmax),0)
+    Vu[:,p+1]=Vu[:,p]+alpha1*(Un[:,p+1]-Vu[:,p])+alpha2*getvalue(dUn)
+    Vz[:,p+1]=Vz[:,p]+alpha1*(Z[:,p+1]-Vz[:,p])+alpha2*getvalue(dZ)
+    Vn[:,p+1]=Vn[:,p]+alpha1*(Sn[:,p+1]-Vn[:,p])+alpha2*getvalue(dSn)
+    Vt[:,p+1]=Vt[:,p]+alpha1*(Xt[:,p+1]-Vt[:,p])+alpha2*getvalue(dXt)
 
     # Vu[:,p+1]=Un[:,p+1]+getvalue(dUn)
     # Vz[:,p+1]=Z[:,p+1]+getvalue(dZ)

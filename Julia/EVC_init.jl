@@ -1,5 +1,5 @@
 
-datafile="n" #"mat" #"jld" #"n"
+datafile="jld" #"mat" #"jld" #"n"
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
 noTlimit=0
@@ -13,7 +13,6 @@ using Gurobi
 using Cairo #for png output
 using Fontconfig
 using Distributions
-#using ProximalOperators
 
 if datafile=="mat"
 	using MAT #to read in scenarios from matlab
@@ -65,4 +64,8 @@ if isdefined(:etaP)==false
 	gammaP=gamma
 	rhoP=rho
 	tauP=tau
+end
+
+if isdefined(:Snmin)==false
+	Snmin=Sn
 end
