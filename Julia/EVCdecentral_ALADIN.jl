@@ -15,7 +15,7 @@ stepI = 1;
 horzLen=K1
 epsilon = 1e-4
 tolC = 1e-4 #check this???
-numIteration=30
+numIteration=50
 convIt=numIteration
 ConvALAD=zeros(numIteration,1)
 constConvALAD=zeros(numIteration,1)
@@ -28,8 +28,8 @@ avgN=zeros(numIteration,1)
 #H=Qsi
 Hu=Ri
 Hn=Qsi[1:N,1]
-Hz=1e-10
-Ht=1e-10
+Hz=0
+Ht=0
 sigmaU=10*ones(N,1)
 sigmaN=100*ones(N,1)
 sigmaZ=10
@@ -40,8 +40,8 @@ sigmaT=1
 # sigmaT=1
 #sigmaZ=10^8
 #sigmaT=10^8
-rhoALAD=10^7
-muALAD=10^8
+rhoALAD=1
+muALAD=10
 #rhoALAD=10^4
 #H=vcat(ones(N,1),1)
 
@@ -228,7 +228,7 @@ for p=1:numIteration-1
 
     #check for convergence
     constGap=norm(currConst[:,p+1],1)
-    convCheck=rhoALAD*norm.(vcat(repmat(sigmaU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),sigmaZ*(Vz[:,p]-Z[:,p+1])),1)
+    convCheck=rhoALAD*norm(vcat(repmat(sigmaU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),sigmaZ*(Vz[:,p]-Z[:,p+1])),1)
     avgN[p,1]=mean(convCheck)
     objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                     sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
@@ -242,7 +242,7 @@ for p=1:numIteration-1
     itConvALAD[p,1]=itGap
     constConvALAD[p,1]=constGap
     ConvALAD[p,1]=convGap
-    if all(convCheck.<=epsilon)
+    if  constGap<=epsilon && convCheck<=epsilon
         @printf "Converged after %g iterations\n" p
         convIt=p+1
         break
@@ -257,7 +257,8 @@ for p=1:numIteration-1
     end
 
     #coupled QP
-    cM = Model(solver = GurobiSolver())
+    #cM = Model(solver = GurobiSolver(Presolve=0,NumericFocus=3))
+    cM = Model(solver = IpoptSolver())
     @variable(cM,dUn[1:(N)*(horzLen+1)])
     @variable(cM,dSn[1:(N)*(horzLen+1)])
     @variable(cM,dZ[1:(S)*(horzLen+1)])
@@ -270,11 +271,12 @@ for p=1:numIteration-1
         objExp=objExp+coupledObj(dUn[collect(n:N:(N)*(horzLen+1)),1],Hu[n,1],Gu[collect(n:N:(N)*(horzLen+1)),p+1])+
                       coupledObj(dSn[collect(n:N:(N)*(horzLen+1)),1],Hn[n,1],Gn[collect(n:N:(N)*(horzLen+1)),p+1])
 	end
-    objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
+    #objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
 	@objective(cM,Min, objExp)
-    @constraint(cM,currCon[k=1:horzLen+1],-w[(k-1)*2+1]+relaxS[k,1]==sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
+    # @constraint(cM,currCon[k=1:horzLen+1],w[(k-1)*2+1]+relaxS[k,1]==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)+
+    #                                          sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
+    @constraint(cM,currCon[k=1:horzLen+1],w[(k-1)*2+1]==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)+
                                              sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
-
 
     #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
     @constraint(cM,stateCon1,dSn[1:N,1].==etaP[:,1].*dUn[1:N,1])
@@ -317,8 +319,9 @@ for p=1:numIteration-1
     # Lam[:,p+1]=-getdual(currCon)
     alpha1=1
     alpha2=1
-    alpha3=1
-    #alpha3=alpha/ceil(p/2)
+    #alpha3=1
+    alpha=1
+    alpha3=alpha/ceil(p/2)
     Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
 
     Vu[:,p+1]=Vu[:,p]+alpha1*(Un[:,p+1]-Vu[:,p])+alpha2*getvalue(dUn)
