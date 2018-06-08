@@ -265,24 +265,27 @@ for p=1:numIteration-1
     @variable(cM,relaxS[1:(horzLen+1)])
     coupledObj(deltaY,Hi,gi)=1/2*deltaY'*Hi*deltaY+gi'*deltaY
 	objExp=coupledObj(dZ,Hz,Gz[:,p+1])
-    #objExp=objExp+coupledObj(dXt,Ht,zeros(length(dXt),1))
+    objExp=objExp+coupledObj(dXt,Ht,zeros(length(dXt)))
 	for n=1:N
         objExp=objExp+coupledObj(dUn[collect(n:N:(N)*(horzLen+1)),1],Hu[n,1],Gu[collect(n:N:(N)*(horzLen+1)),p+1])+
                       coupledObj(dSn[collect(n:N:(N)*(horzLen+1)),1],Hn[n,1],Gn[collect(n:N:(N)*(horzLen+1)),p+1])
 	end
     objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
 	@objective(cM,Min, objExp)
-    #@objective(cM,Min, sum(sum(coupledObj(dUn[collect(n:N:length(dUn[:,1])),1],H[n,1],Gn[collect(n:N:length(Gn[:,p+1])),p+1]) for n=1:N)+
-                            #coupledObj(dZ,H[N+1,1],Gz[:,p+1])))
     @constraint(cM,currCon[k=1:horzLen+1],-w[(k-1)*2+1]+relaxS[k,1]==sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
                                              sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
 
 
     #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
-    @constraint(cM,stateCon1,dSn[1:N,1].==sn0[1:N,1]+etaP[:,1].*dUn[1:N,1])
+    @constraint(cM,stateCon1,dSn[1:N,1].==etaP[:,1].*dUn[1:N,1])
     @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+etaP[n,1]*dUn[n+(k)*(N),1])
-    @constraint(cM,tempCon1,dXt[1,1]==tauP*xt0+gammaP*deltaI*sum((2*m+1)*dZ[m+1,1] for m=0:S-1)+rhoP*w[stepI*2,1])
-    @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==tauP*dXt[k,1]+gammaP*deltaI*sum((2*m+1)*dZ[k*S+(m+1),1] for m=0:S-1)+rhoP*w[stepI*2+k*2,1])
+    @constraint(cM,tempCon1,dXt[1,1]==gammaP*deltaI*sum((2*m+1)*dZ[m+1,1] for m=0:S-1))
+    @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==tauP*dXt[k,1]+gammaP*deltaI*sum((2*m+1)*dZ[k*S+(m+1),1] for m=0:S-1))
+    # @constraint(cM,stateCon1,Sn[1:N,1]+dSn[1:N,1].==etaP[:,1].*(Un[1:N,1]+dUn[1:N,1]))
+    # @constraint(cM,stateCon2[k=1:horzLen,n=1:N],Sn[n+(k)*(N),1]+dSn[n+(k)*(N),1]==Sn[n+(k-1)*(N),1]+dSn[n+(k-1)*(N),1]+etaP[n,1]*(Un[n+(k)*(N),1]+dUn[n+(k)*(N),1]))
+    # @constraint(cM,tempCon1,Xt[1,1]+dXt[1,1]==gammaP*deltaI*sum((2*m+1)*(Z[m+1,1]+dZ[m+1,1]) for m=0:S-1))
+    # @constraint(cM,tempCon2[k=1:horzLen],Xt[k+1,1]+dXt[k+1,1]==tauP*(Xt[k,1]+dXt[k,1])+gammaP*deltaI*sum((2*m+1)*(Z[k*S+(m+1),1]+dZ[k*S+(m+1),1]) for m=0:S-1))
+
 
     #local inequality constraints
     # @constraint(cM,(Z[:,p+1]+dZ).>=0)
