@@ -184,7 +184,7 @@ for p=1:maxIt-1
     @variable(mC,dz[1:N+1])
     #@variable(mC,relaxS)
     objExp=sum(0.5*dx[i,1]^2*R[i,1]+Gx[i,p+1]*dx[i,1]+
-               0.5*dz[i,1]^2*Q[i,1]+Gz[i,p+1]*dz[i,1] for i=1:N)
+               0.5*dz[i,1]^2*Q[i,1]+Gz[i,p+1]*dz[i,1] for i=1:N+1)
     #objExp=objExp+Lambda[1,p]*relaxS+muALAD/2*relaxS^2
     @objective(mC,Min,objExp)
     @constraint(mC,lambdaP,sum(A[i,1]*(X[i,p+1]+dx[i,1]) for i=1:N+1)==b)#+relaxS)

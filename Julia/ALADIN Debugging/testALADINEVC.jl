@@ -12,6 +12,10 @@ xt0=T0
 target=0
 imax=imax*100
 
+etaP=.2*ones(N,1)
+gammaP=.1
+Tmax=200000
+
 #set up Problem
 m = Model(solver = IpoptSolver())
 
@@ -23,8 +27,10 @@ m = Model(solver = IpoptSolver())
 objFun(sn,u)=sum((sn[n,1]-1)^2*Qsi[n,1]     for n=1:N) +
 			 sum((u[n,1])^2*Ri[n,1]           for n=1:N)
 @objective(m,Min, objFun(sn,u))
-@constraint(m,stateCon1,sn[1:N,1].==sn0[1:N,1]+etaP[:,1].*u[1:N,1])
-@constraint(m,tempCon1,xt==tauP*xt0+gammaP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[2,1])
+@constraint(m,stateCon1[n=1:N],sn[n,1]/etaP[n,1]==sn0[n,1]/etaP[n,1]+u[n,1])
+#@constraint(m,stateCon1,sn[1:N,1].==sn0[1:N,1]+etaP[:,1].*u[1:N,1])
+@constraint(m,tempCon1,xt/gammaP==tauP*xt0/gammaP+deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[2,1]/gammaP)
+#@constraint(m,tempCon1,xt==tauP*xt0+gammaP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[2,1])
 @constraint(m,currCon,sum(u[n] for n=1:N)-sum(z[s] for s=1:S)==-w[1])
 @constraint(m,sn.<=1)
 @constraint(m,sn.>=target)
@@ -75,17 +81,17 @@ tolZ=1e-3
 #lambda0=max.(lamCurrStar-rand(Truncated(Normal(0), 0, 1), 1),0)
 #lambda0=zeros(horzLen+1,1)
 
-vs0=snStar
-vu0=uStar
-vz0=zStar
-vt0=xtStar
-lambda0=lamCurrStar
+# vs0=snStar
+# vu0=uStar
+# vz0=zStar
+# vt0=xtStar
+# lambda0=lamCurrStar
 
-# vs0=rand(Truncated(Normal(0), 0, 1), N)
-# vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N)
-# vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S)
-# vt0=Tmax*rand(Truncated(Normal(0), 0, 1), 1)
-# lambda0=5*rand(Truncated(Normal(0), 0, 1), 1)
+vs0=rand(Truncated(Normal(0), 0, 1), N)
+vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N)
+vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S)
+vt0=Tmax*rand(Truncated(Normal(0), 0, 1), 1)
+lambda0=5*rand(Truncated(Normal(0), 0, 1), 1)
 
 #save matrices
 Un=SharedArray{Float64}(N,maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
@@ -171,7 +177,8 @@ for p=1:maxIt-1
     @variable(nlp,t)
     @objective(nlp,Min,-Lambda[1,p]*sum(z[i] for i=1:S)+
                         rhoALAD/2*(t-Vt[1,p])^2*sigmaT+rhoALAD/2*sigmaZ*sum((z[s]-Vz[s,p])^2 for s=1:S))#rhoALAD/2*norm(z-Vz[:,p],2)^2*sigmaZ)
-    @constraint(nlp,t==tauP*T0+gammaP*deltaI*sum((2*s-1)*z[s] for s=1:S)+rhoP*w[2,1])
+    #@constraint(nlp,t==tauP*T0+gammaP*deltaI*sum((2*s-1)*z[s] for s=1:S)+rhoP*w[2,1])
+	@constraint(nlp,t/gammaP==tauP*T0/gammaP+deltaI*sum((2*s-1)*z[s] for s=1:S)+rhoP*w[2,1]/gammaP)
     @constraint(nlp,kapMax,t<=Tmax)
     @constraint(nlp,kapMin,t>=0)
     @constraint(nlp,kapMaxU,z.<=deltaI)
@@ -234,8 +241,10 @@ for p=1:maxIt-1
     #objExp=objExp+Lambda[p,1]*relaxS+muALAD/2*relaxS^2
     @objective(mC,Min,objExp)
     @constraint(mC,lambdaP,sum((Un[i,p+1]+dUn[i,1]) for i=1:N)+sum(-(Z[s,p+1]+dZ[s,1]) for s=1:S)==-w[1])#+relaxS)
-    @constraint(mC,dSn-etaP[:,1].*dUn.==0)
-    @constraint(mC,dT-gammaP*deltaI*sum((2*s-1)*dZ[s] for s=1:S)==0)
+    @constraint(mC,[i=1:N],dSn[i]/etaP[i,1]-dUn[i]==0)
+	#@constraint(mC,dSn-etaP[:,1].*dUn.==0)
+    @constraint(mC,dT/gammaP-deltaI*sum((2*s-1)*dZ[s] for s=1:S)==0)
+	#@constraint(mC,dT-gammaP*deltaI*sum((2*s-1)*dZ[s] for s=1:S)==0)
     @constraint(mC,Cu[:,p+1].*dUn.<=0)
     @constraint(mC,Cs[:,p+1].*dSn.<=0)
     @constraint(mC,Cz[:,p+1].*dZ.<=0)

@@ -14,7 +14,8 @@ imax=imax*100
 
 
 etaP=.2*ones(N,1)
-gammaP=2
+gammaP=.1
+Tmax=200000
 
 #set up Problem
 m = Model(solver = IpoptSolver())
@@ -27,8 +28,9 @@ m = Model(solver = IpoptSolver())
 objFun(sn,u)=sum((sn[n,1]-1)^2*Qsi[n,1]     for n=1:N) +
 			 sum((u[n,1])^2*Ri[n,1]           for n=1:N)
 @objective(m,Min, objFun(sn,u))
-@constraint(m,stateCon1,sn[1:N,1].==sn0[1:N,1]+etaP[:,1].*u[1:N,1])
-@constraint(m,tempCon1,xt==tauP*xt0+gammaP*itotal^2+rhoP*w[2,1])
+@constraint(m,stateCon1[n=1:N],sn[n,1]/etaP[n,1]==sn0[n,1]/etaP[n,1]+u[n,1])
+#@constraint(m,tempCon1,xt==tauP*xt0+gammaP*itotal^2+rhoP*w[2,1])
+@constraint(m,tempCon1,xt/gammaP==tauP*xt0/gammaP+itotal^2+rhoP*w[2,1]/gammaP)
 @constraint(m,currCon,sum(u[n] for n=1:N)-itotal==-w[1])
 @constraint(m,sn.<=1)
 @constraint(m,sn.>=target)
@@ -57,7 +59,7 @@ lamCurrStar=-getdual(currCon)
 
 #ALADIN
 #initialize
-maxIt=50
+maxIt=100
 convIt=maxIt
 epsilon=1e-4
 rhoALAD=1
@@ -146,7 +148,7 @@ for p=1:maxIt-1
         @objective(nlp,Min,un^2*Ri[i,1]+(sn-1)^2*Qsi[i,1]+Lambda[1,p]*un+
                             rhoALAD/2*(un-Vu[i,p])^2*sigmaU[i,1]+
 							rhoALAD/2*(sn-Vs[i,p])^2*sigmaS[i,1])
-        @constraint(nlp,sn==sn0[i,1]+etaP[i,1]*un)
+        @constraint(nlp,sn/etaP[i,1]==sn0[i,1]/etaP[i,1]+un)
         @constraint(nlp,kapMax,sn<=1)
         @constraint(nlp,kapMin,sn>=0)
         @constraint(nlp,kapMaxU,un<=imax[i,1])
@@ -183,7 +185,8 @@ for p=1:maxIt-1
     @variable(nlp,t)
     @objective(nlp,Min,-Lambda[1,p]*itotal+
                         rhoALAD/2*(t-Vt[1,p])^2*sigmaT+rhoALAD/2*sigmaI*(itotal-Vi[1,p])^2)#rhoALAD/2*norm(z-Vz[:,p],2)^2*sigmaZ)
-    @constraint(nlp,t==tauP*T0+gammaP*itotal^2+rhoP*w[2,1])
+    @constraint(nlp,t/gammaP==tauP*T0/gammaP+itotal^2+rhoP*w[2,1]/gammaP)
+	#@constraint(nlp,t==tauP*T0+gammaP*itotal^2+rhoP*w[2,1])
     @constraint(nlp,kapMax,t<=Tmax)
     @constraint(nlp,kapMin,t>=0)
     @constraint(nlp,kapMaxU,itotal<=ItotalMax)
@@ -244,13 +247,14 @@ for p=1:maxIt-1
     @variable(mC,dI)
     #@variable(mC,relaxS)
     objExp=sum(0.5*dUn[i,1]^2*Ri[i,1]+Gu[i,p+1]*dUn[i,1]+
-	           0.5*dSn[i,1]^2*Qsi[i,1]+Gs[i,p+1]*dSn[i,1] for i=1:N+1)
+	           0.5*dSn[i,1]^2*Qsi[i,1]+Gs[i,p+1]*dSn[i,1] for i=1:N)
 	#objExp=objExp+Gi[1,p+1]*dI
     #objExp=objExp+Lambda[1,p]*relaxS+muALAD/2*relaxS^2
     @objective(mC,Min,objExp)
     @constraint(mC,lambdaP,sum((Un[i,p+1]+dUn[i,1]) for i=1:N)-(Itotal[1,p+1]+dI)==-w[1])#+relaxS)
-    @constraint(mC,eqS[i=1:N],dSn[i]-etaP[i,1]*dUn[i]==0)
-    @constraint(mC,dT-2*gammaP*Itotal[1,p+1]*dI==0)
+    @constraint(mC,eqS[i=1:N],dSn[i]/etaP[i,1]-dUn[i]==0)
+    @constraint(mC,dT/gammaP-2*Itotal[1,p+1]*dI==0)
+	#@constraint(mC,dT-2*gammaP*Itotal[1,p+1]*dI==0)
     @constraint(mC,Cu[:,p+1].*dUn.<=0)
     @constraint(mC,Cs[:,p+1].*dSn.<=0)
     @constraint(mC,Ci[1,p+1]*dI<=0)
