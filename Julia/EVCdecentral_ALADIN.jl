@@ -13,9 +13,12 @@ xt0=T0
 
 stepI = 1;
 horzLen=K1
-epsilon = 1e-4
-tolC = 1e-4 #check this???
-numIteration=50
+epsilon = 1e-3
+tolU=1e-3
+tolS=1e-6
+tolT=1e-1
+tolZ=1e-3
+numIteration=20
 convIt=numIteration
 ConvALAD=zeros(numIteration,1)
 constConvALAD=zeros(numIteration,1)
@@ -26,12 +29,12 @@ avgN=zeros(numIteration,1)
 
 #ALADIN tuning and initial guess
 #H=Qsi
-Hu=Ri
-Hn=Qsi[1:N,1]
+Hu=2*Ri
+Hn=2*Qsi[1:N,1]
 Hz=0
 Ht=0
 sigmaU=10*ones(N,1)
-sigmaN=100*ones(N,1)
+sigmaS=100*ones(N,1)
 sigmaZ=10
 sigmaT=1
 # sigmaU=10*ones(N,1)
@@ -41,24 +44,26 @@ sigmaT=1
 #sigmaZ=10^8
 #sigmaT=10^8
 rhoALAD=1
-muALAD=10
+#muALAD=10
 #rhoALAD=10^4
 #H=vcat(ones(N,1),1)
 
-#vn0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
-vn0=snStar
-#vn0=max.(snStar + rand(Truncated(Normal(0), -0.02, 0.02), N*(horzLen+1)),0)
-#vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
-vu0=uStar
-#vu0=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N*(horzLen+1)),0)
-#vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
-vz0=zStar
-#vz0=max.(zStar-2*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1)),0)
-#vt0=Tmax*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
-vt0=xtStar
-#vt0=max.(xtStar-10*rand(Truncated(Normal(0), 0, 1), (horzLen+1)),0)
-#lambda0=5*rand(Truncated(Normal(0), 0, 1), horzLen+1)
+# lambda0=5*rand(Truncated(Normal(0), 0, 1), horzLen+1)
+# vt0=Tmax*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
+# vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
+# vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
+# vs0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
+
 lambda0=lamCurrStar
+vt0=xtStar
+vz0=zStar
+vu0=uStar
+vs0=snStar
+
+#vs0=max.(snStar + rand(Truncated(Normal(0), -0.02, 0.02), N*(horzLen+1)),0)
+#vu0=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N*(horzLen+1)),0)
+#vz0=max.(zStar-2*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1)),0)
+#vt0=max.(xtStar-10*rand(Truncated(Normal(0), 0, 1), (horzLen+1)),0)
 #lambda0=max.(lamCurrStar-rand(Truncated(Normal(0), 0, 1), (horzLen+1)),0)
 #lambda0=zeros(horzLen+1,1)
 
@@ -73,8 +78,8 @@ Lam[:,1]=lambda0
 #auxillary variables
 Vu=zeros((N)*(horzLen+1),numIteration) #row are time,  columns are iteration
 Vu[:,1]=vu0 #initial guess goes in column 1
-Vn=zeros((N)*(horzLen+1),numIteration) #row are time,  columns are iteration
-Vn[:,1]=vn0 #initial guess goes in column 1
+Vs=zeros((N)*(horzLen+1),numIteration) #row are time,  columns are iteration
+Vs[:,1]=vs0 #initial guess goes in column 1
 Vz=zeros(S*(horzLen+1),numIteration) #row are time,  columns are iteration
 Vz[:,1]=vz0
 Vt=zeros((horzLen+1),numIteration) #row are time,  columns are iteration
@@ -82,11 +87,11 @@ Vt[:,1]=vt0
 
 #Gradian Vectors
 Gu=SharedArray{Float64}(N*(horzLen+1),numIteration) #row are time (N states for k=1, them N states for k=2),  columns are iteration
-Gn=SharedArray{Float64}(N*(horzLen+1),numIteration) #row are time (N states for k=1, them N states for k=2),  columns are iteration
+Gs=SharedArray{Float64}(N*(horzLen+1),numIteration) #row are time (N states for k=1, them N states for k=2),  columns are iteration
 Gz=zeros(S*(horzLen+1),numIteration) #row are time (N states for k=1, them N states for k=2),  columns are iteration
 
 #Jacobian C Vectors
-Cn=SharedArray{Float64}(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
+Cs=SharedArray{Float64}(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
 Cu=SharedArray{Float64}(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
 Cz=zeros(S*(horzLen+1),numIteration)  #row are time,  columns are iteration
 Ct=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
@@ -102,7 +107,7 @@ for p=1:numIteration-1
 
         lambda=Lam[:,p]
         evVu=Vu[collect(evInd:N:length(Vu[:,p])),p]
-        evVn=Vn[collect(evInd:N:length(Vn[:,p])),p]
+        evVs=Vs[collect(evInd:N:length(Vs[:,p])),p]
         #evV=zeros(horzLen+1,1)
         target=zeros((horzLen+1),1)
         target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
@@ -115,7 +120,7 @@ for p=1:numIteration-1
         @objective(evM,Min, sum(objFun(sn,u)+
                                 sum(lambda[k,1]*(u[k,1]) for k=1:horzLen+1)+
                                 rhoALAD/2*sum((u[k,1]-evVu[k,1])*sigmaU[evInd,1]*(u[k,1]-evVu[k,1]) for k=1:horzLen+1)+
-                                rhoALAD/2*sum((sn[k,1]-evVn[k,1])*sigmaN[evInd,1]*(sn[k,1]-evVn[k,1]) for k=1:horzLen+1)))
+                                rhoALAD/2*sum((sn[k,1]-evVs[k,1])*sigmaS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)))
         @constraint(evM,sn[1,1]==sn0[evInd,1]+etaP[evInd,1]*u[1,1])
         @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+etaP[evInd,1]*u[k+1,1])
         @constraint(evM,socKappaMax,sn.<=1)
@@ -139,8 +144,8 @@ for p=1:numIteration-1
             uVal=getvalue(u)
             snVal=getvalue(sn)
 
-            cValMax=abs.(uVal-imax[evInd,1]).<tolC
-            cValMin=abs.(uVal-imin[evInd,1]).<tolC
+            cValMax=abs.(uVal-imax[evInd,1]).<tolU
+            cValMin=abs.(uVal-imin[evInd,1]).<tolU
             # cVal=kappaMax
             # cVal[cVal.>0]=1
             # cVal=kappaMin
@@ -148,20 +153,20 @@ for p=1:numIteration-1
             Cu[collect(evInd:N:length(Cu[:,p+1])),p+1]=1cValMax-1cValMin
 
 
-            cValMax=abs.(snVal-1).<tolC
-            cValMin=abs.(snVal-target).<tolC
+            cValMax=abs.(snVal-1).<tolS
+            cValMin=abs.(snVal-target).<tolS
             # cVal=socMax
             # cVal[cVal.>0]=1
             # cVal=socMin
             # cVal[cVal.<0]=-1
-            Cn[collect(evInd:N:length(Cn[:,p+1])),p+1]=1cValMax-1cValMin
+            Cs[collect(evInd:N:length(Cs[:,p+1])),p+1]=1cValMax-1cValMin
 
             Sn[collect(evInd:N:length(Sn[:,p+1])),p+1]=snVal
     		Un[collect(evInd:N:length(Un[:,p+1])),p+1]=uVal
             Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=2*Ri[evInd,1]*uVal
-            Gn[collect(evInd:N:length(Gn[:,p+1])),p+1]=2*Qsi[evInd,1]*snVal-2*Qsi[evInd,1]
+            Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=2*Qsi[evInd,1]*snVal-2*Qsi[evInd,1]
             #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=sigmaU[evInd,1]*(evVu-uVal)+lambda
-            #Gn[collect(evInd:N:length(Gn[:,p+1])),p+1]=sigmaN[evInd,1]*(evVn-snVal)-lambda
+            #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=sigmaN[evInd,1]*(evVs-snVal)-lambda
         end
     end
 
@@ -196,16 +201,16 @@ for p=1:numIteration-1
         zVal=getvalue(z)
         xtVal=getvalue(xt)
 
-        cValMax=abs.(zVal-deltaI).<tolC
-        cValMin=abs.(zVal-0).<tolC
+        cValMax=abs.(zVal-deltaI).<tolZ
+        cValMin=abs.(zVal-0).<tolZ
         # cVal=kappaMax
         # cVal=kappaMin
         # cVal[cVal.<0]=-1
         # cVal[cVal.>0]=1
         Cz[:,p+1]=1cValMax-1cValMin
 
-        cValMax=abs.(xtVal-Tmax).<tolC
-        cValMin=abs.(xtVal-0).<tolC
+        cValMax=abs.(xtVal-Tmax).<tolT
+        cValMin=abs.(xtVal-0).<tolT
         # cVal=tMin
         # cVal[cVal.<0]=-1
         # cVal=tMax
@@ -263,14 +268,16 @@ for p=1:numIteration-1
     @variable(cM,dSn[1:(N)*(horzLen+1)])
     @variable(cM,dZ[1:(S)*(horzLen+1)])
     @variable(cM,dXt[1:(horzLen+1)])
-    @variable(cM,relaxS[1:(horzLen+1)])
-    coupledObj(deltaY,Hi,gi)=1/2*deltaY'*Hi*deltaY+gi'*deltaY
-	objExp=coupledObj(dZ,Hz,Gz[:,p+1])
-    objExp=objExp+coupledObj(dXt,Ht,zeros(length(dXt)))
-	for n=1:N
-        objExp=objExp+coupledObj(dUn[collect(n:N:(N)*(horzLen+1)),1],Hu[n,1],Gu[collect(n:N:(N)*(horzLen+1)),p+1])+
-                      coupledObj(dSn[collect(n:N:(N)*(horzLen+1)),1],Hn[n,1],Gn[collect(n:N:(N)*(horzLen+1)),p+1])
-	end
+    #@variable(cM,relaxS[1:(horzLen+1)])
+    # coupledObj(deltaY,Hi,gi)=1/2*deltaY'*Hi*deltaY+gi'*deltaY
+	# objExp=coupledObj(dZ,Hz,Gz[:,p+1])
+    # objExp=objExp+coupledObj(dXt,Ht,zeros(length(dXt)))
+	# for n=1:N
+    #     objExp=objExp+coupledObj(dUn[collect(n:N:(N)*(horzLen+1)),1],Hu[n,1],Gu[collect(n:N:(N)*(horzLen+1)),p+1])+
+    #                   coupledObj(dSn[collect(n:N:(N)*(horzLen+1)),1],Hn[n,1],Gs[collect(n:N:(N)*(horzLen+1)),p+1])
+	# end
+    objExp=sum(sum(0.5*dUn[(k-1)*N+i,1]^2*Ri[i,1]+Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1]+
+                   0.5*dSn[(k-1)*N+i,1]^2*Qsi[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N) for k=1:(horzLen+1))
     #objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
 	@objective(cM,Min, objExp)
     # @constraint(cM,currCon[k=1:horzLen+1],w[(k-1)*2+1]+relaxS[k,1]==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)+
@@ -279,15 +286,10 @@ for p=1:numIteration-1
                                              sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
 
     #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
-    @constraint(cM,stateCon1,dSn[1:N,1].==etaP[:,1].*dUn[1:N,1])
+    @constraint(cM,stateCon1[n=1:N],dSn[n,1]==etaP[n,1]*dUn[n,1])
     @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+etaP[n,1]*dUn[n+(k)*(N),1])
     @constraint(cM,tempCon1,dXt[1,1]==gammaP*deltaI*sum((2*m+1)*dZ[m+1,1] for m=0:S-1))
     @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==tauP*dXt[k,1]+gammaP*deltaI*sum((2*m+1)*dZ[k*S+(m+1),1] for m=0:S-1))
-    # @constraint(cM,stateCon1,Sn[1:N,1]+dSn[1:N,1].==etaP[:,1].*(Un[1:N,1]+dUn[1:N,1]))
-    # @constraint(cM,stateCon2[k=1:horzLen,n=1:N],Sn[n+(k)*(N),1]+dSn[n+(k)*(N),1]==Sn[n+(k-1)*(N),1]+dSn[n+(k-1)*(N),1]+etaP[n,1]*(Un[n+(k)*(N),1]+dUn[n+(k)*(N),1]))
-    # @constraint(cM,tempCon1,Xt[1,1]+dXt[1,1]==gammaP*deltaI*sum((2*m+1)*(Z[m+1,1]+dZ[m+1,1]) for m=0:S-1))
-    # @constraint(cM,tempCon2[k=1:horzLen],Xt[k+1,1]+dXt[k+1,1]==tauP*(Xt[k,1]+dXt[k,1])+gammaP*deltaI*sum((2*m+1)*(Z[k*S+(m+1),1]+dZ[k*S+(m+1),1]) for m=0:S-1))
-
 
     #local inequality constraints
     # @constraint(cM,(Z[:,p+1]+dZ).>=0)
@@ -303,7 +305,7 @@ for p=1:numIteration-1
 
     @constraint(cM,Cz[:,p+1].*dZ.<=0)
     @constraint(cM,Cu[:,p+1].*dUn.<=0)
-    @constraint(cM,Cn[:,p+1].*dUn.<=0)
+    @constraint(cM,Cs[:,p+1].*dSn.<=0)
     @constraint(cM,Ct[:,p+1].*dXt.<=0)
 
 	TT = STDOUT # save original STDOUT stream
@@ -319,19 +321,18 @@ for p=1:numIteration-1
     # Lam[:,p+1]=-getdual(currCon)
     alpha1=1
     alpha2=1
-    #alpha3=1
-    alpha=1
-    alpha3=alpha/ceil(p/2)
+    alpha3=1
+    #alpha3=alpha3/ceil(p/2)
     Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
 
     Vu[:,p+1]=Vu[:,p]+alpha1*(Un[:,p+1]-Vu[:,p])+alpha2*getvalue(dUn)
     Vz[:,p+1]=Vz[:,p]+alpha1*(Z[:,p+1]-Vz[:,p])+alpha2*getvalue(dZ)
-    Vn[:,p+1]=Vn[:,p]+alpha1*(Sn[:,p+1]-Vn[:,p])+alpha2*getvalue(dSn)
+    Vs[:,p+1]=Vs[:,p]+alpha1*(Sn[:,p+1]-Vs[:,p])+alpha2*getvalue(dSn)
     Vt[:,p+1]=Vt[:,p]+alpha1*(Xt[:,p+1]-Vt[:,p])+alpha2*getvalue(dXt)
 
     # Vu[:,p+1]=Un[:,p+1]+getvalue(dUn)
     # Vz[:,p+1]=Z[:,p+1]+getvalue(dZ)
-    # Vn[:,p+1]=Sn[:,p+1]+getvalue(dSn)
+    # Vs[:,p+1]=Sn[:,p+1]+getvalue(dSn)
     # Vt[:,p+1]=Xt[:,p+1]+getvalue(dXt)
 end
 
@@ -411,7 +412,7 @@ convPlotalad=plot(x=1:convIt,y=ConvALAD[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("central lambda gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-fPlotalad=plot(x=1:convIt-1,y=fConvALAD[1:convIt-1,1],Geom.line,#Scale.y_log10,
+fPlotalad=plot(x=1:convIt-1,y=fConvALAD[1:convIt-1,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("obj function gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))

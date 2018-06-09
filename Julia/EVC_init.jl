@@ -1,5 +1,16 @@
+#temp
 
-datafile="jld" #"mat" #"jld" #"n"
+#temp
+imax=imax*100
+etaP=.002*ones(N,1)
+gammaP=.01
+Tmax=800
+
+
+
+
+
+datafile="n" #"mat" #"jld" #"n"
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
 noTlimit=0
@@ -10,6 +21,7 @@ println("Loading Packages...")
 using Gadfly
 using JuMP
 using Gurobi
+using Ipopt
 using Cairo #for png output
 using Fontconfig
 using Distributions

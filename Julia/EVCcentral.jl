@@ -10,7 +10,8 @@ stepI=1
 horzLen=K1
 
 println("setting up model")
-m = Model(solver = GurobiSolver(Presolve=0))
+#m = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1))
+m = Model(solver = IpoptSolver())
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
 @variable(m,u[1:N*(horzLen+1)])
@@ -150,7 +151,7 @@ else
 	if drawFig==1 draw(PNG(path*"J_central_Temp.png", 24inch, 12inch), p3) end
 
 	p4b=plot(x=1:horzLen+1,y=lambdaUpperT,Geom.line,
-			Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
+			Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/K)",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
 			minor_label_font_size=16pt,key_label_font_size=16pt))
 	p4=plot(x=1:horzLen+1,y=lambdaCurr	,Geom.line,

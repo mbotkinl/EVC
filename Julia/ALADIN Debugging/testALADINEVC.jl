@@ -14,7 +14,7 @@ imax=imax*100
 
 etaP=.2*ones(N,1)
 gammaP=.1
-Tmax=200000
+Tmax=80000
 
 #set up Problem
 m = Model(solver = IpoptSolver())
