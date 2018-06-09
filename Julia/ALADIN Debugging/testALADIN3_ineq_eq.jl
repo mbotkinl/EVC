@@ -105,8 +105,8 @@ for p=1:maxIt-1
         nlp=Model(solver = GurobiSolver(OutputFlag=0))
         @variable(nlp,x)
         @variable(nlp,z)
-        @objective(nlp,Min,x^2*Q[i,1]+(z-1)^2*R[i,1]+Lambda[1,p]*A[i,1]*x)#+
-                            #rhoALAD/2*(x-Vx[i,p])^2*sigmaX[i,1]+rhoALAD/2*(z-Vz[i,p])^2*sigmaZ[i,1])
+        @objective(nlp,Min,x^2*Q[i,1]+(z-1)^2*R[i,1]+Lambda[1,p]*A[i,1]*x +
+                            rhoALAD/2*(x-Vx[i,p])^2*sigmaX[i,1]+rhoALAD/2*(z-Vz[i,p])^2*sigmaZ[i,1])
         @constraint(nlp,z==z0[i,1]+eta[i,1]*x)
         @constraint(nlp,kapMax,x<=xmax[i,1])
         @constraint(nlp,kapMin,x>=xmin[i,1])
@@ -145,7 +145,7 @@ for p=1:maxIt-1
     constGap[p,1]=norm(A'*X[:,p+1]-b)
     itGap[p,1] = norm(Lambda[1,p]-Lambda[1,max(p-1,1)],2)
     convGap[p,1] = norm(Lambda[1,p]-lamStar,2)
-    testC=norm(vcat(Vx[:,p]-X[:,p+1],Vz[:,p]-Z[:,p+1])) #add sigma???
+    testC=norm(vcat(sigmaX.*(Vx[:,p]-X[:,p+1]),sigmaZ.*(Vz[:,p]-Z[:,p+1]))) #add sigma???
     if  testC<=epsilon && constGap[p,1]<=epsilon
         @printf "Converged after %g iterations\n" p
         convIt=p+1
