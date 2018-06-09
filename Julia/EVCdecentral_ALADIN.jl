@@ -114,13 +114,11 @@ for p=1:numIteration-1
         evM = Model(solver = GurobiSolver())
         @variable(evM,sn[1:(horzLen+1)])
         @variable(evM,u[1:(horzLen+1)])
-        objFun(sn,u)=sum((sn[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
-                     sum((u[k,1])^2*Ri[evInd,1]     for k=1:horzLen+1)
         #@objective(evM,Min, sum(objFun(sn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+rho_p/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
-        @objective(evM,Min, sum(objFun(sn,u)+
-                                sum(lambda[k,1]*(u[k,1]) for k=1:horzLen+1)+
-                                rhoALAD/2*sum((u[k,1]-evVu[k,1])*sigmaU[evInd,1]*(u[k,1]-evVu[k,1]) for k=1:horzLen+1)+
-                                rhoALAD/2*sum((sn[k,1]-evVs[k,1])*sigmaS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)))
+        @objective(evM,Min,sum((sn[k,1]-1)^2*Qsi[evInd,1]+(u[k,1])^2*Ri[evInd,1]+
+                                lambda[k,1]*(u[k,1])+
+                                rhoALAD/2*(u[k,1]-evVu[k,1])*sigmaU[evInd,1]*(u[k,1]-evVu[k,1])+
+                                rhoALAD/2*(sn[k,1]-evVs[k,1])*sigmaS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1))
         @constraint(evM,sn[1,1]==sn0[evInd,1]+etaP[evInd,1]*u[1,1])
         @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+etaP[evInd,1]*u[k+1,1])
         @constraint(evM,socKappaMax,sn.<=1)
@@ -174,10 +172,10 @@ for p=1:numIteration-1
     tM = Model(solver = GurobiSolver())
     @variable(tM,z[1:(S)*(horzLen+1)])
     @variable(tM,xt[1:(horzLen+1)])
-    constFun1(u,v)=sum(Lam[k,p]*sum(u[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
-	constFun2(u,v)=rhoALAD/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*sigmaZ*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S) for k=1:(horzLen+1))
-    constFun3(u,v)=rhoALAD/2*sum((u[k,1]-v[k,1])*sigmaT*(u[k,1]-v[k,1]) for k=1:(horzLen+1))
-    @objective(tM,Min, constFun1(-z,Vz[:,p])+constFun2(z,Vz[:,p])+constFun3(xt,Vt[:,p]))
+    tMobj=sum(-Lam[k,p]*sum(z[(k-1)*(S)+s,1] for s=1:S)+
+              rhoALAD/2*sum((z[(k-1)*(S)+s,1]-Vz[(k-1)*(S)+s,p+1])^2*sigmaZ for s=1:S)+
+              rhoALAD/2*(xt[k,1]-Vt[k,p+1])^2*sigmaT   for k=1:(horzLen+1))
+    @objective(tM,Min, tMobj)
     @constraint(tM,tempCon1,xt[1,1]==tauP*xt0+gammaP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[stepI*2,1])
     @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rhoP*w[stepI*2+k*2,1])
     if noTlimit==0
