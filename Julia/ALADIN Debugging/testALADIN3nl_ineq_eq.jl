@@ -7,7 +7,7 @@ using Gurobi
 using Ipopt
 using Gadfly
 
-#minimize sum_i=1^N+1 x_i^2*q_ii+sum_i=1^N+1 (z_i-1)^2*r_ii (q_ii=r_ii=0)
+#minimize sum_i=1^N+1 x_i^2*r_ii+sum_i=1^N+1 (z_i-1)^2*q_ii (q_ii=r_ii=0)
 #s.t. sum_i=1^N+1 a_i*x_i=b (a_N+1=-1)
 # xmin<=x_i<=xmax
 # zmin<=z_i<=zmax
@@ -15,33 +15,43 @@ using Gadfly
 # z_n+1=z0+gamma*x_N+1^2
 
 
-#set up Problem
+#set up Problem from scratch
+# N=10
+# #Q=[50*ones(N,1);0] #change to different weights??
+# Q=[10*(10*rand(N,1)+.01);0]
+# #R=[0.00001*ones(N,1);0] #change to different weights??
+# R=[0.0001*(5*rand(N,1)+.1);0]
+# A=[ones(N,1);-1]
+# b=0
+# eta=[.2*ones(N,1);2]
+# #eta=[.0002*ones(N,1);4e-6]
+# #z0=[0.2*rand(N,1)+.5 ;90]
+# z0=[0.2*rand(N,1)+.5 ;370]
+# xmin=zeros(N+1,1)
+# #xmax=[8*ones(N,1);8*N]
+# xmax=[100*(10 + 16*rand(N,1));4000]
+# zmin=zeros(N+1,1)
+# #zmax=[ones(N,1);95]
+# zmax=[ones(N,1);370.2]
 
-#function testALAD()
-N=10
-Q=[ones(N,1);0] #change to different weights??
-R=[10*ones(N,1);0] #change to different weights??
-#A=[round.(rand(N),4);-1]
+#setup problem from EVCscenario
+Q=Qsi
+R=[Ri;0]
 A=[ones(N,1);-1]
-
-#A=[-0.3567;0.27;-0.1726;0.4832;-0.3183;-0.3668;0.954;0.0975;0.9486;0.3887]
-#b=-round.(20*rand()+10,4)
-b=0
-#b=24.7813
+b=-w[1]
+#eta=[etaP;gammaP]
 eta=[.2*ones(N,1);2]
-z0=[0.2*rand(N,1)+.5 ;90]
+z0=[s0;T0]
 xmin=zeros(N+1,1)
-xmax=[8*ones(N,1);8*N]
+xmax=[imax*100;ItotalMax]
 zmin=zeros(N+1,1)
-zmax=[ones(N,1);95]
-
+zmax=[ones(N,1);Tmax]
 
 #central solution
 m=Model(solver = IpoptSolver())
-#m=Model(solver = GurobiSolver())
 @variable(m,xC[1:N+1])
 @variable(m,zC[1:N+1])
-@objective(m,Min,sum(xC[i,1]^2*Q[i,1] for i=1:N+1)+sum((zC[i,1]-1)^2*R[i,1] for i=1:N+1))
+@objective(m,Min,sum(xC[i,1]^2*R[i,1] for i=1:N+1)+sum((zC[i,1]-1)^2*Q[i,1] for i=1:N+1))
 @constraint(m,lambdaP,sum(A[i]*xC[i] for i=1:N+1)==b)
 @constraint(m,socConst[i=1:N],zC[i]==z0[i]+eta[i]*xC[i])
 @constraint(m,zC[N+1]==z0[N+1]+eta[N+1]*xC[N+1]^2)
@@ -65,7 +75,7 @@ lamStar=-getdual(lambdaP)
 #ALADIN
 #initialize
 maxIt=50
-epsilon=1e-4
+epsilon=1e-3
 tolC=1e-1
 rhoALAD=1
 muALAD=10^8
@@ -109,7 +119,7 @@ for p=1:maxIt-1
         nlp=Model(solver = IpoptSolver())
         @variable(nlp,x)
         @variable(nlp,z)
-        @objective(nlp,Min,x^2*Q[i,1]+(z-1)^2*R[i,1]+Lambda[1,p]*A[i,1]*x+
+        @objective(nlp,Min,x^2*R[i,1]+(z-1)^2*Q[i,1]+Lambda[1,p]*A[i,1]*x+
                             rhoALAD/2*(x-Vx[i,p])^2*sigmaX[i,1]+
                             rhoALAD/2*(z-Vz[i,p])^2*sigmaZ[i,1])
         if i==N+1
@@ -141,15 +151,15 @@ for p=1:maxIt-1
             Cz[i,p+1]=1cValMax-1cValMin
 
             #Gy[i,p+1]=H[i,1]*(X[i,p]-Y[i,p+1])-A[i,1]*Lambda[p,1]
-            Gx[i,p+1]=2*Q[i,1]*X[i,p+1]
+            Gx[i,p+1]=2*R[i,1]*X[i,p+1]
 
-            Gz[i,p+1]=2*R[i,1]*Z[i,p+1]-2*R[i,1]
+            Gz[i,p+1]=2*Q[i,1]*Z[i,p+1]-2*Q[i,1]
         end
     end
 
     #update H here
     #check for convergence
-    objFun(xC,zC)=sum(xC[i,1]^2*Q[i,1] for i=1:N+1)+sum((zC[i,1]-1)^2*R[i,1] for i=1:N+1)
+    objFun(xC,zC)=sum(xC[i,1]^2*R[i,1] for i=1:N+1)+sum((zC[i,1]-1)^2*Q[i,1] for i=1:N+1)
     fGap[p,1]= abs(objFun(X[:,p+1],Z[:,p+1])-fStar)
     constGap[p,1]=norm(A'*X[:,p+1]-b)
     itGap[p,1] = norm(Lambda[1,p]-Lambda[1,max(p-1,1)],2)
@@ -173,7 +183,7 @@ for p=1:maxIt-1
     @variable(mC,dx[1:N+1])
     @variable(mC,dz[1:N+1])
     #@variable(mC,relaxS)
-    objExp=sum(0.5*dx[i,1]^2*Q[i,1]+Gx[i,p+1]*dx[i,1]+0.5*dz[i,1]^2*R[i,1]+Gz[i,p+1]*dz[i,1] for i=1:N+1)
+    objExp=sum(0.5*dx[i,1]^2*R[i,1]+Gx[i,p+1]*dx[i,1]+0.5*dz[i,1]^2*Q[i,1]+Gz[i,p+1]*dz[i,1] for i=1:N+1)
     #objExp=objExp+Lambda[1,p]*relaxS+muALAD/2*relaxS^2
     @objective(mC,Min,objExp)
     @constraint(mC,lambdaP,sum(A[i,1]*(X[i,p+1]+dx[i,1]) for i=1:N+1)==b)#+relaxS)
