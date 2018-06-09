@@ -57,15 +57,15 @@ maxIt=50
 convIt=maxIt
 epsilon=1e-4
 rhoALAD=1
-#muALAD=10^8
-sigmaU=10*ones(N,1)
-sigmaS=100*ones(N,1)
-sigmaI=10
+muALAD=10^8
+sigmaU=ones(N,1)
+sigmaS=10*ones(N,1)
+sigmaI=1
 sigmaT=1
-tolU=1e-3
-tolS=1e-6
-tolT=1e-1
-tolI=1e-3
+tolU=0.01
+tolS=0.01
+tolT=0.1
+tolI=0.1
 
 #guesses
 #vs0=max.(snStar + rand(Truncated(Normal(0), -0.02, 0.02), N),0)
@@ -83,7 +83,7 @@ tolI=1e-3
 
 vs0=rand(Truncated(Normal(0), 0, 1), N)
 vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N)
-vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S)
+vi0=ItotalMax*rand(Truncated(Normal(0), 0, 1), 1)
 vt0=Tmax*rand(Truncated(Normal(0), 0, 1), 1)
 lambda0=5*rand(Truncated(Normal(0), 0, 1), 1)
 
@@ -91,7 +91,7 @@ lambda0=5*rand(Truncated(Normal(0), 0, 1), 1)
 Un=SharedArray{Float64}(N,maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
 Sn=SharedArray{Float64}(N,maxIt)  #row are time,  columns are iteration
 T=zeros(1,maxIt)  #row are time,  columns are iteration
-I=zeros(1,maxIt)  #row are time,  columns are iteration
+Itotal=zeros(1,maxIt)  #row are time,  columns are iteration
 Lambda=zeros(1,maxIt) #(rows are time, columns are iteration)
 Lambda[1,1]=lambda0[1]
 
@@ -133,7 +133,8 @@ for p=1:maxIt-1
         @variable(nlp,un)
         @variable(nlp,sn)
         @objective(nlp,Min,un^2*Ri[i,1]+(sn-1)^2*Qsi[i,1]+Lambda[1,p]*un+
-                            rhoALAD/2*(un-Vu[i,p])^2*sigmaU[i,1]+rhoALAD/2*(sn-Vs[i,p])^2*sigmaS[i,1])
+                            rhoALAD/2*(un-Vu[i,p])^2*sigmaU[i,1]+
+							rhoALAD/2*(sn-Vs[i,p])^2*sigmaS[i,1])
         @constraint(nlp,sn==sn0[i,1]+etaP[i,1]*un)
         @constraint(nlp,kapMax,sn<=1)
         @constraint(nlp,kapMin,sn>=0)
@@ -183,16 +184,16 @@ for p=1:maxIt-1
     if status!=:Optimal
         return
     else
-        I[1,p+1]=getvalue(itotal)
+        Itotal[1,p+1]=getvalue(itotal)
         T[1,p+1]=getvalue(t)
 
 
-        cValMax=abs.(I[1,p+1]-ItotalMax).<tolI
-        cValMin=abs.(I[1,p+1]-0).<tolI
-        Ci[:,p+1]=1cValMax-1cValMin
+        cValMax=abs.(Itotal[1,p+1]-ItotalMax).<tolI
+        cValMin=abs.(Itotal[1,p+1]-0).<tolI
+        Ci[1,p+1]=1cValMax-1cValMin
 
-        cValMax=abs(T[1,p+1]-Tmax)<tolT
-        cValMin=abs(T[1,p+1]-0)<tolT
+        cValMax=abs.(T[1,p+1]-Tmax).<tolT
+        cValMin=abs.(T[1,p+1]-0).<tolT
         Ct[1,p+1]=1cValMax-1cValMin
 
         Gt[1,p+1]=0
@@ -206,7 +207,7 @@ for p=1:maxIt-1
     objFun(sn,u)=sum((sn[n,1]-1)^2*Qsi[n,1]     for n=1:N) +
     			 sum((u[n,1])^2*Ri[n,1]           for n=1:N)
     fGap[p,1]= abs(objFun(Sn[:,p+1],Un[:,p+1])-fStar)
-    constGap[p,1]=norm(sum(Un[i,p+1] for i=1:N)-I[1,p+1]+w[1,1],1)
+    constGap[p,1]=norm(sum(Un[i,p+1] for i=1:N)-Itotal[1,p+1]+w[1,1],1)
     itGap[p,1] = norm(Lambda[1,p]-Lambda[1,max(p-1,1)],2)
     convGap[p,1] = norm(Lambda[1,p]-lamCurrStar,2)
     testC=norm(vcat(Vs[:,p]-Sn[:,p+1],Vu[:,p]-Un[:,p+1]))
@@ -230,13 +231,13 @@ for p=1:maxIt-1
     @variable(mC,dT)
     @variable(mC,dI)
     #@variable(mC,relaxS)
-    objExp=sum(0.5*dUn[i,1]^2*Ri[i,1]+Gu[i,p+1]*dUn[i,1] for i=1:N)+sum(0.5*dSn[i,1]^2*Qsi[i,1]+Gs[i,p+1]*dSn[i,1] for i=1:N)
+    objExp=sum(0.5*dUn[i,1]^2*Ri[i,1]+Gu[i,p+1]*dUn[i,1]+0.5*dSn[i,1]^2*Qsi[i,1]+Gs[i,p+1]*dSn[i,1] for i=1:N)
 	#objExp=objExp+Gi[1,p+1]*dI
-    #objExp=objExp+Lambda[p,1]*relaxS+muALAD/2*relaxS^2
+    #objExp=objExp+Lambda[1,p]*relaxS+muALAD/2*relaxS^2
     @objective(mC,Min,objExp)
     @constraint(mC,lambdaP,sum((Un[i,p+1]+dUn[i,1]) for i=1:N)+(I[1,p+1]+dI)==-w[1])#+relaxS)
-    @constraint(mC,dSn-etaP[:,1].*dUn.==0)
-    @constraint(mC,dT-2*gammaP*I[1,p+1]*dT==0)
+    @constraint(mC,eqS[i=1:N],dSn[i]-etaP[i,1]*dUn[i]==0)
+    @constraint(mC,dT-2*gammaP*Itotal[1,p+1]*dT==0)
     @constraint(mC,Cu[:,p+1].*dUn.<=0)
     @constraint(mC,Cs[:,p+1].*dSn.<=0)
     @constraint(mC,Ci[1,p+1]*dI<=0)
@@ -254,7 +255,7 @@ for p=1:maxIt-1
     alpha=1
     #X[:,p+1]=Y[:,p+1]+getvalue(dy)
     Vs[:,p+1]=Vs[:,p]+alpha*(Sn[:,p+1]-Vs[:,p])+alpha*getvalue(dSn)
-    Vi[1,p+1]=Vi[1,p]+alpha*(I[1,p+1]-Vi[1,p])+alpha*getvalue(dI)
+    Vi[1,p+1]=Vi[1,p]+alpha*(Itotal[1,p+1]-Vi[1,p])+alpha*getvalue(dI)
     Vu[:,p+1]=Vu[:,p]+alpha*(Un[:,p+1]-Vu[:,p])+alpha*getvalue(dUn)
     Vt[1,p+1]=Vt[1,p]+alpha*(T[1,p+1]-Vt[1,p])+alpha*getvalue(dT)
 

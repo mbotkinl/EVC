@@ -21,7 +21,9 @@ using Gadfly
 N=10
 Q=[ones(N,1);0] #change to different weights??
 R=[10*ones(N,1);0] #change to different weights??
-A=[round.(rand(N),4);-1]
+#A=[round.(rand(N),4);-1]
+A=[ones(N,1);-1]
+
 #A=[-0.3567;0.27;-0.1726;0.4832;-0.3183;-0.3668;0.954;0.0975;0.9486;0.3887]
 #b=-round.(20*rand()+10,4)
 b=0
@@ -108,7 +110,8 @@ for p=1:maxIt-1
         @variable(nlp,x)
         @variable(nlp,z)
         @objective(nlp,Min,x^2*Q[i,1]+(z-1)^2*R[i,1]+Lambda[1,p]*A[i,1]*x+
-                            rhoALAD/2*(x-Vx[i,p])^2*sigmaX[i,1]+rhoALAD/2*(z-Vz[i,p])^2*sigmaZ[i,1])
+                            rhoALAD/2*(x-Vx[i,p])^2*sigmaX[i,1]+
+                            rhoALAD/2*(z-Vz[i,p])^2*sigmaZ[i,1])
         if i==N+1
             @constraint(nlp,z==z0[i,1]+eta[i,1]*x^2)
         else
