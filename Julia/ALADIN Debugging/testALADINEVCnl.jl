@@ -85,11 +85,18 @@ tolI=0.1
 # vt0=xtStar
 # lambda0=lamCurrStar
 
-vs0=rand(Truncated(Normal(0), 0, 1), N)
-vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N)
-vi0=ItotalMax*rand(Truncated(Normal(0), 0, 1), 1)
-vt0=Tmax*rand(Truncated(Normal(0), 0, 1), 1)
-lambda0=5*rand(Truncated(Normal(0), 0, 1), 1)
+# vs0=rand(Truncated(Normal(0), 0, 1), N)
+# vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N)
+# vi0=ItotalMax*rand(Truncated(Normal(0), 0, 1), 1)
+# vt0=Tmax*rand(Truncated(Normal(0), 0, 1), 1)
+# lambda0=5*rand(Truncated(Normal(0), 0, 1), 1)
+
+vs0=ones(N,1)
+vu0=ones(N,1)
+vi0=1
+vt0=1
+lambda0=1
+
 
 #save matrices
 Un=SharedArray{Float64}(N,maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
@@ -214,7 +221,8 @@ for p=1:maxIt-1
     constGap[p,1]=norm(sum(Un[i,p+1] for i=1:N)-Itotal[1,p+1]+w[1,1],1)
     itGap[p,1] = norm(Lambda[1,p]-Lambda[1,max(p-1,1)],2)
     convGap[p,1] = norm(Lambda[1,p]-lamCurrStar,2)
-    testC=norm(vcat(Vs[:,p]-Sn[:,p+1],Vu[:,p]-Un[:,p+1]))
+    testC=norm(vcat(sigmaS.*(Vs[:,p]-Sn[:,p+1]),sigmaU.*(Vu[:,p]-Un[:,p+1]),
+					sigmaT.*(Vt[:,p]-T[:,p+1]),sigmaI.*(Vi[:,p]-Itotal[:,p+1])))
     if  testC<=epsilon && constGap[p,1]<=epsilon
         @printf "Converged after %g iterations\n" p
         convIt=p+1
@@ -228,20 +236,21 @@ for p=1:maxIt-1
     end
 
     #coupled QP
-    #mC=Model(solver = GurobiSolver(OutputFlag=0))
+    #mC=Model(solver = GurobiSolver())
     mC=Model(solver = IpoptSolver())
     @variable(mC,dUn[1:N])
     @variable(mC,dSn[1:N])
     @variable(mC,dT)
     @variable(mC,dI)
     #@variable(mC,relaxS)
-    objExp=sum(0.5*dUn[i,1]^2*Ri[i,1]+Gu[i,p+1]*dUn[i,1]+0.5*dSn[i,1]^2*Qsi[i,1]+Gs[i,p+1]*dSn[i,1] for i=1:N)
+    objExp=sum(0.5*dUn[i,1]^2*Ri[i,1]+Gu[i,p+1]*dUn[i,1]+
+	           0.5*dSn[i,1]^2*Qsi[i,1]+Gs[i,p+1]*dSn[i,1] for i=1:N+1)
 	#objExp=objExp+Gi[1,p+1]*dI
     #objExp=objExp+Lambda[1,p]*relaxS+muALAD/2*relaxS^2
     @objective(mC,Min,objExp)
-    @constraint(mC,lambdaP,sum((Un[i,p+1]+dUn[i,1]) for i=1:N)+(I[1,p+1]+dI)==-w[1])#+relaxS)
+    @constraint(mC,lambdaP,sum((Un[i,p+1]+dUn[i,1]) for i=1:N)-(Itotal[1,p+1]+dI)==-w[1])#+relaxS)
     @constraint(mC,eqS[i=1:N],dSn[i]-etaP[i,1]*dUn[i]==0)
-    @constraint(mC,dT-2*gammaP*Itotal[1,p+1]*dT==0)
+    @constraint(mC,dT-2*gammaP*Itotal[1,p+1]*dI==0)
     @constraint(mC,Cu[:,p+1].*dUn.<=0)
     @constraint(mC,Cs[:,p+1].*dSn.<=0)
     @constraint(mC,Ci[1,p+1]*dI<=0)
@@ -255,6 +264,7 @@ for p=1:maxIt-1
         return
     end
 
+	cenLam=-getdual(lambdaP)
     #update
     alpha=1
     #X[:,p+1]=Y[:,p+1]+getvalue(dy)
@@ -264,7 +274,7 @@ for p=1:maxIt-1
     Vt[1,p+1]=Vt[1,p]+alpha*(T[1,p+1]-Vt[1,p])+alpha*getvalue(dT)
 
     #Lambda[p+1,1]=-getdual(lambdaP)
-    Lambda[1,p+1]=Lambda[1,p]+alpha*(-getdual(lambdaP)-Lambda[1,p])
+    Lambda[1,p+1]=Lambda[1,p]+alpha*(cenLam-Lambda[1,p])
 end
 #end
 

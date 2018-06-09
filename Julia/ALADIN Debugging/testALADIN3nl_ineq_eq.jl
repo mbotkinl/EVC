@@ -170,7 +170,7 @@ for p=1:maxIt-1
         convIt=p+1
         break
     else
-        @printf "avgN       %e after %g iterations\n" avgN[p,1] p
+        @printf "testC      %e after %g iterations\n" testC p
         @printf "lastGap    %e after %g iterations\n" itGap[p,1] p
         @printf "convLamGap %e after %g iterations\n" convGap[p,1] p
         @printf "constGap   %e after %g iterations\n" constGap[p,1] p
@@ -178,12 +178,13 @@ for p=1:maxIt-1
     end
 
     #coupled QP
-    #mC=Model(solver = GurobiSolver(OutputFlag=0))
+    #mC=Model(solver = GurobiSolver())
     mC=Model(solver = IpoptSolver())
     @variable(mC,dx[1:N+1])
     @variable(mC,dz[1:N+1])
     #@variable(mC,relaxS)
-    objExp=sum(0.5*dx[i,1]^2*R[i,1]+Gx[i,p+1]*dx[i,1]+0.5*dz[i,1]^2*Q[i,1]+Gz[i,p+1]*dz[i,1] for i=1:N+1)
+    objExp=sum(0.5*dx[i,1]^2*R[i,1]+Gx[i,p+1]*dx[i,1]+
+               0.5*dz[i,1]^2*Q[i,1]+Gz[i,p+1]*dz[i,1] for i=1:N)
     #objExp=objExp+Lambda[1,p]*relaxS+muALAD/2*relaxS^2
     @objective(mC,Min,objExp)
     @constraint(mC,lambdaP,sum(A[i,1]*(X[i,p+1]+dx[i,1]) for i=1:N+1)==b)#+relaxS)
@@ -198,6 +199,7 @@ for p=1:maxIt-1
     if status!=:Optimal
         return
     end
+    cenLam=-getdual(lambdaP)
 
     #update
     alpha=1
@@ -206,7 +208,7 @@ for p=1:maxIt-1
     Vz[:,p+1]=Vz[:,p]+alpha*(Z[:,p+1]-Vz[:,p])+alpha*getvalue(dz)
 
     #Lambda[p+1,1]=-getdual(lambdaP)
-    Lambda[1,p+1]=Lambda[1,p]+alpha*(-getdual(lambdaP)-Lambda[1,p])
+    Lambda[1,p+1]=Lambda[1,p]+alpha*(cenLam-Lambda[1,p])
 end
 #end
 
