@@ -11,7 +11,8 @@ using Gadfly
 #s.t. sum_i=1^N+1 a_i*x_i=b (a_N+1=-1)
 # xmin<=x_i<=xmax
 # zmin<=z_i<=zmax
-# zi=z0+eta*xi (eta_N+1=gamma)
+# zi=z0+eta*xi
+# z_n+1=z0+gamma*x_N+1^2
 
 
 #set up Problem
@@ -25,7 +26,7 @@ A=[round.(rand(N),4);-1]
 #b=-round.(20*rand()+10,4)
 b=0
 #b=24.7813
-eta=[.2*ones(N,1);5]
+eta=[.2*ones(N,1);2]
 z0=[0.2*rand(N,1)+.5 ;90]
 xmin=zeros(N+1,1)
 xmax=[8*ones(N,1);8*N]
@@ -40,7 +41,8 @@ m=Model(solver = IpoptSolver())
 @variable(m,zC[1:N+1])
 @objective(m,Min,sum(xC[i,1]^2*Q[i,1] for i=1:N+1)+sum((zC[i,1]-1)^2*R[i,1] for i=1:N+1))
 @constraint(m,lambdaP,sum(A[i]*xC[i] for i=1:N+1)==b)
-@constraint(m,socConst[i=1:N+1],zC[i]==z0[i]+eta[i]*xC[i])
+@constraint(m,socConst[i=1:N],zC[i]==z0[i]+eta[i]*xC[i])
+@constraint(m,zC[N+1]==z0[N+1]+eta[N+1]*xC[N+1]^2)
 @constraint(m,kapMax,xC.<=xmax)
 @constraint(m,kapMin,xC.>=xmin)
 @constraint(m,kapMaxZ,zC.<=zmax)
@@ -102,12 +104,16 @@ for p=1:maxIt-1
 
     #solve NLP
     for i=1:N+1
-        nlp=Model(solver = GurobiSolver(OutputFlag=0))
+        nlp=Model(solver = IpoptSolver())
         @variable(nlp,x)
         @variable(nlp,z)
-        @objective(nlp,Min,x^2*Q[i,1]+(z-1)^2*R[i,1]+Lambda[1,p]*A[i,1]*x +
+        @objective(nlp,Min,x^2*Q[i,1]+(z-1)^2*R[i,1]+Lambda[1,p]*A[i,1]*x+
                             rhoALAD/2*(x-Vx[i,p])^2*sigmaX[i,1]+rhoALAD/2*(z-Vz[i,p])^2*sigmaZ[i,1])
-        @constraint(nlp,z==z0[i,1]+eta[i,1]*x)
+        if i==N+1
+            @constraint(nlp,z==z0[i,1]+eta[i,1]*x^2)
+        else
+            @constraint(nlp,z==z0[i,1]+eta[i,1]*x)
+        end
         @constraint(nlp,kapMax,x<=xmax[i,1])
         @constraint(nlp,kapMin,x>=xmin[i,1])
         @constraint(nlp,kapMaxZ,z<=zmax[i,1])
@@ -168,7 +174,8 @@ for p=1:maxIt-1
     #objExp=objExp+Lambda[1,p]*relaxS+muALAD/2*relaxS^2
     @objective(mC,Min,objExp)
     @constraint(mC,lambdaP,sum(A[i,1]*(X[i,p+1]+dx[i,1]) for i=1:N+1)==b)#+relaxS)
-    @constraint(mC,eqC[i=1:N+1],dz[i]-eta[i,1]*dx[i]==0)
+    @constraint(mC,eqC[i=1:N],dz[i]-eta[i,1]*dx[i]==0)
+    @constraint(mC,dz[N+1]-2*eta[N+1,1]*X[N+1,p+1]*dx[N+1]==0)
     @constraint(mC,Cz[:,p+1].*dz.<=0)
     @constraint(mC,Cx[:,p+1].*dx.<=0)
     TT = STDOUT # save original STDOUT stream
