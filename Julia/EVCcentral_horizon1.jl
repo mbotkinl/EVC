@@ -31,12 +31,12 @@ println("solving....")
 statusM = solve(m)
 if statusM!=:Optimal
     return
+else
+	xtStar1=getvalue(xt)
+	snStar1=getvalue(sn)
+	uStar1=getvalue(u)
+	zStar1=getvalue(z)
+	fStar1=getobjectivevalue(m)
+	lamTempStar1=-getdual(upperTCon)
+	lamCurrStar1=-getdual(currCon)
 end
-
-xtStar1=getvalue(xt)
-snStar1=getvalue(sn)
-uStar1=getvalue(u)
-zStar1=getvalue(z)
-fStar1=getobjectivevalue(m)
-lamTempStar1=-getdual(upperTCon)
-lamCurrStar1=-getdual(currCon)

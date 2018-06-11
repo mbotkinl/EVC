@@ -6,11 +6,11 @@
 
 #ALADIN
 #initialize
-maxIt=50
+maxIt=200
 convIt=maxIt
-epsilon=1e-8
+epsilon=1e-6
 rhoALAD=10
-muALAD=10^8
+#muALAD=10^8
 sigmaU=10*ones(N,1)
 sigmaS=100*ones(N,1)
 sigmaZ=10
@@ -21,24 +21,23 @@ tolT=1e-1
 tolZ=1e-3
 
 #guesses
-#vs0=max.(snStar + rand(Truncated(Normal(0), -0.02, 0.02), N),0)
-#vu0=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N),0)
-#vz0=max.(zStar-2*rand(Truncated(Normal(0), 0, 1), S),0)
-#vt0=max.(xtStar-10*rand(Truncated(Normal(0), 0, 1),1),0)
-#lambda0=max.(lamCurrStar-rand(Truncated(Normal(0), 0, 1), 1),0)
-#lambda0=zeros(horzLen+1,1)
-
 # vs0=snStar1
 # vu0=uStar1
 # vz0=zStar1
 # vt0=xtStar1
 # lambda0=lamCurrStar1
 
-vs0=rand(Truncated(Normal(0), 0, 1), N)
-vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N)
-vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S)
-vt0=Tmax*rand(Truncated(Normal(0), 0, 1), 1)
-lambda0=5*rand(Truncated(Normal(0), 0, 1), 1)
+vs0=0.5*ones(N,1)
+vu0=.01*ones(N,1)
+vz0=ones(S,1)
+vt0=Tmax
+lambda0=1
+
+# vs0=rand(Truncated(Normal(0), 0, 1), N)
+# vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N)
+# vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S)
+# vt0=Tmax*rand(Truncated(Normal(0), 0, 1), 1)
+# lambda0=5*rand(Truncated(Normal(0), 0, 1), 1)
 
 #save matrices
 Un=SharedArray{Float64}(N,maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
@@ -46,7 +45,7 @@ Sn=SharedArray{Float64}(N,maxIt)  #row are time,  columns are iteration
 T=zeros(1,maxIt)  #row are time,  columns are iteration
 Z=zeros(S,maxIt)  #row are time,  columns are iteration
 Lambda=zeros(1,maxIt) #(rows are time, columns are iteration)
-Lambda[1,1]=lambda0[1]
+Lambda[1,1]=lambda0
 rhoALADp=rhoALAD*ones(1,maxIt) #(rows are time, columns are iteration)
 
 #auxillary variables
@@ -77,28 +76,28 @@ constGap=zeros(maxIt,1)
 itGap=zeros(maxIt,1)
 fGap=zeros(maxIt,1)
 
-
 for p=1:maxIt-1
 
     #solve NLP
     for i=1:N
-        #nlp=Model(solver = GurobiSolver(OutputFlag=0))
-        nlp=Model(solver = IpoptSolver())
+        nlp=Model(solver = GurobiSolver())
+        #nlp=Model(solver = IpoptSolver())
         @variable(nlp,un)
         @variable(nlp,sn)
-        @objective(nlp,Min,un^2*Ri[i,1]+(sn-1)^2*Qsi[i,1]+Lambda[1,p]*un+
+        @objective(nlp,Min,sum(un^2*Ri[i,1]+(sn-1)^2*Qsi[i,1]+Lambda[1,p]*un+
                             rhoALADp[1,p]/2*(un-Vu[i,p])^2*sigmaU[i,1]+
-							rhoALADp[1,p]/2*(sn-Vs[i,p])^2*sigmaS[i,1])
+							rhoALADp[1,p]/2*(sn-Vs[i,p])^2*sigmaS[i,1]))
         @constraint(nlp,sn==sn0[i,1]+etaP[i,1]*un)
         @constraint(nlp,kapMax,sn<=1)
-        @constraint(nlp,kapMin,sn>=0)
+        @constraint(nlp,kapMin,sn>=target)
         @constraint(nlp,kapMaxU,un<=imax[i,1])
         @constraint(nlp,kapMinU,un>=0)
         TT = STDOUT # save original STDOUT stream
 		redirect_stdout()
-        status = solve(nlp)
+        statusN = solve(nlp)
 		redirect_stdout(TT)
-        if status!=:Optimal
+
+        if statusN!=:Optimal
             return
         else
             Sn[i,p+1]=getvalue(sn)
@@ -173,7 +172,6 @@ for p=1:maxIt-1
         convIt=p+1
         break
     else
-		@printf "testC      %e after %g iterations\n" testC p
         @printf "lastGap    %e after %g iterations\n" itGap[p,1] p
         @printf "convLamGap %e after %g iterations\n" convGap[p,1] p
         @printf "constGap   %e after %g iterations\n" constGap[p,1] p
@@ -246,4 +244,3 @@ fPlotalad=plot(x=1:convIt-1,y=fGap[1:convIt-1,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("obj function gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-if drawFig==1 draw(PNG(path*"J_ALADIN_Conv.png", 36inch, 12inch), vstack(convItPlotalad,convPlotalad,fPlotalad)) end

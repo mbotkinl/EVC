@@ -9,12 +9,12 @@ lambda0=1
 if updateMethod=="fastAscent"
 	alpha = 0.1
 else
-	alpha = 100
+	alpha = 500
 end
 
 stepI = 1;
 convChk = 1e-8
-maxIt=200
+maxIt=1000
 convIt=maxIt
 
 
