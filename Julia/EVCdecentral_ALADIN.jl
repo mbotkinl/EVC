@@ -13,12 +13,12 @@ xt0=T0
 
 stepI = 1;
 horzLen=K1
-epsilon = 1e-3
-tolU=1e-3
-tolS=1e-6
+epsilon = 1e-8
+tolU=1e-2
+tolS=1e-4
 tolT=1e-1
-tolZ=1e-3
-numIteration=20
+tolZ=1e-2
+numIteration=50
 convIt=numIteration
 ConvALAD=zeros(numIteration,1)
 constConvALAD=zeros(numIteration,1)
@@ -33,24 +33,20 @@ Hu=2*Ri
 Hn=2*Qsi[1:N,1]
 Hz=0
 Ht=0
-sigmaU=10*ones(N,1)
-sigmaS=100*ones(N,1)
-sigmaZ=10
+sigmaU=1*ones(N,1)
+sigmaS=10*ones(N,1)
+sigmaZ=1000
 sigmaT=1
-# sigmaU=10*ones(N,1)
-# sigmaN=100*ones(N,1)
-# sigmaZ=10
-# sigmaT=1
-#sigmaZ=10^8
-#sigmaT=10^8
-rhoALAD=1
+
+rhoALAD=1e-2
+
 #muALAD=10
 #rhoALAD=10^4
 #H=vcat(ones(N,1),1)
 
 # lambda0=5*rand(Truncated(Normal(0), 0, 1), horzLen+1)
 # vt0=Tmax*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
-# vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
+# vz0=ItotalMax/1000*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
 # vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 # vs0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 
@@ -73,7 +69,11 @@ Sn=SharedArray{Float64}(N*(horzLen+1),numIteration)  #row are time,  columns are
 Xt=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
 Z=zeros(S*(horzLen+1),numIteration)  #row are time,  columns are iteration
 Lam=zeros((horzLen+1),numIteration) #(rows are time, columns are iteration)
+#Lam[:,1]=max.(lambda0,0)
 Lam[:,1]=lambda0
+
+rhoALADp=zeros(1,numIteration)
+rhoALADp[1,1]=rhoALAD
 
 #auxillary variables
 Vu=zeros((N)*(horzLen+1),numIteration) #row are time,  columns are iteration
@@ -117,8 +117,8 @@ for p=1:numIteration-1
         #@objective(evM,Min, sum(objFun(sn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+rho_p/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
         @objective(evM,Min,sum((sn[k,1]-1)^2*Qsi[evInd,1]+(u[k,1])^2*Ri[evInd,1]+
                                 lambda[k,1]*(u[k,1])+
-                                rhoALAD/2*(u[k,1]-evVu[k,1])*sigmaU[evInd,1]*(u[k,1]-evVu[k,1])+
-                                rhoALAD/2*(sn[k,1]-evVs[k,1])*sigmaS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1))
+                                rhoALADp[1,p]/2*(u[k,1]-evVu[k,1])*sigmaU[evInd,1]*(u[k,1]-evVu[k,1])+
+                                rhoALADp[1,p]/2*(sn[k,1]-evVs[k,1])*sigmaS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1))
         @constraint(evM,sn[1,1]==sn0[evInd,1]+etaP[evInd,1]*u[1,1])
         @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+etaP[evInd,1]*u[k+1,1])
         @constraint(evM,socKappaMax,sn.<=1)
@@ -169,15 +169,19 @@ for p=1:numIteration-1
     end
 
     #N+1 decoupled problem aka transformer current
-    tM = Model(solver = GurobiSolver())
+    #tM = Model(solver = GurobiSolver())
+    tM = Model(solver = IpoptSolver())
+
     @variable(tM,z[1:(S)*(horzLen+1)])
     @variable(tM,xt[1:(horzLen+1)])
-    tMobj=sum(-Lam[k,p]*sum(z[(k-1)*(S)+s,1] for s=1:S)+
-              rhoALAD/2*sum((z[(k-1)*(S)+s,1]-Vz[(k-1)*(S)+s,p+1])^2*sigmaZ for s=1:S)+
-              rhoALAD/2*(xt[k,1]-Vt[k,p+1])^2*sigmaT   for k=1:(horzLen+1))
+    tMobj=sum(-Lam[k,p]*sum(z[(k-1)*(S)+s] for s=1:S)+
+              rhoALADp[1,p]/2*sigmaZ*sum((z[(k-1)*(S)+s]-Vz[(k-1)*(S)+s,p])^2 for s=1:S)+
+              rhoALADp[1,p]/2*sigmaT*(xt[k]-Vt[k,p])^2  for k=1:(horzLen+1))
     @objective(tM,Min, tMobj)
-    @constraint(tM,tempCon1,xt[1,1]==tauP*xt0+gammaP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[stepI*2,1])
-    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rhoP*w[stepI*2+k*2,1])
+    @constraint(tM,tempCon1,xt[1]==tauP*xt0+gammaP*deltaI*sum((2*s-1)*z[s] for s=1:S)+rhoP*w[stepI*2,1])
+    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]==tauP*xt[k]+gammaP*deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)+rhoP*w[stepI*2+k*2,1])
+    # @constraint(tM,tempCon1,xt[1]/gammaP==tauP*xt0/gammaP+deltaI*sum((2*s-1)*z[s] for s=1:S)+rhoP*w[stepI*2,1]/gammaP)
+    # @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]/gammaP==tauP*xt[k]/gammaP+deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)+rhoP*w[stepI*2+k*2,1]/gammaP)
     if noTlimit==0
     	@constraint(tM,upperTCon,xt.<=Tmax)
     end
@@ -186,9 +190,9 @@ for p=1:numIteration-1
     @constraint(tM,pwlKappaMax,z.<=deltaI)
     TT = STDOUT # save original STDOUT stream
     redirect_stdout()
-    status = solve(tM)
+    statusTM = solve(tM)
     redirect_stdout(TT)
-    if status!=:Optimal
+    if statusTM!=:Optimal
         println("solver issues with XFRM NLP")
         return
     else
@@ -221,17 +225,16 @@ for p=1:numIteration-1
         #Gz[:,p+1]=sigmaZ*(Vz[:,p]-zVal)-repeat(-Lam[:,p],inner=S)
     end
 
-
     for k=1:horzLen+1
         uSum[k,p+1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
         zSum[k,p+1]=sum(Z[(k-1)*(S)+s,p+1] for s=1:S)
         currConst[k,p+1]=uSum[k,p+1] + w[(k-1)*2+(stepI*2-1),1] - zSum[k,p+1]
     end
 
-
     #check for convergence
     constGap=norm(currConst[:,p+1],1)
-    convCheck=rhoALAD*norm(vcat(repmat(sigmaU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),sigmaZ*(Vz[:,p]-Z[:,p+1])),1)
+    convCheck=rhoALADp[1,p]*norm(vcat((Vu[:,p]-Un[:,p+1]),(Vz[:,p]-Z[:,p+1])),1)
+    #convCheck=rhoALAD*norm(vcat(repmat(sigmaU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),sigmaZ*(Vz[:,p]-Z[:,p+1])),1)
     avgN[p,1]=mean(convCheck)
     objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                     sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
@@ -256,7 +259,6 @@ for p=1:numIteration-1
         @printf "constGap   %e after %g iterations\n" constGap p
         @printf "snGap      %e after %g iterations\n" snGap p
         @printf("fGap       %e after %g iterations\n\n",fGap,p)
-
     end
 
     #coupled QP
@@ -332,8 +334,9 @@ for p=1:numIteration-1
     # Vz[:,p+1]=Z[:,p+1]+getvalue(dZ)
     # Vs[:,p+1]=Sn[:,p+1]+getvalue(dSn)
     # Vt[:,p+1]=Xt[:,p+1]+getvalue(dXt)
-end
 
+    rhoALADp[1,p+1]=rhoALADp[1,p]*1.15 #increase rho by 15% every iteration
+end
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
