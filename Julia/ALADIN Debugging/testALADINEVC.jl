@@ -56,7 +56,7 @@ lamCurrStar1=-getdual(currCon)
 #initialize
 maxIt=50
 convIt=maxIt
-epsilon=1e-8
+epsilon=1e-12
 rhoALAD=1
 muALAD=10^8
 sigmaU=10*ones(N,1)
@@ -77,17 +77,17 @@ rhoALADp=rhoALAD
 #lambda0=max.(lamCurrStar-rand(Truncated(Normal(0), 0, 1), 1),0)
 #lambda0=zeros(horzLen+1,1)
 
-# vs0=snStar1
-# vu0=uStar1
-# vz0=zStar1
-# vt0=xtStar1
-# lambda0=lamCurrStar1
+vs0=snStar1
+vu0=uStar1
+vz0=zStar1
+vt0=xtStar1
+lambda0=lamCurrStar1
 
-vs0=rand(Truncated(Normal(0), 0, 1), N)
-vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N)
-vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S)
-vt0=Tmax*rand(Truncated(Normal(0), 0, 1), 1)
-lambda0=5*rand(Truncated(Normal(0), 0, 1), 1)
+# vs0=rand(Truncated(Normal(0), 0, 1), N)
+# vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N)
+# vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S)
+# vt0=Tmax*rand(Truncated(Normal(0), 0, 1), 1)
+# lambda0=5*rand(Truncated(Normal(0), 0, 1), 1)
 
 #save matrices
 Un=SharedArray{Float64}(N,maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
@@ -128,7 +128,7 @@ fGap=zeros(maxIt,1)
 
 for p=1:maxIt-1
 
-	rhoALADp=rhoALADp*1.15 #increase rho by 15% every iteration
+	#rhoALADp=rhoALADp*1.15 #increase rho by 15% every iteration
 
     #solve NLP
     for i=1:N

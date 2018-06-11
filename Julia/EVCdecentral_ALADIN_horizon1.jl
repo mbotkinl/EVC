@@ -8,7 +8,7 @@
 #initialize
 maxIt=50
 convIt=maxIt
-epsilon=1e-16
+epsilon=1e-12
 rhoALAD=1
 muALAD=10^8
 sigmaU=10*ones(N,1)
@@ -19,7 +19,6 @@ tolU=1e-3
 tolS=1e-6
 tolT=1e-1
 tolZ=1e-3
-rhoALADp=rhoALAD
 
 #guesses
 #vs0=max.(snStar + rand(Truncated(Normal(0), -0.02, 0.02), N),0)
@@ -48,6 +47,8 @@ T=zeros(1,maxIt)  #row are time,  columns are iteration
 Z=zeros(S,maxIt)  #row are time,  columns are iteration
 Lambda=zeros(1,maxIt) #(rows are time, columns are iteration)
 Lambda[1,1]=lambda0[1]
+rhoALADp=zeros(1,maxIt) #(rows are time, columns are iteration)
+rhoALADp[1,1]=rhoALAD
 
 #auxillary variables
 Vu=zeros(N,maxIt) #row are time,  columns are iteration
@@ -80,8 +81,6 @@ fGap=zeros(maxIt,1)
 
 for p=1:maxIt-1
 
-	rhoALADp=rhoALADp*1.15 #increase rho by 15% every iteration
-
     #solve NLP
     for i=1:N
         #nlp=Model(solver = GurobiSolver(OutputFlag=0))
@@ -89,7 +88,8 @@ for p=1:maxIt-1
         @variable(nlp,un)
         @variable(nlp,sn)
         @objective(nlp,Min,un^2*Ri[i,1]+(sn-1)^2*Qsi[i,1]+Lambda[1,p]*un+
-                            rhoALADp/2*(un-Vu[i,p])^2*sigmaU[i,1]+rhoALADp/2*(sn-Vs[i,p])^2*sigmaS[i,1])
+                            rhoALADp[1,p]/2*(un-Vu[i,p])^2*sigmaU[i,1]+
+							rhoALADp[1,p]/2*(sn-Vs[i,p])^2*sigmaS[i,1])
         @constraint(nlp,sn==sn0[i,1]+etaP[i,1]*un)
         @constraint(nlp,kapMax,sn<=1)
         @constraint(nlp,kapMin,sn>=0)
@@ -126,7 +126,8 @@ for p=1:maxIt-1
     @variable(nlp,z[1:S])
     @variable(nlp,t)
     @objective(nlp,Min,-Lambda[1,p]*sum(z[i] for i=1:S)+
-                        rhoALADp/2*(t-Vt[1,p])^2*sigmaT+rhoALADp/2*sigmaZ*sum((z[s]-Vz[s,p])^2 for s=1:S))#rhoALAD/2*norm(z-Vz[:,p],2)^2*sigmaZ)
+                        rhoALADp[1,p]/2*(t-Vt[1,p])^2*sigmaT+
+						rhoALADp[1,p]/2*sigmaZ*sum((z[s]-Vz[s,p])^2 for s=1:S))#rhoALAD/2*norm(z-Vz[:,p],2)^2*sigmaZ)
     @constraint(nlp,t==tauP*T0+gammaP*deltaI*sum((2*s-1)*z[s] for s=1:S)+rhoP*w[2,1])
 	#@constraint(nlp,t/gammaP==tauP*T0/gammaP+deltaI*sum((2*s-1)*z[s] for s=1:S)+rhoP*w[2,1]/gammaP)
     @constraint(nlp,kapMax,t<=Tmax)
@@ -159,15 +160,17 @@ for p=1:maxIt-1
 
 
     #update H here
+
     #check for convergence
+	convCheck=rhoALADp[1,p]*norm(vcat((Vu[:,p]-Un[:,p+1]),(Vz[:,p]-Z[:,p+1])),1)
     objFun(sn,u)=sum((sn[n,1]-1)^2*Qsi[n,1]     for n=1:N) +
     			 sum((u[n,1])^2*Ri[n,1]           for n=1:N)
     fGap[p,1]= abs(objFun(Sn[:,p+1],Un[:,p+1])-fStar1)
-    constGap[p,1]=rhoALADp*norm(sum(Un[i,p+1] for i=1:N)-sum(Z[s,p+1] for s=1:S)+w[1,1])
+    constGap[p,1]=rhoALADp[1,p]*norm(sum(Un[i,p+1] for i=1:N)-sum(Z[s,p+1] for s=1:S)+w[1,1])
     itGap[p,1] = norm(Lambda[1,p]-Lambda[1,max(p-1,1)],2)
     convGap[p,1] = norm(Lambda[1,p]-lamCurrStar1,2)
     testC=norm(vcat(Vs[:,p]-Sn[:,p+1],Vu[:,p]-Un[:,p+1]))
-    if  all(testC<=epsilon)
+	if  constGap[p,1]<=epsilon && convCheck<=epsilon
         @printf "Converged after %g iterations\n" p
         convIt=p+1
         break
@@ -218,6 +221,10 @@ for p=1:maxIt-1
 
     #Lambda[p+1,1]=-getdual(lambdaP)
     Lambda[1,p+1]=Lambda[1,p]+alpha*(-getdual(lambdaP)-Lambda[1,p])
+
+
+	#rhoALADp[1,p+1]=rhoALADp[1,p]*1.15 #increase rho by 15% every iteration
+
 end
 #end
 
