@@ -8,8 +8,8 @@
 #initialize
 maxIt=50
 convIt=maxIt
-epsilon=1e-6
-rhoALAD=1
+epsilon=1e-8
+rhoALAD=10
 muALAD=10^8
 sigmaU=10*ones(N,1)
 sigmaS=100*ones(N,1)
