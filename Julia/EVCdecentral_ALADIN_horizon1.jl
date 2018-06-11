@@ -6,10 +6,10 @@
 
 #ALADIN
 #initialize
-maxIt=200
+maxIt=50
 convIt=maxIt
 epsilon=1e-6
-rhoALAD=10
+rhoALAD=500
 #muALAD=10^8
 sigmaU=10*ones(N,1)
 sigmaS=100*ones(N,1)
@@ -105,7 +105,7 @@ for p=1:maxIt-1
 
 
             cValMax=abs.(Sn[i,p+1]-1).<tolS
-            cValMin=abs.(Sn[i,p+1]-0).<tolS
+            cValMin=abs.(Sn[i,p+1]-target).<tolS
             Cs[i,p+1]=1cValMax-1cValMin
 
             cValMax=abs.(Un[i,p+1]-imax[i,1]).<tolU
@@ -134,9 +134,9 @@ for p=1:maxIt-1
     @constraint(nlp,kapMinU,z.>=0)
     TT = STDOUT # save original STDOUT stream
     redirect_stdout()
-    status = solve(nlp)
+    statusN = solve(nlp)
     redirect_stdout(TT)
-    if status!=:Optimal
+    if statusN!=:Optimal
         return
     else
         Z[:,p+1]=getvalue(z)
@@ -160,11 +160,11 @@ for p=1:maxIt-1
     #update H here
 
     #check for convergence
-	convCheck=rhoALADp[1,p]*norm(vcat((Vu[:,p]-Un[:,p+1]),(Vz[:,p]-Z[:,p+1])),1)
+	convCheck=norm(vcat((Vu[:,p]-Un[:,p+1]),(Vz[:,p]-Z[:,p+1])),1)
     objFun(sn,u)=sum((sn[n,1]-1)^2*Qsi[n,1]     for n=1:N) +
     			 sum((u[n,1])^2*Ri[n,1]           for n=1:N)
     fGap[p,1]= abs(objFun(Sn[:,p+1],Un[:,p+1])-fStar1)
-    constGap[p,1]=rhoALADp[1,p]*norm(sum(Un[i,p+1] for i=1:N)-sum(Z[s,p+1] for s=1:S)+w[1,1])
+    constGap[p,1]=norm(sum(Un[i,p+1] for i=1:N)-sum(Z[s,p+1] for s=1:S)+w[1,1])
     itGap[p,1] = norm(Lambda[1,p]-Lambda[1,max(p-1,1)],2)
     convGap[p,1] = norm(Lambda[1,p]-lamCurrStar1,2)
 	if  constGap[p,1]<=epsilon && convCheck<=epsilon
@@ -172,6 +172,7 @@ for p=1:maxIt-1
         convIt=p+1
         break
     else
+        @printf "convCheck    %e after %g iterations\n" convCheck p
         @printf "lastGap    %e after %g iterations\n" itGap[p,1] p
         @printf "convLamGap %e after %g iterations\n" convGap[p,1] p
         @printf "constGap   %e after %g iterations\n" constGap[p,1] p
