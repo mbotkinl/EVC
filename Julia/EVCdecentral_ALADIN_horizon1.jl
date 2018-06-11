@@ -8,7 +8,7 @@
 #initialize
 maxIt=50
 convIt=maxIt
-epsilon=1e-12
+epsilon=1e-6
 rhoALAD=1
 muALAD=10^8
 sigmaU=10*ones(N,1)
@@ -28,17 +28,17 @@ tolZ=1e-3
 #lambda0=max.(lamCurrStar-rand(Truncated(Normal(0), 0, 1), 1),0)
 #lambda0=zeros(horzLen+1,1)
 
-vs0=snStar1
-vu0=uStar1
-vz0=zStar1
-vt0=xtStar1
-lambda0=lamCurrStar1
+# vs0=snStar1
+# vu0=uStar1
+# vz0=zStar1
+# vt0=xtStar1
+# lambda0=lamCurrStar1
 
-# vs0=rand(Truncated(Normal(0), 0, 1), N)
-# vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N)
-# vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S)
-# vt0=Tmax*rand(Truncated(Normal(0), 0, 1), 1)
-# lambda0=5*rand(Truncated(Normal(0), 0, 1), 1)
+vs0=rand(Truncated(Normal(0), 0, 1), N)
+vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N)
+vz0=ItotalMax*rand(Truncated(Normal(0), 0, 1), S)
+vt0=Tmax*rand(Truncated(Normal(0), 0, 1), 1)
+lambda0=5*rand(Truncated(Normal(0), 0, 1), 1)
 
 #save matrices
 Un=SharedArray{Float64}(N,maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
@@ -47,8 +47,7 @@ T=zeros(1,maxIt)  #row are time,  columns are iteration
 Z=zeros(S,maxIt)  #row are time,  columns are iteration
 Lambda=zeros(1,maxIt) #(rows are time, columns are iteration)
 Lambda[1,1]=lambda0[1]
-rhoALADp=zeros(1,maxIt) #(rows are time, columns are iteration)
-rhoALADp[1,1]=rhoALAD
+rhoALADp=rhoALAD*ones(1,maxIt) #(rows are time, columns are iteration)
 
 #auxillary variables
 Vu=zeros(N,maxIt) #row are time,  columns are iteration
@@ -169,7 +168,6 @@ for p=1:maxIt-1
     constGap[p,1]=rhoALADp[1,p]*norm(sum(Un[i,p+1] for i=1:N)-sum(Z[s,p+1] for s=1:S)+w[1,1])
     itGap[p,1] = norm(Lambda[1,p]-Lambda[1,max(p-1,1)],2)
     convGap[p,1] = norm(Lambda[1,p]-lamCurrStar1,2)
-    testC=norm(vcat(Vs[:,p]-Sn[:,p+1],Vu[:,p]-Un[:,p+1]))
 	if  constGap[p,1]<=epsilon && convCheck<=epsilon
         @printf "Converged after %g iterations\n" p
         convIt=p+1
@@ -224,7 +222,6 @@ for p=1:maxIt-1
 
 
 	#rhoALADp[1,p+1]=rhoALADp[1,p]*1.15 #increase rho by 15% every iteration
-
 end
 #end
 

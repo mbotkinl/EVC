@@ -72,8 +72,7 @@ Lam=zeros((horzLen+1),numIteration) #(rows are time, columns are iteration)
 #Lam[:,1]=max.(lambda0,0)
 Lam[:,1]=lambda0
 
-rhoALADp=zeros(1,numIteration)
-rhoALADp[1,1]=rhoALAD
+rhoALADp=rhoALAD*ones(1,numIteration)
 
 #auxillary variables
 Vu=zeros((N)*(horzLen+1),numIteration) #row are time,  columns are iteration
