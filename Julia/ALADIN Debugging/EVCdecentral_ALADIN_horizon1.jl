@@ -8,8 +8,8 @@
 #initialize
 maxIt=50
 convIt=maxIt
-epsilon=1e-6
-rhoALAD=500
+epsilon=1e-12
+rhoALAD=1
 #muALAD=10^8
 sigmaU=10*ones(N,1)
 sigmaS=100*ones(N,1)
@@ -21,17 +21,17 @@ tolT=1e-1
 tolZ=1e-3
 
 #guesses
-# vs0=snStar1
-# vu0=uStar1
-# vz0=zStar1
-# vt0=xtStar1
-# lambda0=lamCurrStar1
+vs0=snStar1
+vu0=uStar1
+vz0=zStar1
+vt0=xtStar1
+lambda0=lamCurrStar1
 
-vs0=0.5*ones(N,1)
-vu0=.01*ones(N,1)
-vz0=ones(S,1)
-vt0=Tmax
-lambda0=1
+# vs0=0.5*ones(N,1)
+# vu0=.01*ones(N,1)
+# vz0=ones(S,1)
+# vt0=Tmax
+# lambda0=1
 
 # vs0=rand(Truncated(Normal(0), 0, 1), N)
 # vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N)

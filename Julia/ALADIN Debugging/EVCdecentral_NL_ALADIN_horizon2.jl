@@ -12,7 +12,6 @@ sn0=s0
 xt0=T0
 
 stepI = 1;
-horzLen=K1
 epsilon = 1e-8
 tolU=1e-2
 tolS=1e-4
@@ -40,17 +39,17 @@ muALAD=10^6
 # vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 # vs0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 
-# lambda0=ones(horzLen+1,1)
-# vt0=ones(horzLen+1,1)
-# vi0=ones((horzLen+1),1)
-# vu0=.01*ones(N*(horzLen+1),1)
-# vs0=.5*ones(N*(horzLen+1),1)
+lambda0=ones(horzLen+1,1)
+vt0=ones(horzLen+1,1)
+vi0=ones((horzLen+1),1)
+vu0=.01*ones(N*(horzLen+1),1)
+vs0=.5*ones(N*(horzLen+1),1)
 
-lambda0=lamCurrStarNL
-vt0=xtStarNL
-vi0=itotalStarNL
-vu0=uStarNL
-vs0=snStarNL
+# lambda0=lamCurrStarNL
+# vt0=xtStarNL
+# vi0=itotalStarNL
+# vu0=uStarNL
+# vs0=snStarNL
 
 #save matrices
 Un=SharedArray{Float64}(N*(horzLen+1),maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
@@ -91,13 +90,15 @@ for p=1:maxIt-1
 
     #solve decoupled
     @sync @parallel for evInd=1:N
+        ind=[evInd]
+        for k=1:horzLen
+            append!(ind,k*N+evInd)
+        end
 
         lambda=Lam[:,p]
-        evVu=Vu[collect(evInd:N:length(Vu[:,p])),p]
-        evVs=Vs[collect(evInd:N:length(Vs[:,p])),p]
+        evVu=Vu[ind,p]
+        evVs=Vs[ind,p]
         #evV=zeros(horzLen+1,1)
-        target=zeros((horzLen+1),1)
-        target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
         evM = Model(solver = GurobiSolver(NumericFocus=3))
         @variable(evM,sn[1:(horzLen+1)])
         @variable(evM,u[1:(horzLen+1)])
@@ -105,11 +106,11 @@ for p=1:maxIt-1
         @objective(evM,Min,sum((sn[k,1]-1)^2*Qsi[evInd,1]+(u[k,1])^2*Ri[evInd,1]+
                                 lambda[k,1]*(u[k,1])+
                                 rhoALADp[1,p]/2*(u[k,1]-evVu[k,1])*sigmaU[evInd,1]*(u[k,1]-evVu[k,1])+
-                                rhoALADp[1,p]/2*(sn[k,1]-evVs[k,1])*sigmaS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1))
+                                rhoALADp[1,p]/2*(sn[k,1]-evVs[k,1])*sigmaS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:(horzLen+1)))
         @constraint(evM,sn[1,1]==sn0[evInd,1]+etaP[evInd,1]*u[1,1])
         @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+etaP[evInd,1]*u[k+1,1])
         @constraint(evM,socKappaMax,sn.<=1)
-        @constraint(evM,socKappaMin,sn.>=target)
+        @constraint(evM,socKappaMin,sn.>=target[ind])
         @constraint(evM,curKappaMax,u.<=imax[evInd,1])
         @constraint(evM,curKappaMin,u.>=imin[evInd,1])
 
@@ -122,10 +123,10 @@ for p=1:maxIt-1
             println("solver issues with EV NLP")
             return
         else
-			kappaMax=-getdual(curKappaMax)
-			kappaMin=-getdual(curKappaMin)
-            socMax=-getdual(socKappaMax)
-            socMin=-getdual(socKappaMin)
+			#kappaMax=-getdual(curKappaMax)
+			#kappaMin=-getdual(curKappaMin)
+            #socMax=-getdual(socKappaMax)
+            #socMin=-getdual(socKappaMin)
             uVal=getvalue(u)
             snVal=getvalue(sn)
 
@@ -135,21 +136,21 @@ for p=1:maxIt-1
             # cVal[cVal.>0]=1
             # cVal=kappaMin
             # cVal[cVal.<0]=-1
-            Cu[collect(evInd:N:length(Cu[:,p+1])),p+1]=1cValMax-1cValMin
+            Cu[ind,p+1]=1cValMax-1cValMin
 
 
             cValMax=abs.(snVal-1).<tolS
-            cValMin=abs.(snVal-target).<tolS
+            cValMin=abs.(snVal-target[ind]).<tolS
             # cVal=socMax
             # cVal[cVal.>0]=1
             # cVal=socMin
             # cVal[cVal.<0]=-1
-            Cs[collect(evInd:N:length(Cs[:,p+1])),p+1]=1cValMax-1cValMin
+            Cs[ind,p+1]=1cValMax-1cValMin
 
-            Sn[collect(evInd:N:length(Sn[:,p+1])),p+1]=snVal
-    		Un[collect(evInd:N:length(Un[:,p+1])),p+1]=uVal
-            Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=2*Ri[evInd,1]*uVal
-            Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=2*Qsi[evInd,1]*snVal-2*Qsi[evInd,1]
+            Sn[ind,p+1]=snVal
+    		Un[ind,p+1]=uVal
+            Gu[ind,p+1]=2*Ri[evInd,1]*uVal
+            Gs[ind,p+1]=2*Qsi[evInd,1]*snVal-2*Qsi[evInd,1]
             #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=sigmaU[evInd,1]*(evVu-uVal)+lambda
             #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=sigmaN[evInd,1]*(evVs-snVal)-lambda
         end
@@ -200,7 +201,7 @@ for p=1:maxIt-1
         #Gz[:,p+1]=sigmaZ*(Vz[:,p]-zVal)-repeat(-Lam[:,p],inner=S)
     end
 
-    for k=1:horzLen+1
+    for k=1:(horzLen+1)
         uSum[k,p+1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
         currConst[k,p+1]=uSum[k,p+1] + w[(k-1)*2+(stepI*2-1),1] - Itotal[k,p+1]
     end
@@ -210,9 +211,9 @@ for p=1:maxIt-1
     convCheck=norm(vcat((Vu[:,p]-Un[:,p+1]),(Vi[:,p]-Itotal[:,p+1])),1)
     #convCheck=rhoALAD*norm(vcat(repmat(sigmaU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),sigmaZ*(Vz[:,p]-Z[:,p+1])),1)
     avgN[p,1]=mean(convCheck)
-    objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
-                    sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
-                    sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
+    objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:(horzLen+1)) +
+                    sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:(horzLen+1)) +
+                    sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:(horzLen+1))
     fGap= abs(objFun(Sn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStarNL)
     snGap=norm((Sn[:,p+1]-snStarNL),2)
     itGap = norm(Lam[:,p]-Lam[:,max(p-1,1)],2)
@@ -247,10 +248,10 @@ for p=1:maxIt-1
                    0.5*dSn[(k-1)*N+i,1]^2*2*Qsi[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N) for k=1:(horzLen+1))
     #objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
 	@objective(cM,Min, objExp)
-    @constraint(cM,currCon[k=1:horzLen+1],sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-(Itotal[k,p+1]+dI[k])==w[(k-1)*2+1])#+relaxS[k,1])
+    @constraint(cM,currCon[k=1:(horzLen+1)],sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-(Itotal[k,p+1]+dI[k])==w[(k-1)*2+1])#+relaxS[k,1])
     #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
     @constraint(cM,stateCon1[n=1:N],dSn[n,1]==etaP[n,1]*dUn[n,1])
-    @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+etaP[n,1]*dUn[n+(k)*(N),1])
+    @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+k*(N),1]==dSn[(k-1)*N+n,1]+etaP[n,1]*dUn[n+k*(N),1])
     @constraint(cM,tempCon1,dXt[1,1]==2*gammaP*Itotal[1,p+1]*dI[1])
     @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==tauP*dXt[k,1]+2*gammaP*Itotal[k+1,p+1]*dI[k+1,1])
 
@@ -361,6 +362,10 @@ convItPlotaladNL=plot(x=1:convIt,y=itConvALAD[1:convIt,1],Geom.line,Scale.y_log1
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 convPlotaladNL=plot(x=1:convIt,y=ConvALAD[1:convIt,1],Geom.line,Scale.y_log10,
+			Guide.xlabel("Iteration"), Guide.ylabel("central lambda gap"),
+			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+			minor_label_font_size=26pt,key_label_font_size=26pt))
+constPlotaladNL=plot(x=1:convIt,y=constConvALAD[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("central lambda gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))

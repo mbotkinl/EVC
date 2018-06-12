@@ -7,8 +7,8 @@ tic()
 sn0=s0
 xt0=T0
 
-lambda0=ones(horzLen+1,1)
-#lambda0=lamCurrStarNL
+#lambda0=ones(horzLen+1,1)
+lambda0=lamCurrStarNL
 #lambda0=max.(lamCurrStarNL,0)
 
 
