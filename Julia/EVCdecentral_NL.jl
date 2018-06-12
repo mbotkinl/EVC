@@ -199,7 +199,7 @@ end
 
 pd2nl=plot(uPlotd,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
-		Coord.Cartesian(xmin=0,xmax=horzLen+1),
+		Coord.Cartesian(xmin=0,xmax=horzLen+1,ymin=0),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=3pt,
 		minor_label_font_size=20pt,key_label_font_size=20pt))
 if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Curr.png", 24inch, 12inch), pd2) end

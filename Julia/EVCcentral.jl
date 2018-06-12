@@ -10,8 +10,8 @@ stepI=1
 horzLen=K1
 
 println("setting up model")
-#m = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1))
-m = Model(solver = IpoptSolver())
+m = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1,NumericFocus=3))
+#m = Model(solver = IpoptSolver())
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
 @variable(m,u[1:N*(horzLen+1)])
@@ -36,8 +36,14 @@ objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:
 println("constraints")
 @constraint(m,stateCon1,sn[1:N,1].==sn0[1:N,1]+etaP[:,1].*u[1:N,1])
 @constraint(m,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+etaP[n,1]*u[n+(k)*(N),1])
-@constraint(m,tempCon1,xt[1,1]==tauP*xt0+gammaP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[stepI*2,1])
-@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rhoP*w[stepI*2+k*2,1])
+@constraint(m,tempCon1,xt[1,1]==tauP*xt0+gammaP*deltaI*sum((2*s-1)*z[s,1] for s=1:S)+rhoP*w[stepI*2,1])
+@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+rhoP*w[stepI*2+k*2,1])
+
+# @constraint(m,stateCon1,sn[1:N,1].==sn0[1:N,1]+ηPk[:,1].*u[1:N,1])
+# @constraint(m,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+ηPk[n,1]*u[n+(k)*(N),1])
+# @constraint(m,tempCon1,xt[1,1]==tauP*xt0+γPk*ΔIk*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[stepI*2,1])
+# @constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+γPk*ΔIk*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rhoP*w[stepI*2+k*2,1])
+
 @constraint(m,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-w[(k-1)*2+1]+sum(z[(k-1)*(S)+s] for s=1:S))
 @constraint(m,sn.<=1)
 @constraint(m,sn.>=target)
@@ -46,9 +52,12 @@ if noTlimit==0
 end
 @constraint(m,xt.>=0)
 @constraint(m,upperCCon,u.<=repmat(imax,horzLen+1,1))
+#@constraint(m,upperCCon,u.<=repmat(imaxk,horzLen+1,1))
 @constraint(m,u.>=repmat(imin,horzLen+1,1))
 @constraint(m,z.>=0)
 @constraint(m,z.<=deltaI)
+#@constraint(m,z.<=ΔIk)
+
 
 println("solving....")
 statusM = solve(m)

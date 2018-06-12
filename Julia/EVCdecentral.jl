@@ -13,46 +13,48 @@ xt0=T0
 #lambda0=ones(K1+1,1)*lambdaGuess
 #lambda0=[0;linspace(7,0,K)]
 #lambda0=rand(K1+1)/2
+
+#lambda0=ones(horzLen+1,1)
 lambda0=lamCurrStar
 
 if updateMethod=="fastAscent"
 	alpha = 0.1
 	#alpha=0.001
 else
-	alpha = .01
+	alpha = 500
 	#alpha= 0.001
 end
 
 stepI = 1;
 horzLen=K1
 convChk = 1e-8
-numIteration=50
-convIt=numIteration
+maxIt=200
+convIt=maxIt
 
 
-ConvDual=zeros(numIteration,1)
-itConvDual=zeros(numIteration,1)
-constConvDual=zeros(numIteration,1)
-fConvDual=zeros(numIteration,1)
-snConvDual=zeros(numIteration,1)
-unConvDual=zeros(numIteration,1)
+ConvDual=zeros(maxIt,1)
+itConvDual=zeros(maxIt,1)
+constConvDual=zeros(maxIt,1)
+fConvDual=zeros(maxIt,1)
+snConvDual=zeros(maxIt,1)
+unConvDual=zeros(maxIt,1)
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
-Lam=zeros((horzLen+1),numIteration) #(rows are time, columns are iteration)
+Lam=zeros((horzLen+1),maxIt) #(rows are time, columns are iteration)
 Lam[:,1]=lambda0
-Xt=zeros((horzLen+1),numIteration) #rows are time
-Tactual=zeros((horzLen+1),numIteration) #rows are time
+Xt=zeros((horzLen+1),maxIt) #rows are time
+Tactual=zeros((horzLen+1),maxIt) #rows are time
 
-Sn=SharedArray{Float64}(N*(horzLen+1),numIteration)
-Un=SharedArray{Float64}(N*(horzLen+1),numIteration)
+Sn=SharedArray{Float64}(N*(horzLen+1),maxIt)
+Un=SharedArray{Float64}(N*(horzLen+1),maxIt)
 
 #iterate at each time step until convergence
-for p=1:numIteration-1
+for p=1:maxIt-1
     #solve subproblem for each EV
 	@sync @parallel for evInd=1:N
         target=zeros((horzLen+1),1)
 		target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
-        evM=Model(solver = GurobiSolver(OutputFlag=0))
+        evM=Model(solver = GurobiSolver(OutputFlag=0,NumericFocus=3))
         @variable(evM,un[1:horzLen+1])
         @variable(evM,sn[1:horzLen+1])
         objFun(x,u)=sum((x[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
@@ -82,13 +84,13 @@ for p=1:numIteration-1
 
 	if updateMethod=="dualAscent"
 	    #solve coordinator problem
-	    #coorM=Model(solver = GurobiSolver(OutputFlag=0))
-		coorM=Model(solver = IpoptSolver())
+	    coorM=Model(solver = GurobiSolver(Presolve=0,NumericFocus=3))
+		#coorM=Model(solver = IpoptSolver())
 	    @variable(coorM,z[1:S*(horzLen+1)])
 	    @variable(coorM,xt[1:horzLen+1])
-	    @objective(coorM,Min,-sum(Lam[k,p]*sum(z[(k-1)*S+ii,1] for ii=1:S) for k=1:horzLen+1))
-		@constraint(coorM,xt[1,1]==tauP*xt0+gammaP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[2,1]) #fix for MPC loop
-		@constraint(coorM,[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rhoP*w[k*2+2,1])
+	    @objective(coorM,Min,-sum(Lam[k,p]*sum(z[(k-1)*S+s,1] for s=1:S) for k=1:(horzLen+1)))
+		@constraint(coorM,xt[1,1]==tauP*xt0+gammaP*deltaI*sum((2*s-1)*z[s,1] for s=1:S)+rhoP*w[2,1]) #fix for MPC loop
+		@constraint(coorM,[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+rhoP*w[k*2+2,1])
 		if noTlimit==0
 			@constraint(coorM,upperTCon,xt.<=Tmax)
 		end
@@ -97,12 +99,14 @@ for p=1:numIteration-1
 	    @constraint(coorM,z.>=0)
 		TT = STDOUT # save original STDOUT stream
 		redirect_stdout()
-	    status = solve(coorM)
+	    statusC = solve(coorM)
 		redirect_stdout(TT)
-	    if status!=:Optimal
+
+	    if statusC!=:Optimal
 	        break
 		else
 			 Xt[:,p+1]=getvalue(xt)
+			 zVal=getvalue(z)
 		end
 
 	    #grad of lagragian
@@ -110,9 +114,9 @@ for p=1:numIteration-1
 		#uSum=zeros(horzLen+1,1)
 		gradL=zeros(horzLen+1,1)
 		for k=1:horzLen+1
-			zSum[k,1]=sum(getvalue(z)[(k-1)*(S)+s] for s=1:S)
+			zSum[k,1]=sum(zVal[(k-1)*(S)+s] for s=1:S)
 			#uSum[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
-			gradL[k,1]=-sum(Un[(k-1)*N+n,p+1] for n=1:N) - w[(k-1)*2+(stepI*2-1),1] + zSum[k,1]
+			gradL[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - zSum[k,1]
 		end
 		constConvDual[p,1]=norm(gradL,2)
 	end
