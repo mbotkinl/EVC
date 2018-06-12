@@ -79,6 +79,12 @@ else
     lamTempStarNL=lambdaUpperT
     lamCurrStarNL=lambdaCurr
 
+    uSumStarNL=zeros(horzLen+1,1)
+    for k=1:horzLen+1
+        uSumStarNL[k,1]=sum(uStarNL[(k-1)*N+n,1] for n=1:N)
+    end
+
+
 	println("plotting....")
 	xPlot=zeros(horzLen+1,N)
 	xPlot2=zeros(horzLen+1,N)
