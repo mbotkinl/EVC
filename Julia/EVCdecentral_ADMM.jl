@@ -13,15 +13,15 @@ xt0=T0
 
 stepI = 1;
 horzLen=K1
-convChk = 1e-12
-numIteration=10
-convIt=numIteration
-ConvADMM=zeros(numIteration,1)
-itConvADMM=zeros(numIteration,1)
-constConvADMM=zeros(numIteration,1)
-fConvADMM=zeros(numIteration,1)
-snConvADMM=zeros(numIteration,1)
-unConvADMM=zeros(numIteration,1)
+convChk = 1e-8
+maxIt=10
+convIt=maxIt
+ConvADMM=zeros(maxIt,1)
+itConvADMM=zeros(maxIt,1)
+constConvADMM=zeros(maxIt,1)
+fConvADMM=zeros(maxIt,1)
+snConvADMM=zeros(maxIt,1)
+unConvADMM=zeros(maxIt,1)
 
 #admm  initial parameters and guesses
 #rhoADMM=10.0^(0)
@@ -31,20 +31,20 @@ rhoADMM=1
 lambda0=lamCurrStar
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
-Un=SharedArray{Float64}(N*(horzLen+1),numIteration) #row are time,  columns are iteration
+Un=SharedArray{Float64}(N*(horzLen+1),maxIt) #row are time,  columns are iteration
 #Un[:,1]=u0
-Lam=zeros((horzLen+1),numIteration) #(rows are time, columns are iteration)
+Lam=zeros((horzLen+1),maxIt) #(rows are time, columns are iteration)
 Lam[:,1]=lambda0
-Sn=SharedArray{Float64}(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
-Xt=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
-Z=zeros(S*(horzLen+1),numIteration)  #row are time,  columns are iteration
-Tactual=zeros((horzLen+1),numIteration) #rows are time
+Sn=SharedArray{Float64}(N*(horzLen+1),maxIt)  #row are time,  columns are iteration
+Xt=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+Z=zeros(S*(horzLen+1),maxIt)  #row are time,  columns are iteration
+Tactual=zeros((horzLen+1),maxIt) #rows are time
 
-Vu=zeros((N)*(horzLen+1),numIteration) #row are time,  columns are iteration
+Vu=zeros((N)*(horzLen+1),maxIt) #row are time,  columns are iteration
 #Vn[:,1]=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N*(horzLen+1)),0)
 #Vn[:,1]=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 Vu[:,1]=uStar
-Vz=zeros(S*(horzLen+1),numIteration)
+Vz=zeros(S*(horzLen+1),maxIt)
 #Vz=zeros((horzLen+1),numIteration)
 #Vz[:,1]=max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
 #Vz[:,1]=-max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
@@ -53,19 +53,19 @@ Vz=zeros(S*(horzLen+1),numIteration)
 Vz[:,1]=-zStar
 
 #for debugging
-CC=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
-ZS=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
-US=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
+CC=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+ZS=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+US=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 
 
-for p in 1:numIteration-1
+for p in 1:maxIt-1
 	try
 		#rho_p = rhoADMM/ceil(p/2)
 		rhoI = rhoADMM
 	    #x minimization eq 7.66 in Bertsekas
 	    @sync @parallel for evInd=1:N
 			lambda=Lam[:,p]
-	        evV=Vu[collect(evInd:N:length(Vn[:,p])),p]
+	        evV=Vu[collect(evInd:N:length(Vu[:,p])),p]
 	        target=zeros((horzLen+1),1)
 			target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
 	    	evM = Model(solver = GurobiSolver())

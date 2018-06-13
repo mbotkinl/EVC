@@ -18,88 +18,79 @@ tolU=1e-2
 tolS=1e-4
 tolT=1e-1
 tolZ=1e-2
-numIteration=50
-convIt=numIteration
-ConvALAD=zeros(numIteration,1)
-constConvALAD=zeros(numIteration,1)
-itConvALAD=zeros(numIteration,1)
-fConvALAD=zeros(numIteration,1)
-snConvALAD=zeros(numIteration,1)
-avgN=zeros(numIteration,1)
+maxIt=50
+convIt=maxIt
+ConvALAD=zeros(maxIt,1)
+constConvALAD=zeros(maxIt,1)
+itConvALAD=zeros(maxIt,1)
+fConvALAD=zeros(maxIt,1)
+snConvALAD=zeros(maxIt,1)
+avgN=zeros(maxIt,1)
 
 #ALADIN tuning and initial guess
-#H=Qsi
-Hu=2*Ri
-Hn=2*Qsi[1:N,1]
-Hz=0
-Ht=0
 sigmaU=1*ones(N,1)
 sigmaS=10*ones(N,1)
 sigmaZ=1000
 sigmaT=1
-
-rhoALAD=1e-2
-
-#muALAD=10
-#rhoALAD=10^4
-#H=vcat(ones(N,1),1)
-
+Hz=1e-6
+Ht=1e-6
+rhoALAD=1
+muALAD=10^6
 # lambda0=5*rand(Truncated(Normal(0), 0, 1), horzLen+1)
 # vt0=Tmax*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
 # vz0=ItotalMax/1000*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
 # vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 # vs0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 
-lambda0=lamCurrStar
-vt0=xtStar
-vz0=zStar
-vu0=uStar
-vs0=snStar
+lambda0=ones(horzLen+1,1)
+vt0=ones(horzLen+1,1)
+vz0=ones(S*(horzLen+1),1)
+vu0=.01*ones(N*(horzLen+1),1)
+vs0=.5*ones(N*(horzLen+1),1)
 
-#vs0=max.(snStar + rand(Truncated(Normal(0), -0.02, 0.02), N*(horzLen+1)),0)
-#vu0=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N*(horzLen+1)),0)
-#vz0=max.(zStar-2*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1)),0)
-#vt0=max.(xtStar-10*rand(Truncated(Normal(0), 0, 1), (horzLen+1)),0)
-#lambda0=max.(lamCurrStar-rand(Truncated(Normal(0), 0, 1), (horzLen+1)),0)
-#lambda0=zeros(horzLen+1,1)
+# lambda0=lamCurrStar
+# vt0=xtStar
+# vz0=zStar
+# vu0=uStar
+# vs0=snStar
 
 #save matrices
-Un=SharedArray{Float64}(N*(horzLen+1),numIteration) #row are time (N states for k=1, them N states for k=2),  columns are iteration
-Sn=SharedArray{Float64}(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
-Xt=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
-Z=zeros(S*(horzLen+1),numIteration)  #row are time,  columns are iteration
-Lam=zeros((horzLen+1),numIteration) #(rows are time, columns are iteration)
+Un=SharedArray{Float64}(N*(horzLen+1),maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
+Sn=SharedArray{Float64}(N*(horzLen+1),maxIt)  #row are time,  columns are iteration
+Xt=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+Z=zeros(S*(horzLen+1),maxIt)  #row are time,  columns are iteration
+Lam=zeros((horzLen+1),maxIt) #(rows are time, columns are iteration)
 #Lam[:,1]=max.(lambda0,0)
 Lam[:,1]=lambda0
 
-rhoALADp=rhoALAD*ones(1,numIteration)
+rhoALADp=rhoALAD*ones(1,maxIt)
 
 #auxillary variables
-Vu=zeros((N)*(horzLen+1),numIteration) #row are time,  columns are iteration
+Vu=zeros((N)*(horzLen+1),maxIt) #row are time,  columns are iteration
 Vu[:,1]=vu0 #initial guess goes in column 1
-Vs=zeros((N)*(horzLen+1),numIteration) #row are time,  columns are iteration
+Vs=zeros((N)*(horzLen+1),maxIt) #row are time,  columns are iteration
 Vs[:,1]=vs0 #initial guess goes in column 1
-Vz=zeros(S*(horzLen+1),numIteration) #row are time,  columns are iteration
+Vz=zeros(S*(horzLen+1),maxIt) #row are time,  columns are iteration
 Vz[:,1]=vz0
-Vt=zeros((horzLen+1),numIteration) #row are time,  columns are iteration
+Vt=zeros((horzLen+1),maxIt) #row are time,  columns are iteration
 Vt[:,1]=vt0
 
 #Gradian Vectors
-Gu=SharedArray{Float64}(N*(horzLen+1),numIteration) #row are time (N states for k=1, them N states for k=2),  columns are iteration
-Gs=SharedArray{Float64}(N*(horzLen+1),numIteration) #row are time (N states for k=1, them N states for k=2),  columns are iteration
-Gz=zeros(S*(horzLen+1),numIteration) #row are time (N states for k=1, them N states for k=2),  columns are iteration
+Gu=SharedArray{Float64}(N*(horzLen+1),maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
+Gs=SharedArray{Float64}(N*(horzLen+1),maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
+Gz=zeros(S*(horzLen+1),maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
 
 #Jacobian C Vectors
-Cs=SharedArray{Float64}(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
-Cu=SharedArray{Float64}(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
-Cz=zeros(S*(horzLen+1),numIteration)  #row are time,  columns are iteration
-Ct=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
+Cs=SharedArray{Float64}(N*(horzLen+1),maxIt)  #row are time,  columns are iteration
+Cu=SharedArray{Float64}(N*(horzLen+1),maxIt)  #row are time,  columns are iteration
+Cz=zeros(S*(horzLen+1),maxIt)  #row are time,  columns are iteration
+Ct=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 
-uSum=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
-zSum=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
-currConst=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
+uSum=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+zSum=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+currConst=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 
-for p=1:numIteration-1
+for p=1:maxIt-1
 
     #solve decoupled
     @sync @parallel for evInd=1:N
@@ -110,7 +101,7 @@ for p=1:numIteration-1
         #evV=zeros(horzLen+1,1)
         target=zeros((horzLen+1),1)
         target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
-        evM = Model(solver = GurobiSolver())
+        evM = Model(solver = GurobiSolver(NumericFocus=3))
         @variable(evM,sn[1:(horzLen+1)])
         @variable(evM,u[1:(horzLen+1)])
         #@objective(evM,Min, sum(objFun(sn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+rho_p/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
@@ -168,9 +159,8 @@ for p=1:numIteration-1
     end
 
     #N+1 decoupled problem aka transformer current
-    #tM = Model(solver = GurobiSolver())
-    tM = Model(solver = IpoptSolver())
-
+    tM = Model(solver = GurobiSolver(NumericFocus=3))
+    #tM = Model(solver = IpoptSolver())
     @variable(tM,z[1:(S)*(horzLen+1)])
     @variable(tM,xt[1:(horzLen+1)])
     tMobj=sum(-Lam[k,p]*sum(z[(k-1)*(S)+s] for s=1:S)+
@@ -260,9 +250,10 @@ for p=1:numIteration-1
         @printf("fGap       %e after %g iterations\n\n",fGap,p)
     end
 
+
     #coupled QP
-    #cM = Model(solver = GurobiSolver(Presolve=0,NumericFocus=3))
-    cM = Model(solver = IpoptSolver())
+    cM = Model(solver = GurobiSolver(Presolve=0,NumericFocus=3))
+    #cM = Model(solver = IpoptSolver())
     @variable(cM,dUn[1:(N)*(horzLen+1)])
     @variable(cM,dSn[1:(N)*(horzLen+1)])
     @variable(cM,dZ[1:(S)*(horzLen+1)])
@@ -275,20 +266,21 @@ for p=1:numIteration-1
     #     objExp=objExp+coupledObj(dUn[collect(n:N:(N)*(horzLen+1)),1],Hu[n,1],Gu[collect(n:N:(N)*(horzLen+1)),p+1])+
     #                   coupledObj(dSn[collect(n:N:(N)*(horzLen+1)),1],Hn[n,1],Gs[collect(n:N:(N)*(horzLen+1)),p+1])
 	# end
-    objExp=sum(sum(0.5*dUn[(k-1)*N+i,1]^2*Ri[i,1]+Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1]+
-                   0.5*dSn[(k-1)*N+i,1]^2*Qsi[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N) for k=1:(horzLen+1))
+    objExp=sum(sum(0.5*dUn[(k-1)*N+i,1]^2*2*Ri[i,1]+Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1]+
+                   0.5*dSn[(k-1)*N+i,1]^2*2*Qsi[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N) for k=1:(horzLen+1))
+    objExp=objExp+sum(0.5*dZ[k,1]^2*Hz+
+                      0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1))
     #objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
 	@objective(cM,Min, objExp)
     # @constraint(cM,currCon[k=1:horzLen+1],w[(k-1)*2+1]+relaxS[k,1]==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)+
     #                                          sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
-    @constraint(cM,currCon[k=1:horzLen+1],w[(k-1)*2+1]==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)+
-                                             sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
-
+    @constraint(cM,currCon[k=1:horzLen+1],sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
+                                             sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S)==-w[(k-1)*2+1])#+relaxS[k,1])
     #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
     @constraint(cM,stateCon1[n=1:N],dSn[n,1]==etaP[n,1]*dUn[n,1])
     @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+etaP[n,1]*dUn[n+(k)*(N),1])
-    @constraint(cM,tempCon1,dXt[1,1]==gammaP*deltaI*sum((2*m+1)*dZ[m+1,1] for m=0:S-1))
-    @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==tauP*dXt[k,1]+gammaP*deltaI*sum((2*m+1)*dZ[k*S+(m+1),1] for m=0:S-1))
+    @constraint(cM,tempCon1,dXt[1,1]==gammaP*deltaI*sum((2*s-1)*dZ[s,1] for s=1:S))
+    @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==tauP*dXt[k,1]+gammaP*deltaI*sum((2*s-1)*dZ[k*S+s,1] for s=1:S))
 
     #local inequality constraints
     # @constraint(cM,(Z[:,p+1]+dZ).>=0)
@@ -307,11 +299,12 @@ for p=1:numIteration-1
     @constraint(cM,Cs[:,p+1].*dSn.<=0)
     @constraint(cM,Ct[:,p+1].*dXt.<=0)
 
+
 	TT = STDOUT # save original STDOUT stream
     redirect_stdout()
-    status = solve(cM)
+    statusM = solve(cM)
     redirect_stdout(TT)
-    if status!=:Optimal
+    if statusM!=:Optimal
         println("solver issues with Central QP")
         break
     end
@@ -334,7 +327,7 @@ for p=1:numIteration-1
     # Vs[:,p+1]=Sn[:,p+1]+getvalue(dSn)
     # Vt[:,p+1]=Xt[:,p+1]+getvalue(dXt)
 
-    rhoALADp[1,p+1]=rhoALADp[1,p]*1.15 #increase rho by 15% every iteration
+    #rhoALADp[1,p+1]=rhoALADp[1,p]*1.15 #increase rho by 15% every iteration
 end
 
 println("plotting....")
