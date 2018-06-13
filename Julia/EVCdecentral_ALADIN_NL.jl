@@ -12,13 +12,13 @@ sn0=s0
 xt0=T0
 
 stepI = 1;
-horzLen=K1
-epsilon = 1e-8
+#horzLen=K1
+epsilon = 1e-12
 tolU=1e-2
 tolS=1e-4
 tolT=1e-1
 tolI=1e-1
-maxIt=30
+maxIt=50
 convIt=maxIt
 ConvALAD=zeros(maxIt,1)
 constConvALAD=zeros(maxIt,1)
@@ -32,25 +32,27 @@ sigmaU=1*ones(N,1)
 sigmaS=10*ones(N,1)
 sigmaI=100
 sigmaT=1
+Hi=1e-6
+Ht=1e-6
 rhoALAD=1
-muALAD=10^6
+#muALAD=10^6
 # lambda0=5*rand(Truncated(Normal(0), 0, 1), horzLen+1)
 # vt0=Tmax*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
 # vi0=ItotalMax/1000*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
 # vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 # vs0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 
-# lambda0=ones(horzLen+1,1)
-# vt0=ones(horzLen+1,1)
-# vi0=ones((horzLen+1),1)
-# vu0=.01*ones(N*(horzLen+1),1)
-# vs0=.5*ones(N*(horzLen+1),1)
+lambda0=ones(horzLen+1,1)
+vt0=ones(horzLen+1,1)
+vi0=ones((horzLen+1),1)
+vu0=.01*ones(N*(horzLen+1),1)
+vs0=.5*ones(N*(horzLen+1),1)
 
-lambda0=lamCurrStarNL
-vt0=xtStarNL
-vi0=itotalStarNL
-vu0=uStarNL
-vs0=snStarNL
+# lambda0=lamCurrStarNL
+# vt0=xtStarNL
+# vi0=itotalStarNL
+# vu0=uStarNL
+# vs0=snStarNL
 
 #save matrices
 Un=SharedArray{Float64}(N*(horzLen+1),maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
@@ -163,8 +165,8 @@ for p=1:maxIt-1
               rhoALADp[1,p]/2*sigmaI*(itotal[k]-Vi[k,p])^2+
               rhoALADp[1,p]/2*sigmaT*(xt[k]-Vt[k,p])^2  for k=1:(horzLen+1))
     @objective(tM,Min, tMobj)
-    @constraint(tM,tempCon1,xt[1]==tauP*xt0+gammaP*(itotal[1])^2+rhoP*w[stepI*2,1])
-    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]==tauP*xt[k]+gammaP*(itotal[k+1])^2+rhoP*w[stepI*2+k*2,1])
+    @NLconstraint(tM,tempCon1,xt[1]-tauP*xt0-gammaP*(itotal[1])^2-rhoP*w[stepI*2,1]==0)
+    @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1]-tauP*xt[k]-gammaP*(itotal[k+1])^2-rhoP*w[stepI*2+k*2,1]==0)
     if noTlimit==0
     	@constraint(tM,upperTCon,xt.<=Tmax)
     end
@@ -179,6 +181,7 @@ for p=1:maxIt-1
         println("solver issues with XFRM NLP")
         return
     else
+        lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
         iVal=getvalue(itotal)
         xtVal=getvalue(xt)
 
@@ -236,6 +239,7 @@ for p=1:maxIt-1
     end
 
 
+
     #coupled QP
     cM = Model(solver = IpoptSolver())
     @variable(cM,dUn[1:(N)*(horzLen+1)])
@@ -245,9 +249,11 @@ for p=1:maxIt-1
     #@variable(cM,relaxS[1:(horzLen+1)])
     objExp=sum(sum(0.5*dUn[(k-1)*N+i,1]^2*2*Ri[i,1]+Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1]+
                    0.5*dSn[(k-1)*N+i,1]^2*2*Qsi[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N) for k=1:(horzLen+1))
+    objExp=objExp+sum(0.5*dI[k,1]^2*(Hi-lambdaTemp[k,1]*2*gammaP)+
+                      0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1))
     #objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
 	@objective(cM,Min, objExp)
-    @constraint(cM,currCon[k=1:horzLen+1],sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-(Itotal[k,p+1]+dI[k])==w[(k-1)*2+1])#+relaxS[k,1])
+    @constraint(cM,currCon[k=1:horzLen+1],sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-(Itotal[k,p+1]+dI[k])==-w[(k-1)*2+1])#+relaxS[k,1])
     #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
     @constraint(cM,stateCon1[n=1:N],dSn[n,1]==etaP[n,1]*dUn[n,1])
     @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+etaP[n,1]*dUn[n+(k)*(N),1])
@@ -279,7 +285,9 @@ for p=1:maxIt-1
     alpha2=1
     alpha3=1
     #alpha3=alpha3/ceil(p/2)
-    Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
+    #Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
+    Lam[:,p+1]=max.(Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p]),0)
+
 
     Vu[:,p+1]=Vu[:,p]+alpha1*(Un[:,p+1]-Vu[:,p])+alpha2*getvalue(dUn)
     Vi[:,p+1]=Vi[:,p]+alpha1*(Itotal[:,p+1]-Vi[:,p])+alpha2*getvalue(dI)
@@ -350,7 +358,12 @@ iPlotaladNL=plot(Itotal[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom
 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-constPlotaladNL=plot(currConst[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+xtPlotaladNL=plot(Xt[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+			layer(x=1:horzLen+1,y=xtStarNL,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
+			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
+			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+			minor_label_font_size=26pt,key_label_font_size=26pt))
+constPlotaladNL2=plot(currConst,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("curr constraint diff"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
@@ -362,6 +375,10 @@ convItPlotaladNL=plot(x=1:convIt,y=itConvALAD[1:convIt,1],Geom.line,Scale.y_log1
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 convPlotaladNL=plot(x=1:convIt,y=ConvALAD[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("central lambda gap"),
+			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+			minor_label_font_size=26pt,key_label_font_size=26pt))
+constPlotaladNL=plot(x=1:convIt,y=constConvALAD[1:convIt,1],Geom.line,Scale.y_log10,
+			Guide.xlabel("Iteration"), Guide.ylabel("consensus gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 fPlotaladNL=plot(x=1:convIt-1,y=fConvALAD[1:convIt-1,1],Geom.line,Scale.y_log10,

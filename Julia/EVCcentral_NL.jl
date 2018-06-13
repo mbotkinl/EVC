@@ -8,7 +8,7 @@ xt0=T0
 
 #add mpc loop here ??
 stepI=1
-horzLen=K1
+#horzLen=K1
 
 println("setting up model")
 m = Model(solver = IpoptSolver())
@@ -37,8 +37,8 @@ objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:
 println("constraints")
 @constraint(m,stateCon1,sn[1:N,1].==sn0[1:N,1]+etaP[:,1].*u[1:N,1])
 @constraint(m,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+etaP[n,1]*u[n+(k)*(N),1])
-@constraint(m,tempCon1,xt[1,1]==tauP*xt0+gammaP*(itotal[1])^2+rhoP*w[stepI*2,1])
-@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*(itotal[k+1])^2+rhoP*w[stepI*2+k*2,1]) #check id index???
+@NLconstraint(m,tempCon1,xt[1,1]==tauP*xt0+gammaP*(itotal[1])^2+rhoP*w[stepI*2,1])
+@NLconstraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*(itotal[k+1])^2+rhoP*w[stepI*2+k*2,1]) #check id index???
 @constraint(m,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-w[(k-1)*2+1]+itotal[k]) #fix for MPC
 @constraint(m,sn.<=1)
 @constraint(m,sn.>=target)
@@ -52,8 +52,8 @@ end
 @constraint(m,itotal.>=0)
 
 println("solving....")
-status = solve(m)
-if status!=:Optimal
+statusC = solve(m)
+if statusC!=:Optimal
 	@printf "Failed %s \n" status
     return
 else
@@ -65,19 +65,21 @@ else
     itotalRaw=getvalue(itotal)
 
 	if noTlimit==0
-		lambdaUpperT=-getdual(upperTCon)
+		kappaUpperT=-getdual(upperTCon)
 	else
-		lambdaUpperT=zeros(horzLen+1,1)
+		kappaUpperT=zeros(horzLen+1,1)
 	end
     lambdaCurr=-getdual(currCon)
+    lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
 
     xtStarNL=xtRaw
     snStarNL=snRaw
     uStarNL=uRaw
     itotalStarNL=itotalRaw
     fStarNL=getobjectivevalue(m)
-    lamTempStarNL=lambdaUpperT
+    lamTempStarNL=lambdaTemp
     lamCurrStarNL=lambdaCurr
+    kapTempStarNL=kappaUpperT
 
     uSumStarNL=zeros(horzLen+1,1)
     for k=1:horzLen+1
@@ -128,7 +130,7 @@ else
 			minor_label_font_size=16pt,key_label_font_size=16pt))
 	if drawFig==1 draw(PNG(path*"J_centralNL_Temp.png", 24inch, 12inch), p3nl) end
 
-	p4nlb=plot(x=1:horzLen+1,y=lambdaUpperT,Geom.line,
+	p4nlb=plot(x=1:horzLen+1,y=kappaUpperT,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/K)",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
 			minor_label_font_size=16pt,key_label_font_size=16pt))
