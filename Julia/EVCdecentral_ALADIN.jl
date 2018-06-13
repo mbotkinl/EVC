@@ -315,7 +315,8 @@ for p=1:maxIt-1
     alpha2=1
     alpha3=1
     #alpha3=alpha3/ceil(p/2)
-    Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
+    #Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
+    Lam[:,p+1]=max.(Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p]),0)
 
     Vu[:,p+1]=Vu[:,p]+alpha1*(Un[:,p+1]-Vu[:,p])+alpha2*getvalue(dUn)
     Vz[:,p+1]=Vz[:,p]+alpha1*(Z[:,p+1]-Vz[:,p])+alpha2*getvalue(dZ)
@@ -391,7 +392,7 @@ zSumPlotalad=plot(zSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.
 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-constPlotalad=plot(currConst[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+constPlotalad2=plot(currConst[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("curr constraint diff"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
@@ -402,6 +403,10 @@ convItPlotalad=plot(x=1:convIt,y=itConvALAD[1:convIt,1],Geom.line,Scale.y_log10,
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 convPlotalad=plot(x=1:convIt,y=ConvALAD[1:convIt,1],Geom.line,Scale.y_log10,
+			Guide.xlabel("Iteration"), Guide.ylabel("central lambda gap"),
+			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+			minor_label_font_size=26pt,key_label_font_size=26pt))
+constPlotalad=plot(x=1:convIt,y=constConvALAD[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("central lambda gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))

@@ -21,12 +21,12 @@ m = Model(solver = IpoptSolver())
 @variable(m,itotal[1:(horzLen+1)])
 
 #desired SOC
-target=zeros(N*(horzLen+1),1);
-for ii=1:N
-   cur=Kn[ii]-(stepI-1)
-   ind=max(0,(cur-1)*N)+ii:N:length(target)
-   target[ind]=Snmin[ii,1]
-end
+# target=zeros(N*(horzLen+1),1);
+# for ii=1:N
+#    cur=Kn[ii]-(stepI-1)
+#    ind=max(0,(cur-1)*N)+ii:N:length(target)
+#    target[ind]=Snmin[ii,1]
+# end
 
 println("obj")
 objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
