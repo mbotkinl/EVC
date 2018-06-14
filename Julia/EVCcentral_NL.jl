@@ -10,16 +10,6 @@ xt0=T0
 stepI=1
 horzLen=K1
 
-println("setting up model")
-m = Model(solver = IpoptSolver())
-#m = Model(solver = IpoptSolver(linear_solver = "ma86"))
-
-#u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
-@variable(m,u[1:N*(horzLen+1)])
-@variable(m,sn[1:(N)*(horzLen+1)])
-@variable(m,xt[1:(horzLen+1)])
-@variable(m,itotal[1:(horzLen+1)])
-
 #desired SOC
 target=zeros(N*(horzLen+1),1);
 for ii=1:N
@@ -28,10 +18,21 @@ for ii=1:N
    target[ind]=Snmin[ii,1]
 end
 
+
+
+println("setting up model")
+m = Model(solver = IpoptSolver())
+#u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
+@variable(m,u[1:N*(horzLen+1)])
+@variable(m,sn[1:(N)*(horzLen+1)])
+@variable(m,xt[1:(horzLen+1)])
+@variable(m,itotal[1:(horzLen+1)])
+
 println("obj")
 objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
 				sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
 				sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
+                #sum(sum((u[(k-1)*N+n,1])^2*Rik[n,1]           for n=1:N) for k=1:horzLen+1)
 @objective(m,Min, objFun(sn,xt,u))
 
 println("constraints")
@@ -40,6 +41,13 @@ println("constraints")
 @NLconstraint(m,tempCon1,xt[1,1]==tauP*xt0+gammaP*(itotal[1])^2+rhoP*w[stepI*2,1])
 @NLconstraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*(itotal[k+1])^2+rhoP*w[stepI*2+k*2,1]) #check id index???
 @constraint(m,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-w[(k-1)*2+1]+itotal[k]) #fix for MPC
+
+# @constraint(m,stateCon1,sn[1:N,1].==sn0[1:N,1]+ηPk[:,1].*u[1:N,1])
+# @constraint(m,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+ηPk[n,1]*u[n+(k)*(N),1])
+# @NLconstraint(m,tempCon1,xt[1,1]==tauP*xt0+γPk*(itotal[1])^2+rhoP*w[stepI*2,1])
+# @NLconstraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+γPk*(itotal[k+1])^2+rhoP*w[stepI*2+k*2,1]) #check id index???
+# @constraint(m,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-wk[(k-1)*2+1]+itotal[k]) #fix for MPC
+
 @constraint(m,sn.<=1)
 @constraint(m,sn.>=target)
 if noTlimit==0
@@ -47,8 +55,10 @@ if noTlimit==0
 end
 @constraint(m,xt.>=0)
 @constraint(m,upperCCon,u.<=repmat(imax,horzLen+1,1))
+#@constraint(m,upperCCon,u.<=repmat(imaxk,horzLen+1,1))
 @constraint(m,u.>=repmat(imin,horzLen+1,1))
 @constraint(m,itotal.<=ItotalMax)
+#@constraint(m,itotal.<=ItotalMaxk)
 @constraint(m,itotal.>=0)
 
 println("solving....")

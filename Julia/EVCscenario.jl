@@ -4,9 +4,10 @@
 #from Mads Almassakhi code
 
 using Distributions
-using JLD
 
-N = 20
+println("Creating EV Scenario...")
+
+N = 30
 
 #model parameters
 a   = rand(N,1)*.1 + 0.8               # efficiency of Li-ion batts is ~80-90%
@@ -28,13 +29,13 @@ gammaP = Ts*Rw/(C*Ntf)    # K/W, ohmic losses-to-temp parameter
 #gamma=.85/Ntf
 #gamma=.0085/Ntf
 
-
 # PWL Parameters:
 #S = 3;
 S=50
 #ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
 ItotalMax = 4000
 deltaI = ItotalMax/S
+
 
 ## MPC Paramters
 T1=12
@@ -89,7 +90,7 @@ for i=1:K+1
 end
 
 # penalty matrix new (need to fix for k>Ki)
-Ru   = 0.00001;              # Stage and terminal penalty on local power flow (inputs u)
+Ru   = 0.1;              # Stage and terminal penalty on local power flow (inputs u)
 #RKi   = 10;            # Stage and terminal penalty on local power flow (inputs q), for k >= Ki
 Qs  = 10;               # Stage and terminal penalty on charge difference with respect to 1 (states s)
 QT  = 0;                # PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
@@ -98,10 +99,25 @@ Ri=Ru*(5*rand(N,1)+.1);
 Qsi=[Qs*(10*rand(N,1)+.01);QT];
 
 
+#paramters for kA current
+ηPk = etaP*1000
+γPk = gammaP*1000^2
+ΔIk=deltaI/1000
+ItotalMaxk=ItotalMax/1000
+imaxk=imax./1000
+Rik=Ri*1000^2
+iDk=iD/1000
+wk = zeros((K+1)*ndisturbs,1);
+for i=1:K+1
+    wk[(i-1)*ndisturbs+1:i*ndisturbs,1]  = [iDk[i,1]; FullTamb[i,1]];
+end
+
+
 # save
 if any(etaP.*K.*FullChargeTime_relative.*imax+s0 .< SOCmin)
 #if any(eta.*K1.*FullChargeTime_relative.*imax+s0 .< SOCmin)
    println("Some PEVs may not be able to meet SOC min level by desired time!")
 end
 
-#@save "EVCscenarioN$(N).jld"
+#using JLD
+#JLD.@save("EVCscenarioN$(N).jld")

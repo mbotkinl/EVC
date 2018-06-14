@@ -14,10 +14,10 @@ xt0=T0
 stepI = 1;
 horzLen=K1
 epsilon = 1e-8
-tolU=1e-6
+tolU=1e-4
 tolS=1e-8
 tolT=1e-4
-tolI=1e-6
+tolZ=1e-6
 maxIt=50
 convIt=maxIt
 ConvALAD=zeros(maxIt,1)
@@ -25,18 +25,18 @@ constConvALAD=zeros(maxIt,1)
 itConvALAD=zeros(maxIt,1)
 fConvALAD=zeros(maxIt,1)
 snConvALAD=zeros(maxIt,1)
-avgN=zeros(maxIt,1)
+convCheck=zeros(maxIt,1)
 
 #ALADIN tuning and initial guess
 sigmaU=1*ones(N,1)
 sigmaS=ones(N,1)/10
-sigmaI=1/N
+sigmaZ=1/N
 sigmaT=1/10000
 Hz=1e-6
 Ht=1e-6
-rhoALAD=1e-1
-rhoRate=1.1
-muALAD=10^6
+rhoALAD=1
+rhoRate=1.15
+muALAD=10^8
 # lambda0=5*rand(Truncated(Normal(0), 0, 1), horzLen+1)
 # vt0=Tmax*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
 # vz0=ItotalMax/1000*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
@@ -90,6 +90,7 @@ Ct=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 uSum=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 zSum=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 currConst=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+deltaY=zeros(1,maxIt)
 
 for p=1:maxIt-1
 
@@ -228,9 +229,8 @@ for p=1:maxIt-1
 
     #check for convergence
     constGap=norm(currConst[:,p+1],1)
-    convCheck=norm(vcat((Vu[:,p]-Un[:,p+1]),(Vz[:,p]-Z[:,p+1])),1)
+    cc=norm(vcat((Vu[:,p]-Un[:,p+1]),(Vz[:,p]-Z[:,p+1])),1)
     #convCheck=rhoALAD*norm(vcat(repmat(sigmaU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),sigmaZ*(Vz[:,p]-Z[:,p+1])),1)
-    avgN[p,1]=mean(convCheck)
     objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                     sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
                     sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
@@ -243,6 +243,7 @@ for p=1:maxIt-1
     itConvALAD[p,1]=itGap
     constConvALAD[p,1]=constGap
     ConvALAD[p,1]=convGap
+    convCheck[p,1]=cc
     if  constGap<=epsilon && convCheck<=epsilon
         @printf "Converged after %g iterations\n" p
         convIt=p+1
@@ -250,7 +251,7 @@ for p=1:maxIt-1
     else
         @printf "lastGap    %e after %g iterations\n" itGap p
         @printf "convLamGap %e after %g iterations\n" convGap p
-        @printf "convCheck  %e after %g iterations\n" norm(convCheck,1) p
+        @printf "convCheck  %e after %g iterations\n" cc p
         @printf "constGap   %e after %g iterations\n" constGap p
         @printf "snGap      %e after %g iterations\n" snGap p
         @printf("fGap       %e after %g iterations\n\n",fGap,p)
@@ -335,16 +336,17 @@ for p=1:maxIt-1
     # Vt[:,p+1]=Xt[:,p+1]+getvalue(dXt)
 
     rhoALADp[1,p+1]=rhoALADp[1,p]*rhoRate #increase rho every iteration
+    deltaY[1,p+1]=norm(vcat(getvalue(dUn),getvalue(dZ),getvalue(dSn),getvalue(dXt)),Inf)
+
 end
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
+uPlot=zeros(horzLen+1,N)
 for ii= 1:N
 	xPlot[:,ii]=Sn[collect(ii:N:length(Sn[:,convIt])),convIt]
+    uPlot[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
 end
-
-#plot(x=1:horzLen+1,y=xPlot2[:,ii])
-# plot(x=1:Kn[ii,1],y=xPlot2[1:Kn[ii,1],ii])
 
 pd1alad=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
@@ -352,12 +354,6 @@ pd1alad=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
 if drawFig==1 draw(PNG(path*"J_decentral_ALADIN_SOC.png", 24inch, 12inch), pd1alad) end
-
-
-uPlot=zeros(horzLen+1,N)
-for ii= 1:N
-	uPlot[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
-end
 
 pd2alad=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
@@ -403,6 +399,25 @@ constPlotalad2=plot(currConst[:,1:convIt],x=Row.index,y=Col.value,color=Col.inde
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_ALADIN_LamConv.png", 36inch, 12inch), lamPlotalad) end
+
+activeSet=zeros(convIt,1)
+setChanges=zeros(convIt,1)
+for ii=2:convIt
+    activeSet[ii,1]=sum(abs.(Cs[:,ii]))+sum(abs.(Ct[:,ii]))+
+              sum(abs.(Cu[:,ii]))+sum(abs.(Cz[:,ii]))
+    setChanges[ii,1]=sum(abs.(Cs[:,ii]-Cs[:,ii-1]))+sum(abs.(Ct[:,ii]-Ct[:,ii-1]))+
+                     sum(abs.(Cu[:,ii]-Cu[:,ii-1]))+sum(abs.(Cz[:,ii]-Cz[:,ii-1]))
+end
+activeSetPlot=plot(x=2:convIt,y=activeSet[2:convIt],Geom.line,
+                   Guide.xlabel("Iteration"), Guide.ylabel("Total Active inequality constraints",orientation=:vertical),
+                   Coord.Cartesian(xmin=2,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+       			   minor_label_font_size=26pt,key_label_font_size=26pt))
+setChangesPlot=plot(x=3:convIt,y=setChanges[3:convIt],Geom.line,
+                    Guide.xlabel("Iteration"), Guide.ylabel("Changes in Active inequality constraints",orientation=:vertical),
+                    Coord.Cartesian(xmin=3,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+        			minor_label_font_size=26pt,key_label_font_size=26pt))
+solChangesplot=plot(layer(x=2:convIt,y=deltaY[2:convIt],Geom.line),
+                    layer(x=2:convIt,y=convCheck[2:convIt],Geom.line),Scale.y_log)
 
 convItPlotalad=plot(x=1:convIt,y=itConvALAD[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
