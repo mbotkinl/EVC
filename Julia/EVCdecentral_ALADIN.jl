@@ -14,10 +14,10 @@ xt0=T0
 stepI = 1;
 horzLen=K1
 epsilon = 1e-8
-tolU=1e-2
-tolS=1e-4
-tolT=1e-1
-tolZ=1e-2
+tolU=1e-6
+tolS=1e-8
+tolT=1e-4
+tolI=1e-6
 maxIt=50
 convIt=maxIt
 ConvALAD=zeros(maxIt,1)
@@ -29,12 +29,13 @@ avgN=zeros(maxIt,1)
 
 #ALADIN tuning and initial guess
 sigmaU=1*ones(N,1)
-sigmaS=10*ones(N,1)
-sigmaZ=1000
-sigmaT=1
+sigmaS=ones(N,1)/10
+sigmaI=1/N
+sigmaT=1/10000
 Hz=1e-6
 Ht=1e-6
-rhoALAD=1
+rhoALAD=1e-1
+rhoRate=1.1
 muALAD=10^6
 # lambda0=5*rand(Truncated(Normal(0), 0, 1), horzLen+1)
 # vt0=Tmax*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
@@ -95,12 +96,17 @@ for p=1:maxIt-1
     #solve decoupled
     @sync @parallel for evInd=1:N
 
+        ind=[evInd]
+        for k=1:horzLen
+            append!(ind,k*N+evInd)
+        end
+
         lambda=Lam[:,p]
-        evVu=Vu[collect(evInd:N:length(Vu[:,p])),p]
-        evVs=Vs[collect(evInd:N:length(Vs[:,p])),p]
+        evVu=Vu[ind,p]
+        evVs=Vs[ind,p]
         #evV=zeros(horzLen+1,1)
-        target=zeros((horzLen+1),1)
-        target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
+        #target=zeros((horzLen+1),1)
+        #target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
         evM = Model(solver = GurobiSolver(NumericFocus=3))
         @variable(evM,sn[1:(horzLen+1)])
         @variable(evM,u[1:(horzLen+1)])
@@ -112,7 +118,7 @@ for p=1:maxIt-1
         @constraint(evM,sn[1,1]==sn0[evInd,1]+etaP[evInd,1]*u[1,1])
         @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+etaP[evInd,1]*u[k+1,1])
         @constraint(evM,socKappaMax,sn.<=1)
-        @constraint(evM,socKappaMin,sn.>=target)
+        @constraint(evM,socKappaMin,sn.>=target[ind])
         @constraint(evM,curKappaMax,u.<=imax[evInd,1])
         @constraint(evM,curKappaMin,u.>=imin[evInd,1])
 
@@ -138,21 +144,21 @@ for p=1:maxIt-1
             # cVal[cVal.>0]=1
             # cVal=kappaMin
             # cVal[cVal.<0]=-1
-            Cu[collect(evInd:N:length(Cu[:,p+1])),p+1]=1cValMax-1cValMin
+            Cu[ind,p+1]=1cValMax-1cValMin
 
 
             cValMax=abs.(snVal-1).<tolS
-            cValMin=abs.(snVal-target).<tolS
+            cValMin=abs.(snVal-target[ind]).<tolS
             # cVal=socMax
             # cVal[cVal.>0]=1
             # cVal=socMin
             # cVal[cVal.<0]=-1
-            Cs[collect(evInd:N:length(Cs[:,p+1])),p+1]=1cValMax-1cValMin
+            Cs[ind,p+1]=1cValMax-1cValMin
 
-            Sn[collect(evInd:N:length(Sn[:,p+1])),p+1]=snVal
-    		Un[collect(evInd:N:length(Un[:,p+1])),p+1]=uVal
-            Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=2*Ri[evInd,1]*uVal
-            Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=2*Qsi[evInd,1]*snVal-2*Qsi[evInd,1]
+            Sn[ind,p+1]=snVal
+    		Un[ind,p+1]=uVal
+            Gu[ind,p+1]=2*Ri[evInd,1]*uVal
+            Gs[ind,p+1]=2*Qsi[evInd,1]*snVal-2*Qsi[evInd,1]
             #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=sigmaU[evInd,1]*(evVu-uVal)+lambda
             #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=sigmaN[evInd,1]*(evVs-snVal)-lambda
         end
@@ -328,7 +334,7 @@ for p=1:maxIt-1
     # Vs[:,p+1]=Sn[:,p+1]+getvalue(dSn)
     # Vt[:,p+1]=Xt[:,p+1]+getvalue(dXt)
 
-    #rhoALADp[1,p+1]=rhoALADp[1,p]*1.15 #increase rho by 15% every iteration
+    rhoALADp[1,p+1]=rhoALADp[1,p]*rhoRate #increase rho every iteration
 end
 
 println("plotting....")

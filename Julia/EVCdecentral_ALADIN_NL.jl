@@ -14,10 +14,10 @@ xt0=T0
 stepI = 1;
 #horzLen=K1
 epsilon = 1e-12
-tolU=1e-2
-tolS=1e-4
-tolT=1e-1
-tolI=1e-1
+tolU=1e-6
+tolS=1e-8
+tolT=1e-4
+tolI=1e-6
 maxIt=50
 convIt=maxIt
 ConvALAD=zeros(maxIt,1)
@@ -108,7 +108,7 @@ for p=1:maxIt-1
     @sync @parallel for evInd=1:N
         ind=[evInd]
         for k=1:horzLen
-            append!(ind,k*N+evInd)
+            append!(ind,k*N+evInd) 
         end
 
         lambda=Lam[:,p]
