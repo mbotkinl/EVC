@@ -12,12 +12,16 @@ sn0=s0
 xt0=T0
 
 stepI = 1;
-#horzLen=K1
+horzLen=K1
 epsilon = 1e-12
 tolU=1e-4
 tolS=1e-8
 tolT=1e-4
 tolI=1e-6
+# tolU=1e-4
+# tolS=1e-8
+# tolT=1e-4
+# tolI=1e-4
 maxIt=50
 convIt=maxIt
 ConvALAD=zeros(maxIt,1)
@@ -33,6 +37,12 @@ sigmaU=1*ones(N,1)
 sigmaS=ones(N,1)/10
 sigmaI=1/N
 sigmaT=1/10000
+
+#sigmas are tuned to i_n [10A]
+# sigmaU=1*ones(N,1)
+# sigmaS=ones(N,1)*100
+# sigmaI=1/N
+# sigmaT=1/10
 
 Hi=1e-6
 Ht=1e-6
@@ -388,11 +398,11 @@ for ii=2:convIt
                      sum(abs.(Cu[:,ii]-Cu[:,ii-1]))+sum(abs.(Ci[:,ii]-Ci[:,ii-1]))
 end
 activeSetPlot=plot(x=2:convIt,y=activeSet[2:convIt],Geom.line,
-                   Guide.xlabel("Iteration"), Guide.ylabel("Total Active inequality constraints"),
+                   Guide.xlabel("Iteration"), Guide.ylabel("Total Active inequality constraints",orientation=:vertical),
                    Coord.Cartesian(xmin=2,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
        			   minor_label_font_size=26pt,key_label_font_size=26pt))
 setChangesPlot=plot(x=3:convIt,y=setChanges[3:convIt],Geom.line,
-                    Guide.xlabel("Iteration"), Guide.ylabel("Changes in Active inequality constraints"),
+                    Guide.xlabel("Iteration"), Guide.ylabel("Changes in Active inequality constraints",orientation=:vertical),
                     Coord.Cartesian(xmin=3,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
         			minor_label_font_size=26pt,key_label_font_size=26pt))
 solChangesplot=plot(layer(x=2:convIt,y=deltaY[2:convIt],Geom.line),
