@@ -1,15 +1,3 @@
-#temp
-
-#temp
-imax=imax*100
-etaP=.002*ones(N,1)
-gammaP=.01
-Tmax=800
-
-
-
-
-
 datafile="n" #"mat" #"jld" #"n"
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
@@ -81,3 +69,9 @@ end
 if isdefined(:Snmin)==false
 	Snmin=Sn
 end
+
+
+# Profile.clear()
+# testALAD(1)
+# @profile testALAD(1)
+# Juno.profiler()

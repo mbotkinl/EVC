@@ -32,13 +32,13 @@ snConvALAD=zeros(maxIt,1)
 convCheck=zeros(maxIt,1)
 
 #ALADIN tuning and initial guess
-#sigmas are tuned to i_n [.010kA]
+##sigmas are tuned to i_n [.010kA]
 sigmaU=1*ones(N,1)
 sigmaS=ones(N,1)/10
 sigmaI=1/N
 sigmaT=1/10000
 
-#sigmas are tuned to i_n [10A]
+##sigmas are tuned to i_n [10A]
 # sigmaU=1*ones(N,1)
 # sigmaS=ones(N,1)*100
 # sigmaI=1/N
