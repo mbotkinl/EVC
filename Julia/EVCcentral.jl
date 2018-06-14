@@ -34,16 +34,10 @@ objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:
 @objective(m,Min, objFun(sn,xt,u))
 
 println("constraints")
-@constraint(m,stateCon1,sn[1:N,1].==sn0[1:N,1]+etaP[:,1].*u[1:N,1])
-@constraint(m,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+etaP[n,1]*u[n+(k)*(N),1])
-@constraint(m,tempCon1,xt[1,1]==tauP*xt0+gammaP*deltaI*sum((2*s-1)*z[s,1] for s=1:S)+rhoP*w[stepI*2,1])
-@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+rhoP*w[stepI*2+k*2,1])
-
-# @constraint(m,stateCon1,sn[1:N,1].==sn0[1:N,1]+ηPk[:,1].*u[1:N,1])
-# @constraint(m,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+ηPk[n,1]*u[n+(k)*(N),1])
-# @constraint(m,tempCon1,xt[1,1]==tauP*xt0+γPk*ΔIk*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[stepI*2,1])
-# @constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+γPk*ΔIk*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rhoP*w[stepI*2+k*2,1])
-
+@constraint(m,stateCon1,sn[1:N,1].==sn0[1:N,1]+ηP[:,1].*u[1:N,1])
+@constraint(m,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+ηP[n,1]*u[n+(k)*(N),1])
+@constraint(m,tempCon1,xt[1,1]==τP*xt0+γP*deltaI*sum((2*s-1)*z[s,1] for s=1:S)+ρP*w[stepI*2,1])
+@constraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+ρP*w[stepI*2+k*2,1])
 @constraint(m,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-w[(k-1)*2+1]+sum(z[(k-1)*(S)+s] for s=1:S))
 @constraint(m,sn.<=1)
 @constraint(m,sn.>=target)
@@ -52,12 +46,9 @@ if noTlimit==0
 end
 @constraint(m,xt.>=0)
 @constraint(m,upperCCon,u.<=repmat(imax,horzLen+1,1))
-#@constraint(m,upperCCon,u.<=repmat(imaxk,horzLen+1,1))
 @constraint(m,u.>=repmat(imin,horzLen+1,1))
 @constraint(m,z.>=0)
 @constraint(m,z.<=deltaI)
-#@constraint(m,z.<=ΔIk)
-
 
 println("solving....")
 statusM = solve(m)
@@ -80,9 +71,9 @@ else
 	for k=1:horzLen+1
 		ztotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + w[(k-1)*2+1,1]
 	end
-	Tactual[1,1]=tauP*T0+gammaP*ztotal[1,1]^2+rhoP*w[2,1]
+	Tactual[1,1]=τP*T0+γP*ztotal[1,1]^2+ρP*w[2,1]
 	for k=1:horzLen
-		Tactual[k+1,1]=tauP*Tactual[k,1]+gammaP*ztotal[k+1,1]^2+rhoP*w[k*2+2,1]
+		Tactual[k+1,1]=τP*Tactual[k,1]+γP*ztotal[k+1,1]^2+ρP*w[k*2+2,1]
 	end
 
 	#getobjectivevalue(m)
@@ -144,7 +135,7 @@ else
 	end
 
 	p2=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-			Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
+			Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),
 			Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,
 			minor_label_font_size=20pt,line_width=3pt,key_label_font_size=20pt))
@@ -164,7 +155,7 @@ else
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
 			minor_label_font_size=16pt,key_label_font_size=16pt))
 	p4=plot(x=1:horzLen+1,y=lambdaCurr	,Geom.line,
-			Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
+			Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/kA)",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
 			minor_label_font_size=16pt,key_label_font_size=16pt))
 	if drawFig==1 draw(PNG(path*"J_central_Lam.png", 24inch, 12inch), p4) end
@@ -179,7 +170,7 @@ else
 	#do this more elegantly
 	# aggU=plot(layer(x=1:horzLen+1,y=sum(uPlot[:,i] for i=1:N),Geom.line,Theme(default_color=colorant"blue")),
 	# 		layer(x=1:horzLen+1,y=sum(uPlotNoLim[:,i] for i=1:N),Geom.line,Theme(default_color=colorant"red")),
-	# 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
+	# 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
 	# 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 	# 		Theme(background_color=colorant"white"),
 	# 		Guide.manual_color_key("", ["Aggregate Current", "Unconstrained Aggregate Current"], ["blue","red"]))

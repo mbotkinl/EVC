@@ -55,8 +55,8 @@ for p=1:maxIt-1
         			sum((u[k,1])^2*Ri[evInd,1]    for k=1:horzLen+1) +
                     sum(Lam[k,p]*u[k,1]          for k=1:horzLen+1)
         @objective(evM,Min, objFun(sn,un))
-		@constraint(evM,sn[1,1]==sn0[evInd,1]+etaP[evInd,1]*un[1,1]) #fix for MPC loop
-		@constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+etaP[evInd,1]*un[k+1,1]) #check K+1
+		@constraint(evM,sn[1,1]==sn0[evInd,1]+ηP[evInd,1]*un[1,1]) #fix for MPC loop
+		@constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+ηP[evInd,1]*un[k+1,1]) #check K+1
         @constraint(evM,sn.<=1)
         @constraint(evM,sn.>=target)
         @constraint(evM,un.<=imax[evInd,1])
@@ -82,8 +82,8 @@ for p=1:maxIt-1
 	    @variable(coorM,itotal[1:(horzLen+1)])
 	    @variable(coorM,xt[1:horzLen+1])
 	    @objective(coorM,Min,-sum(Lam[k,p]*itotal[k,1] for k=1:(horzLen+1)))
-		@constraint(coorM,xt[1,1]==tauP*xt0+gammaP*(itotal[1])^2+rhoP*w[2,1]) #fix for MPC loop
-		@constraint(coorM,[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*(itotal[k+1,1])^2+rhoP*w[k*2+2,1])
+		@constraint(coorM,xt[1,1]==τP*xt0+γP*(itotal[1])^2+ρP*w[2,1]) #fix for MPC loop
+		@constraint(coorM,[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*(itotal[k+1,1])^2+ρP*w[k*2+2,1])
 		if noTlimit==0
 			@constraint(coorM,upperTCon,xt.<=Tmax)
 		end
@@ -198,7 +198,7 @@ for ii= 1:N
 end
 
 pd2nl=plot(uPlotd,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
+		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1,ymin=0),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=3pt,
 		minor_label_font_size=20pt,key_label_font_size=20pt))
@@ -219,7 +219,7 @@ if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Temp.png", 24inch, 12inch), pd3)
 if updateMethod=="fastAscent"
 	lamLabel=raw"Lambda ($/K)"
 else
-	lamLabel=raw"Lambda ($/A)"
+	lamLabel=raw"Lambda ($/kA)"
 end
 pd4nl=plot(layer(x=1:horzLen+1,y=Lam[:,convIt],Geom.line,Theme(line_width=3pt)),
 		Guide.xlabel("Time"), Guide.ylabel(lamLabel),

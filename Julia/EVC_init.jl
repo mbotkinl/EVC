@@ -59,16 +59,16 @@ if datafile in ["mat" "jld"]
 end
 
 #temp backwards capability
-if isdefined(:etaP)==false
-	etaP=eta
-	gammaP=gamma
-	rhoP=rho
-	tauP=tau
-end
-
-if isdefined(:Snmin)==false
-	Snmin=Sn
-end
+# if isdefined(:etaP)==false
+# 	etaP=eta
+# 	gammaP=gamma
+# 	rhoP=rho
+# 	tauP=tau
+# end
+#
+# if isdefined(:Snmin)==false
+# 	Snmin=Sn
+# end
 
 
 # Profile.clear()

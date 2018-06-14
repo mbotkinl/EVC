@@ -32,22 +32,15 @@ snConvALAD=zeros(maxIt,1)
 convCheck=zeros(maxIt,1)
 
 #ALADIN tuning and initial guess
-##sigmas are tuned to i_n [.010kA]
-sigmaU=1*ones(N,1)
-sigmaS=ones(N,1)/10
-sigmaI=1/N
-sigmaT=1/10000
-
-##sigmas are tuned to i_n [10A]
-# sigmaU=1*ones(N,1)
-# sigmaS=ones(N,1)*100
-# sigmaI=1/N
-# sigmaT=1/10
-
+##σs are tuned to i_n [.010kA]
+σU=1*ones(N,1)
+σS=ones(N,1)/10
+σI=1/N
+σT=1/10000
 Hi=1e-6
 Ht=1e-6
-rhoALAD=1
-rhoRate=1.15
+ρALAD=1
+ρRate=1.15
 muALAD=10^8
 
 # convItPlotaladNL
@@ -56,7 +49,7 @@ muALAD=10^8
 # fPlotaladNL
 
 #.1/.1 looks good expect for const
-#.01/2 increasing rho helps const
+#.01/2 increasing ρ helps const
 #.1/1.1 best so far???
 
 lambda0=ones(horzLen+1,1)
@@ -80,7 +73,7 @@ Lam=zeros((horzLen+1),maxIt) #(rows are time, columns are iteration)
 #Lam[:,1]=max.(lambda0,0)
 Lam[:,1]=lambda0
 
-rhoALADp=rhoALAD*ones(1,maxIt)
+ρALADp=ρALAD*ones(1,maxIt)
 
 #auxillary variables
 Vu=zeros((N)*(horzLen+1),maxIt) #row are time,  columns are iteration
@@ -105,7 +98,7 @@ Ct=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 
 uSum=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 currConst=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
-deltaY=zeros(1,maxIt)
+ΔY=zeros(1,maxIt)
 
 for p=1:maxIt-1
     @printf "Starting iteration %g \n" p
@@ -116,26 +109,22 @@ for p=1:maxIt-1
         for k=1:horzLen
             append!(ind,k*N+evInd)
         end
-
         lambda=Lam[:,p]
         evVu=Vu[ind,p]
         evVs=Vs[ind,p]
-        #evV=zeros(horzLen+1,1)
-        #target=zeros((horzLen+1),1)
-        #target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
-
+        target=zeros((horzLen+1),1)
+        target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
         evM = Model(solver = GurobiSolver(NumericFocus=3))
         @variable(evM,sn[1:(horzLen+1)])
         @variable(evM,u[1:(horzLen+1)])
-        #@objective(evM,Min, sum(objFun(sn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+rho_p/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
         @objective(evM,Min,sum((sn[k,1]-1)^2*Qsi[evInd,1]+(u[k,1])^2*Ri[evInd,1]+
                                 lambda[k,1]*(u[k,1])+
-                                rhoALADp[1,p]/2*(u[k,1]-evVu[k,1])*sigmaU[evInd,1]*(u[k,1]-evVu[k,1])+
-                                rhoALADp[1,p]/2*(sn[k,1]-evVs[k,1])*sigmaS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1))
-        @constraint(evM,sn[1,1]==sn0[evInd,1]+etaP[evInd,1]*u[1,1])
-        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+etaP[evInd,1]*u[k+1,1])
+                                ρALADp[1,p]/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
+                                ρALADp[1,p]/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1))
+        @constraint(evM,sn[1,1]==sn0[evInd,1]+ηP[evInd,1]*u[1,1])
+        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+ηP[evInd,1]*u[k+1,1])
         @constraint(evM,socKappaMax,sn.<=1)
-        @constraint(evM,socKappaMin,sn.>=target[ind])
+        @constraint(evM,socKappaMin,sn.>=target)
         @constraint(evM,curKappaMax,u.<=imax[evInd,1])
         @constraint(evM,curKappaMin,u.>=imin[evInd,1])
 
@@ -164,7 +153,7 @@ for p=1:maxIt-1
             # Cu[ind,p+1]=cVal
 
             cValMax=abs.(snVal-1).<tolS
-            cValMin=abs.(snVal-target[ind]).<tolS
+            cValMin=abs.(snVal-target).<tolS
             Cs[ind,p+1]=1cValMax-1cValMin
             # cVal=zeros(length(ind),1)
             # cVal[socMax.>0]=1
@@ -175,8 +164,8 @@ for p=1:maxIt-1
     		Un[ind,p+1]=uVal
             Gu[ind,p+1]=2*Ri[evInd,1]*uVal
             Gs[ind,p+1]=2*Qsi[evInd,1]*snVal-2*Qsi[evInd,1]
-            #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=sigmaU[evInd,1]*(evVu-uVal)+lambda
-            #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=sigmaN[evInd,1]*(evVs-snVal)-lambda
+            #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=σU[evInd,1]*(evVu-uVal)+lambda
+            #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=σN[evInd,1]*(evVs-snVal)-lambda
         end
     end
 
@@ -185,11 +174,11 @@ for p=1:maxIt-1
     @variable(tM,itotal[1:(horzLen+1)])
     @variable(tM,xt[1:(horzLen+1)])
     tMobj=sum(-Lam[k,p]*itotal[k]+
-              rhoALADp[1,p]/2*sigmaI*(itotal[k]-Vi[k,p])^2+
-              rhoALADp[1,p]/2*sigmaT*(xt[k]-Vt[k,p])^2  for k=1:(horzLen+1))
+              ρALADp[1,p]/2*σI*(itotal[k]-Vi[k,p])^2+
+              ρALADp[1,p]/2*σT*(xt[k]-Vt[k,p])^2  for k=1:(horzLen+1))
     @objective(tM,Min, tMobj)
-    @NLconstraint(tM,tempCon1,xt[1]-tauP*xt0-gammaP*(itotal[1])^2-rhoP*w[stepI*2,1]==0)
-    @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1]-tauP*xt[k]-gammaP*(itotal[k+1])^2-rhoP*w[stepI*2+k*2,1]==0)
+    @NLconstraint(tM,tempCon1,xt[1]-τP*xt0-γP*(itotal[1])^2-ρP*w[stepI*2,1]==0)
+    @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1]-τP*xt[k]-γP*(itotal[k+1])^2-ρP*w[stepI*2+k*2,1]==0)
     if noTlimit==0
     	@constraint(tM,upperTCon,xt.<=Tmax)
     end
@@ -232,7 +221,7 @@ for p=1:maxIt-1
         Xt[:,p+1]=xtVal
         Itotal[:,p+1]=iVal
         Gi[:,p+1]=0
-        #Gz[:,p+1]=sigmaZ*(Vz[:,p]-zVal)-repeat(-Lam[:,p],inner=S)
+        #Gz[:,p+1]=σZ*(Vz[:,p]-zVal)-repeat(-Lam[:,p],inner=S)
     end
 
     for k=1:horzLen+1
@@ -243,7 +232,7 @@ for p=1:maxIt-1
     #check for convergence
     constGap=norm(currConst[:,p+1],1)
     cc=norm(vcat((Vu[:,p]-Un[:,p+1]),(Vi[:,p]-Itotal[:,p+1])),1)
-    #convCheck=rhoALAD*norm(vcat(repmat(sigmaU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),sigmaZ*(Vz[:,p]-Z[:,p+1])),1)
+    #convCheck=ρALADp*norm(vcat(repmat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
     objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                     sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
                     sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
@@ -279,15 +268,15 @@ for p=1:maxIt-1
     #@variable(cM,relaxS[1:(horzLen+1)])
     objExp=sum(sum(0.5*dUn[(k-1)*N+i,1]^2*2*Ri[i,1]+Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1]+
                    0.5*dSn[(k-1)*N+i,1]^2*2*Qsi[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N) for k=1:(horzLen+1))
-    objExp=objExp+sum(0.5*dI[k,1]^2*(Hi-lambdaTemp[k,1]*2*gammaP)+
+    objExp=objExp+sum(0.5*dI[k,1]^2*(Hi-lambdaTemp[k,1]*2*γP)+
                       0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1))
     #objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
 	@objective(cM,Min, objExp)
     @constraint(cM,currCon[k=1:horzLen+1],sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-(Itotal[k,p+1]+dI[k])==-w[(k-1)*2+1])#+relaxS[k,1])
-    @constraint(cM,stateCon1[n=1:N],dSn[n,1]==etaP[n,1]*dUn[n,1])
-    @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+etaP[n,1]*dUn[n+(k)*(N),1])
-    @constraint(cM,tempCon1,dXt[1,1]==2*gammaP*Itotal[1,p+1]*dI[1])
-    @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==tauP*dXt[k,1]+2*gammaP*Itotal[k+1,p+1]*dI[k+1,1])
+    @constraint(cM,stateCon1[n=1:N],dSn[n,1]==ηP[n,1]*dUn[n,1])
+    @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+ηP[n,1]*dUn[n+(k)*(N),1])
+    @constraint(cM,tempCon1,dXt[1,1]==2*γP*Itotal[1,p+1]*dI[1])
+    @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==τP*dXt[k,1]+2*γP*Itotal[k+1,p+1]*dI[k+1,1])
     @constraint(cM,Ci[:,p+1].*dI.<=0)
     @constraint(cM,Cu[:,p+1].*dUn.<=0)
     @constraint(cM,Cs[:,p+1].*dSn.<=0)
@@ -304,21 +293,20 @@ for p=1:maxIt-1
 
     #update step
     # Lam[:,p+1]=-getdual(currCon)
-    alpha1=1
-    alpha2=1
-    alpha3=1
+    α1=1
+    α2=1
+    α3=1
     #alpha3=alpha3/ceil(p/2)
     #Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
-    Lam[:,p+1]=max.(Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p]),0)
+    Lam[:,p+1]=max.(Lam[:,p]+α3*(-getdual(currCon)-Lam[:,p]),0)
 
-    Vu[:,p+1]=Vu[:,p]+alpha1*(Un[:,p+1]-Vu[:,p])+alpha2*getvalue(dUn)
-    Vi[:,p+1]=Vi[:,p]+alpha1*(Itotal[:,p+1]-Vi[:,p])+alpha2*getvalue(dI)
-    Vs[:,p+1]=Vs[:,p]+alpha1*(Sn[:,p+1]-Vs[:,p])+alpha2*getvalue(dSn)
-    Vt[:,p+1]=Vt[:,p]+alpha1*(Xt[:,p+1]-Vt[:,p])+alpha2*getvalue(dXt)
+    Vu[:,p+1]=Vu[:,p]+α1*(Un[:,p+1]-Vu[:,p])+α2*getvalue(dUn)
+    Vi[:,p+1]=Vi[:,p]+α1*(Itotal[:,p+1]-Vi[:,p])+α2*getvalue(dI)
+    Vs[:,p+1]=Vs[:,p]+α1*(Sn[:,p+1]-Vs[:,p])+α2*getvalue(dSn)
+    Vt[:,p+1]=Vt[:,p]+α1*(Xt[:,p+1]-Vt[:,p])+α2*getvalue(dXt)
 
-    rhoALADp[1,p+1]=rhoALADp[1,p]*rhoRate #increase rho every iteration
-
-    deltaY[1,p+1]=norm(vcat(getvalue(dUn),getvalue(dI),getvalue(dSn),getvalue(dXt)),Inf)
+    ρALADp[1,p+1]=ρALADp[1,p]*ρRate #increase ρ every iteration
+    ΔY[1,p+1]=norm(vcat(getvalue(dUn),getvalue(dI),getvalue(dSn),getvalue(dXt)),Inf)
 end
 
 println("plotting....")
@@ -340,7 +328,7 @@ pd1aladNL=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 if drawFig==1 draw(PNG(path*"J_decentral_ALADIN_SOC.png", 24inch, 12inch), pd1alad) end
 
 pd2aladNL=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
+		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
@@ -357,7 +345,7 @@ if drawFig==1 draw(PNG(path*"J_decentral_ALADIN_Temp.png", 24inch, 12inch), pd3a
 
 pd4aladNL=plot(layer(x=1:horzLen+1,y=Lam[:,convIt],Geom.line),
 		layer(x=1:horzLen+1,y=lamCurrStarNL,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
+		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/kA)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
 if drawFig==1 draw(PNG(path*"J_decentral_ALADIN_Lam.png", 24inch, 12inch), pd4alad) end
@@ -405,7 +393,7 @@ setChangesPlot=plot(x=3:convIt,y=setChanges[3:convIt],Geom.line,
                     Guide.xlabel("Iteration"), Guide.ylabel("Changes in Active inequality constraints",orientation=:vertical),
                     Coord.Cartesian(xmin=3,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
         			minor_label_font_size=26pt,key_label_font_size=26pt))
-solChangesplot=plot(layer(x=2:convIt,y=deltaY[2:convIt],Geom.line),
+solChangesplot=plot(layer(x=2:convIt,y=ΔY[2:convIt],Geom.line),
                     layer(x=2:convIt,y=convCheck[2:convIt],Geom.line),Scale.y_log)
 
 convItPlotaladNL=plot(x=1:convIt,y=itConvALAD[1:convIt,1],Geom.line,Scale.y_log10,

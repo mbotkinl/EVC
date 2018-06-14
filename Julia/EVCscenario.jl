@@ -22,18 +22,16 @@ Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
 
 # Discretization parameters:
 Ts = Rh*C/9              # s, sampling time in seconds
-etaP = Ts*Vac*a./b        # 1/A, normalized battery sizes (0-1)
-tauP = 1 - Ts/(Rh*C)      # no units, temp time constant: 1 - 1/RC
-rhoP = 1 - tauP            # no units, ambient-to-temp param: 1/RC
-gammaP = Ts*Rw/(C*Ntf)    # K/W, ohmic losses-to-temp parameter
-#gamma=.85/Ntf
-#gamma=.0085/Ntf
+ηP = Ts*Vac*a./b*1000  # 1/kA, normalized battery sizes (0-1)
+τP = 1 - Ts/(Rh*C)      # no units, temp time constant: 1 - 1/RC
+ρP = 1 - τP            # no units, ambient-to-temp param: 1/RC
+γP = Ts*Rw/(C*Ntf)*1000^2    # K/kW, ohmic losses-to-temp parameter
 
 # PWL Parameters:
 #S = 3;
 S=50
 #ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
-ItotalMax = 4000
+ItotalMax = 4  #kA
 deltaI = ItotalMax/S
 
 
@@ -49,7 +47,7 @@ K  = K1+K2;                        # Total horizon (8 PM to 10 AM)Qs  = 10;     
 # Constraint parameters:
 Tmax = 393                             # Short-term over-loading --> 120 C = 393 Kelvin
 imin = zeros(N,1)                      # A, q_min < 0 if V2G is allowed
-imax = (10 + 16*rand(N,1))             # A, charging with 10-24 A
+imax = (10 + 16*rand(N,1))/1000             # A, charging with 10-24 A
 SOCmin = 1 - 0.20*rand(N,1)            # Required min final states of charge (~0.80-1)
 FullChargeTime_relative = .25*rand(N,1)+.75
 #FullChargeTime = convert(Array{Int,2},round.(K*FullChargeTime_relative));
@@ -65,7 +63,7 @@ Kn=FullChargeTime
 
 # Disturbances
 #Dload_amplitude = 2;  # base-demand factor
-Dload_amplitude = 80000 #watts?
+Dload_amplitude = 70 #kWatts?
 Tamb_amplitude  = 363   # assume hot night in summer (30 C)
 
 # Disturbance scenario:
@@ -90,7 +88,7 @@ for i=1:K+1
 end
 
 # penalty matrix new (need to fix for k>Ki)
-Ru   = 0.1;              # Stage and terminal penalty on local power flow (inputs u)
+Ru   = 0.1*1000^2;              # Stage and terminal penalty on local power flow (inputs u)
 #RKi   = 10;            # Stage and terminal penalty on local power flow (inputs q), for k >= Ki
 Qs  = 10;               # Stage and terminal penalty on charge difference with respect to 1 (states s)
 QT  = 0;                # PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
@@ -98,23 +96,8 @@ QT  = 0;                # PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
 Ri=Ru*(5*rand(N,1)+.1);
 Qsi=[Qs*(10*rand(N,1)+.01);QT];
 
-
-#paramters for kA current
-ηPk = etaP*1000
-γPk = gammaP*1000^2
-ΔIk=deltaI/1000
-ItotalMaxk=ItotalMax/1000
-imaxk=imax./1000
-Rik=Ri*1000^2
-iDk=iD/1000
-wk = zeros((K+1)*ndisturbs,1);
-for i=1:K+1
-    wk[(i-1)*ndisturbs+1:i*ndisturbs,1]  = [iDk[i,1]; FullTamb[i,1]];
-end
-
-
 # save
-if any(etaP.*K.*FullChargeTime_relative.*imax+s0 .< SOCmin)
+if any(ηP.*K.*FullChargeTime_relative.*imax+s0 .< SOCmin)
 #if any(eta.*K1.*FullChargeTime_relative.*imax+s0 .< SOCmin)
    println("Some PEVs may not be able to meet SOC min level by desired time!")
 end

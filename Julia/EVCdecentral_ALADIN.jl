@@ -28,14 +28,14 @@ snConvALAD=zeros(maxIt,1)
 convCheck=zeros(maxIt,1)
 
 #ALADIN tuning and initial guess
-sigmaU=1*ones(N,1)
-sigmaS=ones(N,1)/10
-sigmaZ=1/N
-sigmaT=1/10000
+σU=1*ones(N,1)
+σS=ones(N,1)/10
+σZ=1/N
+σT=1/10000
 Hz=1e-6
 Ht=1e-6
-rhoALAD=1
-rhoRate=1.15
+ρALAD=1
+ρRate=1.15
 muALAD=10^8
 # lambda0=5*rand(Truncated(Normal(0), 0, 1), horzLen+1)
 # vt0=Tmax*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
@@ -64,7 +64,7 @@ Lam=zeros((horzLen+1),maxIt) #(rows are time, columns are iteration)
 #Lam[:,1]=max.(lambda0,0)
 Lam[:,1]=lambda0
 
-rhoALADp=rhoALAD*ones(1,maxIt)
+ρALADp=ρALAD*ones(1,maxIt)
 
 #auxillary variables
 Vu=zeros((N)*(horzLen+1),maxIt) #row are time,  columns are iteration
@@ -106,20 +106,19 @@ for p=1:maxIt-1
         evVu=Vu[ind,p]
         evVs=Vs[ind,p]
         #evV=zeros(horzLen+1,1)
-        #target=zeros((horzLen+1),1)
-        #target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
+        target=zeros((horzLen+1),1)
+        target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
         evM = Model(solver = GurobiSolver(NumericFocus=3))
         @variable(evM,sn[1:(horzLen+1)])
         @variable(evM,u[1:(horzLen+1)])
-        #@objective(evM,Min, sum(objFun(sn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+rho_p/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
         @objective(evM,Min,sum((sn[k,1]-1)^2*Qsi[evInd,1]+(u[k,1])^2*Ri[evInd,1]+
                                 lambda[k,1]*(u[k,1])+
-                                rhoALADp[1,p]/2*(u[k,1]-evVu[k,1])*sigmaU[evInd,1]*(u[k,1]-evVu[k,1])+
-                                rhoALADp[1,p]/2*(sn[k,1]-evVs[k,1])*sigmaS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1))
-        @constraint(evM,sn[1,1]==sn0[evInd,1]+etaP[evInd,1]*u[1,1])
-        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+etaP[evInd,1]*u[k+1,1])
+                                ρALADp[1,p]/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
+                                ρALADp[1,p]/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1))
+        @constraint(evM,sn[1,1]==sn0[evInd,1]+ηP[evInd,1]*u[1,1])
+        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+ηP[evInd,1]*u[k+1,1])
         @constraint(evM,socKappaMax,sn.<=1)
-        @constraint(evM,socKappaMin,sn.>=target[ind])
+        @constraint(evM,socKappaMin,sn.>=target)
         @constraint(evM,curKappaMax,u.<=imax[evInd,1])
         @constraint(evM,curKappaMin,u.>=imin[evInd,1])
 
@@ -149,7 +148,7 @@ for p=1:maxIt-1
 
 
             cValMax=abs.(snVal-1).<tolS
-            cValMin=abs.(snVal-target[ind]).<tolS
+            cValMin=abs.(snVal-target).<tolS
             # cVal=socMax
             # cVal[cVal.>0]=1
             # cVal=socMin
@@ -160,8 +159,8 @@ for p=1:maxIt-1
     		Un[ind,p+1]=uVal
             Gu[ind,p+1]=2*Ri[evInd,1]*uVal
             Gs[ind,p+1]=2*Qsi[evInd,1]*snVal-2*Qsi[evInd,1]
-            #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=sigmaU[evInd,1]*(evVu-uVal)+lambda
-            #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=sigmaN[evInd,1]*(evVs-snVal)-lambda
+            #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=σU[evInd,1]*(evVu-uVal)+lambda
+            #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=σN[evInd,1]*(evVs-snVal)-lambda
         end
     end
 
@@ -171,13 +170,11 @@ for p=1:maxIt-1
     @variable(tM,z[1:(S)*(horzLen+1)])
     @variable(tM,xt[1:(horzLen+1)])
     tMobj=sum(-Lam[k,p]*sum(z[(k-1)*(S)+s] for s=1:S)+
-              rhoALADp[1,p]/2*sigmaZ*sum((z[(k-1)*(S)+s]-Vz[(k-1)*(S)+s,p])^2 for s=1:S)+
-              rhoALADp[1,p]/2*sigmaT*(xt[k]-Vt[k,p])^2  for k=1:(horzLen+1))
+              ρALADp[1,p]/2*σZ*sum((z[(k-1)*(S)+s]-Vz[(k-1)*(S)+s,p])^2 for s=1:S)+
+              ρALADp[1,p]/2*σT*(xt[k]-Vt[k,p])^2  for k=1:(horzLen+1))
     @objective(tM,Min, tMobj)
-    @constraint(tM,tempCon1,xt[1]==tauP*xt0+gammaP*deltaI*sum((2*s-1)*z[s] for s=1:S)+rhoP*w[stepI*2,1])
-    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]==tauP*xt[k]+gammaP*deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)+rhoP*w[stepI*2+k*2,1])
-    # @constraint(tM,tempCon1,xt[1]/gammaP==tauP*xt0/gammaP+deltaI*sum((2*s-1)*z[s] for s=1:S)+rhoP*w[stepI*2,1]/gammaP)
-    # @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]/gammaP==tauP*xt[k]/gammaP+deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)+rhoP*w[stepI*2+k*2,1]/gammaP)
+    @constraint(tM,tempCon1,xt[1]==τP*xt0+γP*deltaI*sum((2*s-1)*z[s] for s=1:S)+ρP*w[stepI*2,1])
+    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]==τP*xt[k]+γP*deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)+ρP*w[stepI*2+k*2,1])
     if noTlimit==0
     	@constraint(tM,upperTCon,xt.<=Tmax)
     end
@@ -218,7 +215,7 @@ for p=1:maxIt-1
         Xt[:,p+1]=xtVal
         Z[:,p+1]=zVal
         Gz[:,p+1]=0
-        #Gz[:,p+1]=sigmaZ*(Vz[:,p]-zVal)-repeat(-Lam[:,p],inner=S)
+        #Gz[:,p+1]=σZ*(Vz[:,p]-zVal)-repeat(-Lam[:,p],inner=S)
     end
 
     for k=1:horzLen+1
@@ -230,7 +227,7 @@ for p=1:maxIt-1
     #check for convergence
     constGap=norm(currConst[:,p+1],1)
     cc=norm(vcat((Vu[:,p]-Un[:,p+1]),(Vz[:,p]-Z[:,p+1])),1)
-    #convCheck=rhoALAD*norm(vcat(repmat(sigmaU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),sigmaZ*(Vz[:,p]-Z[:,p+1])),1)
+    #convCheck=ρALAD*norm(vcat(repmat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
     objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                     sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
                     sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
@@ -284,10 +281,10 @@ for p=1:maxIt-1
     @constraint(cM,currCon[k=1:horzLen+1],sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
                                              sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S)==-w[(k-1)*2+1])#+relaxS[k,1])
     #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
-    @constraint(cM,stateCon1[n=1:N],dSn[n,1]==etaP[n,1]*dUn[n,1])
-    @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+etaP[n,1]*dUn[n+(k)*(N),1])
-    @constraint(cM,tempCon1,dXt[1,1]==gammaP*deltaI*sum((2*s-1)*dZ[s,1] for s=1:S))
-    @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==tauP*dXt[k,1]+gammaP*deltaI*sum((2*s-1)*dZ[k*S+s,1] for s=1:S))
+    @constraint(cM,stateCon1[n=1:N],dSn[n,1]==ηP[n,1]*dUn[n,1])
+    @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+ηP[n,1]*dUn[n+(k)*(N),1])
+    @constraint(cM,tempCon1,dXt[1,1]==γP*deltaI*sum((2*s-1)*dZ[s,1] for s=1:S))
+    @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==τP*dXt[k,1]+γP*deltaI*sum((2*s-1)*dZ[k*S+s,1] for s=1:S))
 
     #local inequality constraints
     # @constraint(cM,(Z[:,p+1]+dZ).>=0)
@@ -335,7 +332,7 @@ for p=1:maxIt-1
     # Vs[:,p+1]=Sn[:,p+1]+getvalue(dSn)
     # Vt[:,p+1]=Xt[:,p+1]+getvalue(dXt)
 
-    rhoALADp[1,p+1]=rhoALADp[1,p]*rhoRate #increase rho every iteration
+    ρALADp[1,p+1]=ρALADp[1,p]*ρRate #increase ρ every iteration
     deltaY[1,p+1]=norm(vcat(getvalue(dUn),getvalue(dZ),getvalue(dSn),getvalue(dXt)),Inf)
 
 end
@@ -356,7 +353,7 @@ pd1alad=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 if drawFig==1 draw(PNG(path*"J_decentral_ALADIN_SOC.png", 24inch, 12inch), pd1alad) end
 
 pd2alad=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
+		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
@@ -373,7 +370,7 @@ if drawFig==1 draw(PNG(path*"J_decentral_ALADIN_Temp.png", 24inch, 12inch), pd3a
 
 pd4alad=plot(layer(x=1:horzLen+1,y=Lam[:,convIt],Geom.line),
 		layer(x=1:horzLen+1,y=lamCurrStar,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
+		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/kA)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
 if drawFig==1 draw(PNG(path*"J_decentral_ALADIN_Lam.png", 24inch, 12inch), pd4alad) end
