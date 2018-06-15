@@ -18,7 +18,7 @@ tolU=1e-4
 tolS=1e-8
 tolT=1e-4
 tolZ=1e-6
-maxIt=50
+maxIt=30
 convIt=maxIt
 ConvALAD=zeros(maxIt,1)
 constConvALAD=zeros(maxIt,1)
@@ -96,12 +96,10 @@ for p=1:maxIt-1
 
     #solve decoupled
     @sync @parallel for evInd=1:N
-
         ind=[evInd]
         for k=1:horzLen
             append!(ind,k*N+evInd)
         end
-
         lambda=Lam[:,p]
         evVu=Vu[ind,p]
         evVs=Vs[ind,p]
@@ -131,10 +129,10 @@ for p=1:maxIt-1
             println("solver issues with EV NLP")
             return
         else
-			kappaMax=-getdual(curKappaMax)
-			kappaMin=-getdual(curKappaMin)
-            socMax=-getdual(socKappaMax)
-            socMin=-getdual(socKappaMin)
+			# kappaMax=-getdual(curKappaMax)
+			# kappaMin=-getdual(curKappaMin)
+            # socMax=-getdual(socKappaMax)
+            # socMin=-getdual(socKappaMin)
             uVal=getvalue(u)
             snVal=getvalue(sn)
 
@@ -170,11 +168,12 @@ for p=1:maxIt-1
     @variable(tM,z[1:(S)*(horzLen+1)])
     @variable(tM,xt[1:(horzLen+1)])
     tMobj=sum(-Lam[k,p]*sum(z[(k-1)*(S)+s] for s=1:S)+
-              ρALADp[1,p]/2*σZ*sum((z[(k-1)*(S)+s]-Vz[(k-1)*(S)+s,p])^2 for s=1:S)+
+              #ρALADp[1,p]/2*σZ*sum((z[(k-1)*(S)+s]-Vz[(k-1)*(S)+s,p])^2 for s=1:S)+
+              ρALADp[1,p]/2*σZ*(sum(z[(k-1)*(S)+s] for s=1:S)-sum(Vz[(k-1)*(S)+s,p] for s=1:S))^2+
               ρALADp[1,p]/2*σT*(xt[k]-Vt[k,p])^2  for k=1:(horzLen+1))
     @objective(tM,Min, tMobj)
-    @constraint(tM,tempCon1,xt[1]==τP*xt0+γP*deltaI*sum((2*s-1)*z[s] for s=1:S)+ρP*w[stepI*2,1])
-    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]==τP*xt[k]+γP*deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)+ρP*w[stepI*2+k*2,1])
+    @constraint(tM,tempCon1,xt[1]-τP*xt0-γP*deltaI*sum((2*s-1)*z[s] for s=1:S)-ρP*w[stepI*2,1]==0)
+    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-τP*xt[k]-γP*deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)-ρP*w[stepI*2+k*2,1]==0)
     if noTlimit==0
     	@constraint(tM,upperTCon,xt.<=Tmax)
     end
@@ -193,6 +192,7 @@ for p=1:maxIt-1
 		#kappaMin=-getdual(pwlKappaMin)
         #tMax=-getdual(upperTCon)
         #tMin=-getdual(lowerTCon)
+        lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
         zVal=getvalue(z)
         xtVal=getvalue(xt)
 
@@ -315,17 +315,17 @@ for p=1:maxIt-1
 
     #update step
     # Lam[:,p+1]=-getdual(currCon)
-    alpha1=1
-    alpha2=1
-    alpha3=1
+    α1=1
+    α2=1
+    α3=1
     #alpha3=alpha3/ceil(p/2)
     #Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
-    Lam[:,p+1]=max.(Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p]),0)
+    Lam[:,p+1]=max.(Lam[:,p]+α3*(-getdual(currCon)-Lam[:,p]),0)
 
-    Vu[:,p+1]=Vu[:,p]+alpha1*(Un[:,p+1]-Vu[:,p])+alpha2*getvalue(dUn)
-    Vz[:,p+1]=Vz[:,p]+alpha1*(Z[:,p+1]-Vz[:,p])+alpha2*getvalue(dZ)
-    Vs[:,p+1]=Vs[:,p]+alpha1*(Sn[:,p+1]-Vs[:,p])+alpha2*getvalue(dSn)
-    Vt[:,p+1]=Vt[:,p]+alpha1*(Xt[:,p+1]-Vt[:,p])+alpha2*getvalue(dXt)
+    Vu[:,p+1]=Vu[:,p]+α1*(Un[:,p+1]-Vu[:,p])+α2*getvalue(dUn)
+    Vz[:,p+1]=Vz[:,p]+α1*(Z[:,p+1]-Vz[:,p])+α2*getvalue(dZ)
+    Vs[:,p+1]=Vs[:,p]+α1*(Sn[:,p+1]-Vs[:,p])+α2*getvalue(dSn)
+    Vt[:,p+1]=Vt[:,p]+α1*(Xt[:,p+1]-Vt[:,p])+α2*getvalue(dXt)
 
     # Vu[:,p+1]=Un[:,p+1]+getvalue(dUn)
     # Vz[:,p+1]=Z[:,p+1]+getvalue(dZ)
@@ -334,7 +334,6 @@ for p=1:maxIt-1
 
     ρALADp[1,p+1]=ρALADp[1,p]*ρRate #increase ρ every iteration
     deltaY[1,p+1]=norm(vcat(getvalue(dUn),getvalue(dZ),getvalue(dSn),getvalue(dXt)),Inf)
-
 end
 
 println("plotting....")

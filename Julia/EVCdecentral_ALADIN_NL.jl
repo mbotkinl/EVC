@@ -25,9 +25,11 @@ tolI=1e-6
 maxIt=50
 convIt=maxIt
 ConvALAD=zeros(maxIt,1)
+ConvALAD2=zeros(maxIt,1)
 constConvALAD=zeros(maxIt,1)
 itConvALAD=zeros(maxIt,1)
 fConvALAD=zeros(maxIt,1)
+fConvALAD2=zeros(maxIt,1)
 snConvALAD=zeros(maxIt,1)
 convCheck=zeros(maxIt,1)
 
@@ -137,10 +139,10 @@ for p=1:maxIt-1
             println("solver issues with EV NLP")
             return
         else
-			kappaMax=-getdual(curKappaMax)
-			kappaMin=-getdual(curKappaMin)
-            socMax=-getdual(socKappaMax)
-            socMin=-getdual(socKappaMin)
+			# kappaMax=-getdual(curKappaMax)
+			# kappaMin=-getdual(curKappaMin)
+            # socMax=-getdual(socKappaMax)
+            # socMin=-getdual(socKappaMin)
             uVal=getvalue(u)
             snVal=getvalue(sn)
 
@@ -193,10 +195,10 @@ for p=1:maxIt-1
         println("solver issues with XFRM NLP")
         return
     else
-        kappaMax=-getdual(KappaMin)
-        kappaMin=-getdual(KappaMax)
-        tMax=-getdual(upperTCon)
-        tMin=-getdual(lowerTCon)
+        # kappaMax=-getdual(KappaMin)
+        # kappaMin=-getdual(KappaMax)
+        # tMax=-getdual(upperTCon)
+        # tMin=-getdual(lowerTCon)
         lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
         iVal=getvalue(itotal)
         xtVal=getvalue(xt)
@@ -237,14 +239,19 @@ for p=1:maxIt-1
                     sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
                     sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
     fGap= abs(objFun(Sn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStarNL)
+    fGap2= abs((objFun(Sn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStarNL)/fStarNL)
     snGap=norm((Sn[:,p+1]-snStarNL),2)
     itGap = norm(Lam[:,p]-Lam[:,max(p-1,1)],2)
     convGap = norm(Lam[:,p]-lamCurrStarNL,2)
+    convGap2 = norm(round.(Lam[:,p]-lamCurrStarNL,10)./lamCurrStarNL,2) #need some rounding here if both are 1e-8
+
     fConvALAD[p,1]=fGap
+    fConvALAD2[p,1]=fGap2
     snConvALAD[p,1]=snGap
     itConvALAD[p,1]=itGap
     constConvALAD[p,1]=constGap
     ConvALAD[p,1]=convGap
+    ConvALAD2[p,1]=convGap2
     convCheck[p,1]=cc
     if  constGap<=epsilon && convCheck<=epsilon
         @printf "Converged after %g iterations\n" p
