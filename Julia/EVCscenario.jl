@@ -7,7 +7,7 @@ using Distributions
 
 println("Creating EV Scenario...")
 
-N = 30
+N = 5
 
 #model parameters
 a   = rand(N,1)*.1 + 0.8               # efficiency of Li-ion batts is ~80-90%
@@ -63,7 +63,7 @@ Kn=FullChargeTime
 
 # Disturbances
 #Dload_amplitude = 2;  # base-demand factor
-Dload_amplitude = 70 #kWatts?
+Dload_amplitude = 85 #kWatts?
 Tamb_amplitude  = 363   # assume hot night in summer (30 C)
 
 # Disturbance scenario:

@@ -7,8 +7,8 @@ tic()
 sn0=s0
 xt0=T0
 
-#lambda0=ones(horzLen+1,1)
-lambda0=lamCurrStarNL
+lambda0=ones(horzLen+1,1)
+#lambda0=lamCurrStarNL
 #lambda0=max.(lamCurrStarNL,0)
 
 
@@ -23,7 +23,7 @@ end
 stepI = 1;
 horzLen=K1
 convChk = 1e-8
-maxIt=200
+maxIt=50
 convIt=maxIt
 
 

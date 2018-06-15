@@ -3,31 +3,33 @@
 #5/22/18
 
 #formulation try 2
-#u, xn, xt, and z are all in "x" v is the auxilliary variable corresponding to z in literature
+#u, sn, xt, and z are all in "x" v is the auxilliary variable corresponding to z in literature
 #current constraint is coupling
 
 tic()
 #initialize with current states
-xn0=s0
+sn0=s0
 xt0=T0
 
 stepI = 1;
 horzLen=K1
 convChk = 1e-6
-numIteration=100
+numIteration=50
 convIt=numIteration
 Conv=zeros(numIteration,1)
 itConv=zeros(numIteration,1)
 constConv=zeros(numIteration,1)
 fConv=zeros(numIteration,1)
-xnConv=zeros(numIteration,1)
+snConv=zeros(numIteration,1)
 
 #admm  initial parameters and guesses
 #ρADMM=10.0^(0)
 ρADMM=1
-d = Truncated(Normal(0), 0, 5)
-lambda0=rand(d, horzLen+1)
+#d = Truncated(Normal(0), 0, 5)
+#lambda0=rand(d, horzLen+1)
 #lambda0=lamCurrStar
+lambda0=ones(horzLen+1,1)
+
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
 Un=SharedArray{Float64}(N*(horzLen+1),numIteration) #row are time,  columns are iteration
@@ -69,15 +71,15 @@ for p in 1:numIteration-1
         target=zeros((horzLen+1),1)
 		target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Sn[evInd,1]
     	evM = Model(solver = GurobiSolver())
-    	@variable(evM,xn[1:(horzLen+1)])
+    	@variable(evM,sn[1:(horzLen+1)])
     	@variable(evM,u[1:(horzLen+1)])
-    	objFun(xn,u)=sum((xn[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
+    	objFun(sn,u)=sum((sn[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
         			    sum((u[k,1])^2*Ri[evInd,1]     for k=1:horzLen+1)
-		@objective(evM,Min, sum(objFun(xn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+ρ_p/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
-        @constraint(evM,xn[1,1]==xn0[evInd,1]+ηP[evInd,1]*u[1,1])
-        @constraint(evM,[k=1:horzLen],xn[k+1,1]==xn[k,1]+ηP[evInd,1]*u[k+1,1])
-    	@constraint(evM,xn.<=1)
-    	@constraint(evM,xn.>=target)
+		@objective(evM,Min, sum(objFun(sn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+ρ_p/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
+        @constraint(evM,sn[1,1]==sn0[evInd,1]+ηP[evInd,1]*u[1,1])
+        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+ηP[evInd,1]*u[k+1,1])
+    	@constraint(evM,sn.<=1)
+    	@constraint(evM,sn.>=target)
         @constraint(evM,u.<=imax[evInd,1])
         @constraint(evM,u.>=imin[evInd,1])
     	TT = STDOUT # save original STDOUT stream
@@ -87,7 +89,7 @@ for p in 1:numIteration-1
     	if status!=:Optimal
     	    return
     	else
-    		Xn[collect(evInd:N:length(Xn[:,p+1])),p+1]=getvalue(xn)
+    		Xn[collect(evInd:N:length(Xn[:,p+1])),p+1]=getvalue(sn)
     		Un[collect(evInd:N:length(Un[:,p+1])),p+1]=getvalue(u)
     	end
     end
@@ -148,17 +150,17 @@ for p in 1:numIteration-1
 
 
     #check convergence
-	objFun(xn,xt,u)=sum(sum((xn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
+	objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
 					sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
 					sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
 	fGap= objFun(Xn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar
 	#fGap= objFun(Xn[:,p],Xt[:,p],Un[:,p])-fStar
-	xnGap=norm((Xn[:,p+1]-xnStar),2)
+	snGap=norm((Xn[:,p+1]-snStar),2)
 	constGap=norm(currConst,2)
 	itGap = norm(Lam[:,p+1]-Lam[:,p],2)
 	convGap = norm(Lam[:,p+1]-lamCurrStar,2)
 	fConv[p,1]=fGap
-	xnConv[p,1]=xnGap
+	snConv[p,1]=snGap
 	constConv[p,1]=constGap
 	itConv[p,1]=itGap
 	Conv[p,1]=convGap
@@ -170,7 +172,7 @@ for p in 1:numIteration-1
 		@printf "lastGap %e after %g iterations\n" itGap p
 		@printf "convGap %e after %g iterations\n" convGap p
 		@printf "constGap %e after %g iterations\n" constGap p
-        @printf "xnGap %e after %g iterations\n" xnGap p
+        @printf "snGap %e after %g iterations\n" snGap p
 		@printf("fGap %e after %g iterations\n\n",fGap,p)
 
 	end
