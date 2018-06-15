@@ -6,67 +6,6 @@
 #u, xn, xt, and z are all in "x" v is the auxilliary variable corresponding to z in literature
 #current constraint is coupling
 
-datafile="jld" #"mat" #"jld" #"n"
-drawFig=0
-noTlimit=0
-if datafile in ["mat" "jld"]; N=30 end
-
-println("Loading Packages...")
-
-using Gadfly
-using JuMP
-using Gurobi
-using Ipopt
-using Cairo #for png output
-using Fontconfig
-using Distributions
-#using ProximalOperators
-
-if datafile=="mat"
-	using MAT #to read in scenarios from matlab
-elseif datafile=="jld"
-	using JLD
-end
-
-if datafile in ["mat" "jld"]
-	println("Reading in Data...")
-
-	function string_as_varname(s::String,v::Any)
-		 s=Symbol(s)
-		 @eval (($s) = ($v))
-	end
-
-	#read in mat scenario
-	path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N$(N)\\"
-	file="EVCscenarioN$(N)."*datafile
-	if datafile=="mat"
-		vars = matread(path*file)
-	elseif datafile=="jld"
-		vars=load(path*file)
-	end
-	varnames=keys(vars)
-	varNum=length(varnames)
-	varKeys=collect(varnames)
-	varValues=collect(values(vars))
-
-	for i =1:varNum
-		n=varKeys[i]
-		v=varValues[i]
-		if datafile=="mat"
-			if n in ["N" "K" "S"]
-				v=convert(Int, v)
-			end
-		end
-		string_as_varname(n,v)
-	end
-	println("done reading in")
-
-	if datafile=="mat"
-		Kn=convert(Array{Int,2},Kn)
-	end
-end
-
-
 tic()
 #initialize with current states
 xn0=s0
@@ -84,8 +23,8 @@ fConv=zeros(numIteration,1)
 xnConv=zeros(numIteration,1)
 
 #admm  initial parameters and guesses
-#rhoADMM=10.0^(0)
-rhoADMM=1
+#ρADMM=10.0^(0)
+ρADMM=1
 d = Truncated(Normal(0), 0, 5)
 lambda0=rand(d, horzLen+1)
 #lambda0=lamCurrStar
@@ -118,8 +57,8 @@ ZS=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
 
 
 for p in 1:numIteration-1
-	#rho_p = rhoADMM/ceil(p/2)
-    rho_p = rhoADMM
+	#ρ_p = ρADMM/ceil(p/2)
+    ρ_p = ρADMM
 
     #x minimization eq 7.66 in Bertsekas
     @sync @parallel for evInd=1:N
@@ -134,9 +73,9 @@ for p in 1:numIteration-1
     	@variable(evM,u[1:(horzLen+1)])
     	objFun(xn,u)=sum((xn[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
         			    sum((u[k,1])^2*Ri[evInd,1]     for k=1:horzLen+1)
-		@objective(evM,Min, sum(objFun(xn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+rho_p/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
-        @constraint(evM,xn[1,1]==xn0[evInd,1]+eta[evInd,1]*u[1,1])
-        @constraint(evM,[k=1:horzLen],xn[k+1,1]==xn[k,1]+eta[evInd,1]*u[k+1,1])
+		@objective(evM,Min, sum(objFun(xn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+ρ_p/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
+        @constraint(evM,xn[1,1]==xn0[evInd,1]+ηP[evInd,1]*u[1,1])
+        @constraint(evM,[k=1:horzLen],xn[k+1,1]==xn[k,1]+ηP[evInd,1]*u[k+1,1])
     	@constraint(evM,xn.<=1)
     	@constraint(evM,xn.>=target)
         @constraint(evM,u.<=imax[evInd,1])
@@ -160,12 +99,12 @@ for p in 1:numIteration-1
     @variable(tM,xt[1:(horzLen+1)])
     @variable(tM,zSum[1:(horzLen+1)])
     #constFun1(u,v)=sum(Lam[k,p]*sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
-    #constFun2(u,v)=rho_p/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S)  for k=1:(horzLen+1))
+    #constFun2(u,v)=ρ_p/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S)  for k=1:(horzLen+1))
 	constFun1(u,v)=sum(Lam[k,p]*(u[k,1]-v[k,1])  for k=1:(horzLen+1))
-	constFun2(u,v)=rhoADMM/2*sum((u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
+	constFun2(u,v)=ρADMM/2*sum((u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
     @objective(tM,Min, constFun1(-zSum,Vz[:,p])+constFun2(-zSum,Vz[:,p]))
-    @constraint(tM,tempCon1,xt[1,1]==tau*xt0+gamma*(zSum[1,1])^2+rho*w[stepI*2,1])
-    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==tau*xt[k,1]+gamma*(zSum[k+1,1])^2+rho*w[stepI*2+k*2,1])
+    @constraint(tM,tempCon1,xt[1,1]==τP*xt0+γP*(zSum[1,1])^2+ρP*w[stepI*2,1])
+    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*(zSum[k+1,1])^2+ρP*w[stepI*2+k*2,1])
     if noTlimit==0
     	@constraint(tM,upperTCon,xt.<=Tmax)
     end
@@ -193,8 +132,8 @@ for p in 1:numIteration-1
 	for k=1:horzLen+1
 		#zSum[k,1]=sum(Z[(k-1)*(S)+s,p+1] for s=1:S)
 		currConst[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - zSum[k,1]
-		#Lam[k,p+1]=max.(Lam[k,p]+rhoADMM/(horzLen+1)*(currConst[k,1]),0)
-		Lam[k,p+1]=Lam[k,p]+rho_p/(S*(N))*(currConst[k,1])
+		#Lam[k,p+1]=max.(Lam[k,p]+ρADMM/(horzLen+1)*(currConst[k,1]),0)
+		Lam[k,p+1]=Lam[k,p]+ρ_p/(S*(N))*(currConst[k,1])
 	end
 
 	CC[:,p+1]=currConst
@@ -202,9 +141,9 @@ for p in 1:numIteration-1
 
     #v upate eq 7.67
     for k=1:horzLen+1
-        Vn[(k-1)*N+collect(1:N),p+1]=Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/rho_p
-        #Vz[(k-1)*(S)+collect(1:S),p+1]=-Z[(k-1)*(S)+collect(1:S),p+1]+(Lam[k,p]-Lam[k,p+1])/rho_p
-		Vz[k,p+1]=-zSum[k,1]+(Lam[k,p]-Lam[k,p+1])/rho_p
+        Vn[(k-1)*N+collect(1:N),p+1]=Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/ρ_p
+        #Vz[(k-1)*(S)+collect(1:S),p+1]=-Z[(k-1)*(S)+collect(1:S),p+1]+(Lam[k,p]-Lam[k,p+1])/ρ_p
+		Vz[k,p+1]=-zSum[k,1]+(Lam[k,p]-Lam[k,p+1])/ρ_p
     end
 
 

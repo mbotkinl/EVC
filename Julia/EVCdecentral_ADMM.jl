@@ -14,7 +14,7 @@ xt0=T0
 stepI = 1;
 horzLen=K1
 convChk = 1e-8
-maxIt=10
+maxIt=50
 convIt=maxIt
 ConvADMM=zeros(maxIt,1)
 itConvADMM=zeros(maxIt,1)
@@ -24,13 +24,14 @@ snConvADMM=zeros(maxIt,1)
 unConvADMM=zeros(maxIt,1)
 
 #admm  initial parameters and guesses
-#rhoADMM=10.0^(0)
-rhoADMM=1
+#ρADMM=10.0^(0)
+ρADMM=1
 #d = Truncated(Normal(0), 0, 1)
 #lambda0=5*rand(d, horzLen+1)
-lambda0=lamCurrStar
+#lambda0=lamCurrStar
+lambda0=ones(horzLen+1,1)
 
-#u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
+#u w and z are one index ahead of x. i.e the x[k+1]=x[k]+η*u[k+1]
 Un=SharedArray{Float64}(N*(horzLen+1),maxIt) #row are time,  columns are iteration
 #Un[:,1]=u0
 Lam=zeros((horzLen+1),maxIt) #(rows are time, columns are iteration)
@@ -60,8 +61,8 @@ US=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 
 for p in 1:maxIt-1
 	try
-		#rho_p = rhoADMM/ceil(p/2)
-		rhoI = rhoADMM
+		#ρ_p = ρADMM/ceil(p/2)
+		ρI = ρADMM
 	    #x minimization eq 7.66 in Bertsekas
 	    @sync @parallel for evInd=1:N
 			lambda=Lam[:,p]
@@ -73,9 +74,9 @@ for p in 1:maxIt-1
 	    	@variable(evM,u[1:(horzLen+1)])
 	    	objFun(sn,u)=sum((sn[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
 	        			    sum((u[k,1])^2*Ri[evInd,1]     for k=1:horzLen+1)
-			@objective(evM,Min, sum(objFun(sn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+rhoI/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
-	        @constraint(evM,sn[1,1]==sn0[evInd,1]+etaP[evInd,1]*u[1,1])
-	        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+etaP[evInd,1]*u[k+1,1])
+			@objective(evM,Min, sum(objFun(sn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+ρI/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
+	        @constraint(evM,sn[1,1]==sn0[evInd,1]+ηP[evInd,1]*u[1,1])
+	        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+ηP[evInd,1]*u[k+1,1])
 	    	@constraint(evM,sn.<=1)
 	    	@constraint(evM,sn.>=target)
 	        @constraint(evM,u.<=imax[evInd,1])
@@ -98,12 +99,12 @@ for p in 1:maxIt-1
 	    @variable(tM,xt[1:(horzLen+1)])
 	    #@variable(tM,zSum[1:(horzLen+1)])
 	    constFun1(u,v)=sum(Lam[k,p]*sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
-	    constFun2(u,v)=rhoI/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S)  for k=1:(horzLen+1))
+	    constFun2(u,v)=ρI/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S)  for k=1:(horzLen+1))
 		#constFun1(u,v)=sum(Lam[k,p]*(u[k,1]-v[k,1])  for k=1:(horzLen+1))
-		#constFun2(u,v)=rhoADMM/2*sum((u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
+		#constFun2(u,v)=ρADMM/2*sum((u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
 	    @objective(tM,Min, constFun1(-z,Vz[:,p])+constFun2(-z,Vz[:,p]))
-	    @constraint(tM,tempCon1,xt[1,1]==tauP*xt0+gammaP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+rhoP*w[stepI*2,1])
-	    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==tauP*xt[k,1]+gammaP*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+rhoP*w[stepI*2+k*2,1])
+	    @constraint(tM,tempCon1,xt[1,1]==τP*xt0+γP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+ρP*w[stepI*2,1])
+	    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+ρP*w[stepI*2+k*2,1])
 	    if noTlimit==0
 	    	@constraint(tM,upperTCon,xt.<=Tmax)
 	    end
@@ -132,14 +133,14 @@ for p in 1:maxIt-1
 			uSum[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
 			zSum[k,1]=sum(Z[(k-1)*(S)+s,p+1] for s=1:S)
 			currConst[k,1]= uSum[k,1] + w[(k-1)*2+(stepI*2-1),1] - zSum[k,1]
-			#Lam[k,p+1]=max.(Lam[k,p]+rhoADMM/(horzLen+1)*(currConst[k,1]),0)
-			Lam[k,p+1]=Lam[k,p]+rhoI/(S*(N))*(currConst[k,1])
+			#Lam[k,p+1]=max.(Lam[k,p]+ρADMM/(horzLen+1)*(currConst[k,1]),0)
+			Lam[k,p+1]=Lam[k,p]+ρI/(S*(N))*(currConst[k,1])
 		end
 
 		#calculate actual temperature from nonlinear model of XFRM
-		Tactual[1,p+1]=tauP*xt0+gammaP*zSum[1,1]^2+rhoP*w[2,1] #fix for mpc
+		Tactual[1,p+1]=τP*xt0+γP*zSum[1,1]^2+ρP*w[2,1] #fix for mpc
 		for k=1:horzLen
-			Tactual[k+1,p+1]=tauP*Tactual[k,p+1]+gammaP*zSum[k+1,1]^2+rhoP*w[k*2+2,1]  #fix for mpc
+			Tactual[k+1,p+1]=τP*Tactual[k,p+1]+γP*zSum[k+1,1]^2+ρP*w[k*2+2,1]  #fix for mpc
 		end
 
 		CC[:,p+1]=currConst
@@ -148,9 +149,9 @@ for p in 1:maxIt-1
 
 	    #v upate eq 7.67
 	    for k=1:horzLen+1
-	        Vu[(k-1)*N+collect(1:N),p+1]=min.(max.(Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/rhoI,imin),imax)
-	        Vz[(k-1)*(S)+collect(1:S),p+1]=max.(min.(-Z[(k-1)*(S)+collect(1:S),p+1]+(Lam[k,p]-Lam[k,p+1])/rhoI,0),-deltaI)
-			#Vz[k,p+1]=-zSum[k,1]+(Lam[k,p]-Lam[k,p+1])/rhoADMM
+	        Vu[(k-1)*N+collect(1:N),p+1]=min.(max.(Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/ρI,imin),imax)
+	        Vz[(k-1)*(S)+collect(1:S),p+1]=max.(min.(-Z[(k-1)*(S)+collect(1:S),p+1]+(Lam[k,p]-Lam[k,p+1])/ρI,0),-deltaI)
+			#Vz[k,p+1]=-zSum[k,1]+(Lam[k,p]-Lam[k,p+1])/ρADMM
 	    end
 
 	    #check convergence
