@@ -14,7 +14,7 @@ xt0=T0
 stepI = 1;
 horzLen=K1
 convChk = 1e-8
-maxIt=50
+maxIt=100
 convIt=maxIt
 ConvADMM=zeros(maxIt,1)
 itConvADMM=zeros(maxIt,1)
@@ -25,7 +25,8 @@ unConvADMM=zeros(maxIt,1)
 
 #admm  initial parameters and guesses
 #ρADMM=10.0^(0)
-ρADMM=1
+ρADMM=10^6 #for kA
+#ρADMM=1    #for A
 #d = Truncated(Normal(0), 0, 1)
 #lambda0=5*rand(d, horzLen+1)
 #lambda0=lamCurrStar

@@ -18,20 +18,24 @@ tolU=1e-4
 tolS=1e-8
 tolT=1e-4
 tolZ=1e-6
-maxIt=50
+maxIt=100
 convIt=maxIt
 ConvALAD=zeros(maxIt,1)
 constConvALAD=zeros(maxIt,1)
 itConvALAD=zeros(maxIt,1)
 fConvALAD=zeros(maxIt,1)
 snConvALAD=zeros(maxIt,1)
+unConvALAD=zeros(maxIt,1)
 convCheck=zeros(maxIt,1)
 
 #ALADIN tuning and initial guess
 σU=1*ones(N,1)
-σS=ones(N,1)/10
+σS=ones(N,1)/10 #for kA
+#σS=ones(N,1)*100 #for A
 σZ=1/N
-σT=1/10000
+σT=1/10000 #for kA
+#σT=1/10  #for A
+
 Hz=1e-6
 Ht=1e-6
 ρALAD=1
@@ -233,10 +237,12 @@ for p=1:maxIt-1
                     sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
     fGap= abs(objFun(Sn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar)
     snGap=norm((Sn[:,p+1]-snStar),2)
+    unGap=norm((Un[:,p+1]-unStar),2)
     itGap = norm(Lam[:,p]-Lam[:,max(p-1,1)],2)
     convGap = norm(Lam[:,p]-lamCurrStar,2)
     fConvALAD[p,1]=fGap
     snConvALAD[p,1]=snGap
+    unConvALAD[p,1]=unGap
     itConvALAD[p,1]=itGap
     constConvALAD[p,1]=constGap
     ConvALAD[p,1]=convGap

@@ -105,8 +105,8 @@ for p in 1:numIteration-1
 	constFun1(u,v)=sum(Lam[k,p]*(u[k,1]-v[k,1])  for k=1:(horzLen+1))
 	constFun2(u,v)=ρADMM/2*sum((u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
     @objective(tM,Min, constFun1(-zSum,Vz[:,p])+constFun2(-zSum,Vz[:,p]))
-    @constraint(tM,tempCon1,xt[1,1]==τP*xt0+γP*(zSum[1,1])^2+ρP*w[stepI*2,1])
-    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*(zSum[k+1,1])^2+ρP*w[stepI*2+k*2,1])
+    @NLconstraint(tM,tempCon1,xt[1,1]==τP*xt0+γP*(zSum[1,1])^2+ρP*w[stepI*2,1])
+    @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*(zSum[k+1,1])^2+ρP*w[stepI*2+k*2,1])
     if noTlimit==0
     	@constraint(tM,upperTCon,xt.<=Tmax)
     end

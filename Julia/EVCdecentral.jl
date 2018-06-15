@@ -14,21 +14,23 @@ xt0=T0
 #lambda0=[0;linspace(7,0,K)]
 #lambda0=rand(K1+1)/2
 
-#lambda0=ones(horzLen+1,1)
-lambda0=lamCurrStar
+lambda0=ones(horzLen+1,1)
+#lambda0=lamCurrStar
 
 if updateMethod=="fastAscent"
-	alpha = 0.1
+	#alpha = 0.1  #for A
+	alpha = 1e3 #for kA
 	#alpha=0.001
 else
-	alpha = 500
+	#alpha = .01 #for A
+	alpha = 1e4 #for kA
 	#alpha= 0.001
 end
 
 stepI = 1;
 horzLen=K1
-convChk = 1e-8
-maxIt=200
+convChk = 1e-16
+maxIt=100
 convIt=maxIt
 
 
@@ -154,6 +156,7 @@ for p=1:maxIt-1
 		alpha_p = alpha/ceil(p/2)
 		#alpha_p = alpha/(p*5)
 	else
+		#alpha_p=alpha
 		alpha_p = alpha/ceil(p/2)
 		#alpha_p = alpha/(p*5)
 	end
@@ -284,5 +287,5 @@ aggU=plot(layer(x=1:horzLen+1,y=sum(uPlot[:,i] for i=1:N),Geom.line,Theme(defaul
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white"),
-		Guide.manual_color_key("", ["Central", "Decentral (fast)"], ["blue", "green"]))
+		Guide.manual_color_key("", ["Central", "Decentral"], ["blue", "green"]))
 #draw(PNG(path*"aggPlot_fast.png", 13inch, 8inch), aggU)
