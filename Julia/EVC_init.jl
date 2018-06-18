@@ -1,8 +1,8 @@
-datafile="n" #"mat" #"jld" #"n"
+datafile="jld" #"mat" #"jld" #"n"
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
 noTlimit=0
-if datafile in ["mat" "jld"]; N=30 end
+if datafile in ["mat" "jld"]; N=5 end
 
 println("Loading Packages...")
 

@@ -22,7 +22,7 @@ tolI=1e-6
 # tolS=1e-8
 # tolT=1e-4
 # tolI=1e-4
-maxIt=50
+maxIt=100
 convIt=maxIt
 ConvALAD=zeros(maxIt,1)
 ConvALAD2=zeros(maxIt,1)
@@ -303,7 +303,7 @@ for p=1:maxIt-1
     α1=1
     α2=1
     α3=1
-    #alpha3=alpha3/ceil(p/2)
+    #α1=α1/ceil(p/2)
     #Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
     Lam[:,p+1]=max.(Lam[:,p]+α3*(-getdual(currCon)-Lam[:,p]),0)
 
@@ -312,7 +312,7 @@ for p=1:maxIt-1
     Vs[:,p+1]=Vs[:,p]+α1*(Sn[:,p+1]-Vs[:,p])+α2*getvalue(dSn)
     Vt[:,p+1]=Vt[:,p]+α1*(Xt[:,p+1]-Vt[:,p])+α2*getvalue(dXt)
 
-    ρALADp[1,p+1]=ρALADp[1,p]*ρRate #increase ρ every iteration
+    ρALADp[1,p+1]=min(ρALADp[1,p]*ρRate,1e6) #increase ρ every iteration
     ΔY[1,p+1]=norm(vcat(getvalue(dUn),getvalue(dI),getvalue(dSn),getvalue(dXt)),Inf)
 end
 

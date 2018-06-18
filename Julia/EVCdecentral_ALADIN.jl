@@ -336,7 +336,7 @@ for p=1:maxIt-1
     # Vs[:,p+1]=Sn[:,p+1]+getvalue(dSn)
     # Vt[:,p+1]=Xt[:,p+1]+getvalue(dXt)
 
-    ρALADp[1,p+1]=ρALADp[1,p]*ρRate #increase ρ every iteration
+    ρALADp[1,p+1]=min(ρALADp[1,p]*ρRate,1e6) #increase ρ every iteration
     deltaY[1,p+1]=norm(vcat(getvalue(dUn),getvalue(dZ),getvalue(dSn),getvalue(dXt)),Inf)
 end
 

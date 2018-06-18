@@ -27,7 +27,7 @@ unPlotComp=plot(layer(x=1:convIt,y=unConvDual_dualAscent[1:convIt,1],Geom.line,T
 
 
 #Ax-b=0
-constPlotComp=plot(layer(x=1:convIt,y=constConvDual[1:convIt,1],Geom.line,Theme(default_color=colorant"blue")),
+constPlotComp=plot(layer(x=1:convIt,y=constConvDual_dualAscent[1:convIt,1],Geom.line,Theme(default_color=colorant"blue")),
                    layer(x=1:convIt,y=constConvADMM[1:convIt,1],Geom.line,Theme(default_color=colorant"green")),
                    layer(x=1:convIt,y=constConvALAD[1:convIt,1],Geom.line,Theme(default_color=colorant"orange")),
 			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Ax Gap",orientation=:vertical),Scale.y_log10,
