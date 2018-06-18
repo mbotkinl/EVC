@@ -7,15 +7,18 @@ tic()
 sn0=s0
 xt0=T0
 
-#lambda0=ones(horzLen+1,1)
-lambda0=lamCurrStarNL
+lambda0=1000*ones(horzLen+1,1)
+#lambda0=lamCurrStarNL
 #lambda0=max.(lamCurrStarNL,0)
 
 if updateMethod=="fastAscent"
-	alpha = 0.1
+	#alpha = 0.1 #for A
+	alpha = 5e3 #for kA
 	#alpha=0.001
 else
-	alpha = .01
+	#alpha = .01 #for A
+	alpha = 5e3 #for kA
+
 	#alpha= 0.001
 end
 
@@ -39,6 +42,7 @@ Xt=zeros((horzLen+1),maxIt) #rows are time
 Itotal=zeros((horzLen+1),maxIt)
 Sn=SharedArray{Float64}(N*(horzLen+1),maxIt)
 Un=SharedArray{Float64}(N*(horzLen+1),maxIt)
+uSum=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 
 #iterate at each time step until convergence
 for p=1:maxIt-1
@@ -108,7 +112,8 @@ for p=1:maxIt-1
 
 		gradL=zeros(horzLen+1,1)
 		for k=1:horzLen+1
-			gradL[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - Itotal[k,p+1]
+			uSum[k,p+1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
+			gradL[k,1]=uSum[k,p+1] + w[(k-1)*2+(stepI*2-1),1] - Itotal[k,p+1]
 		end
 		constConvDual[p,1]=norm(gradL,2)
 	end
@@ -121,7 +126,6 @@ for p=1:maxIt-1
 		else
 			gradL=zeros(horzLen+1,1)
 		end
-
 
 		#add some amount of future lambda
 		for k=1:(horzLen+1-2)
@@ -136,7 +140,7 @@ for p=1:maxIt-1
 		alpha_p = alpha/ceil(p/2)
 		#alpha_p = alpha/(p*5)
 	else
-		alpha_p = alpha/ceil(p/2)
+		alpha_p = alpha/ceil(p/4)
 		#alpha_p = alpha/(p*5)
 	end
 
@@ -182,8 +186,11 @@ end
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
+uPlotd=zeros(horzLen+1,N)
+
 for ii= 1:N
 	xPlot[:,ii]=Sn[collect(ii:N:length(Sn[:,convIt])),convIt]
+	uPlotd[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
 end
 
 pd1nl=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
@@ -193,11 +200,6 @@ pd1nl=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		minor_label_font_size=20pt,key_label_font_size=20pt))
 if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_SOC.png", 24inch, 12inch), pd1) end
 
-
-uPlotd=zeros(horzLen+1,N)
-for ii= 1:N
-	uPlotd[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
-end
 
 pd2nl=plot(uPlotd,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
@@ -234,7 +236,16 @@ if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Lam.png", 24inch, 12inch), pd4) 
 #fName="J_Decentral_fast.png"
 #draw(PNG(path*fName, 13inch, 14inch), vstack(pd1,pd2,pd3,pd4))
 
-
+uSumPlotNL=plot(uSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+			layer(x=1:horzLen+1,y=uSumStarNL,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
+			Guide.xlabel("Time"), Guide.ylabel("U sum"),Guide.ColorKey(title="Iteration"),
+			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+			minor_label_font_size=26pt,key_label_font_size=26pt))
+iPlotNL=plot(Itotal[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+			layer(x=1:horzLen+1,y=itotalStarNL,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
+			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
+			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+			minor_label_font_size=26pt,key_label_font_size=26pt))
 lamPlotNL=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			layer(x=1:horzLen+1,y=lamCurrStarNL,Geom.line,Theme(default_color=colorant"black",line_width=4pt)),
 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
@@ -255,7 +266,7 @@ convPlotNL=plot(x=1:convIt,y=ConvDual[1:convIt,1],Geom.line,Scale.y_log10,
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 constPlotNL=plot(x=1:convIt,y=constConvDual[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("Lambda Star Gap"),
+			Guide.xlabel("Iteration"), Guide.ylabel("Const Gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Conv.png", 36inch, 12inch), convPlot) end
