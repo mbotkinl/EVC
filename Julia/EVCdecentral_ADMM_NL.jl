@@ -63,9 +63,9 @@ for p in 1:numIteration-1
     	evM = Model(solver = GurobiSolver())
     	@variable(evM,sn[1:(horzLen+1)])
     	@variable(evM,u[1:(horzLen+1)])
-    	objFun(sn,u)=sum((sn[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
-        			    sum((u[k,1])^2*Ri[evInd,1]     for k=1:horzLen+1)
-		@objective(evM,Min, sum(objFun(sn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+ρ_p/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
+		@objective(evM,Min, sum((sn[k,1]-1)^2*Qsi[evInd,1]+(u[k,1])^2*Ri[evInd,1]+
+                                lambda[k,1]*(u[k,1]-evV[k,1])+
+                                ρ_p/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
         @constraint(evM,sn[1,1]==sn0[evInd,1]+ηP[evInd,1]*u[1,1])
         @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+ηP[evInd,1]*u[k+1,1])
     	@constraint(evM,sn.<=1)
@@ -89,11 +89,10 @@ for p in 1:numIteration-1
     #@variable(tM,z[1:(S)*(horzLen+1)])
     @variable(tM,xt[1:(horzLen+1)])
     @variable(tM,itotal[1:(horzLen+1)])
-    #constFun1(u,v)=sum(Lam[k,p]*sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
-    #constFun2(u,v)=ρ_p/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S)  for k=1:(horzLen+1))
-	constFun1(u,v)=sum(Lam[k,p]*(u[k,1]-v[k,1])  for k=1:(horzLen+1))
-	constFun2(u,v)=ρADMM/2*sum((u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
-    @objective(tM,Min, constFun1(-itotal,Vi[:,p])+constFun2(-itotal,Vi[:,p]))
+	# constFun1(u,v)=sum(Lam[k,p]*(u[k,1]-v[k,1])  for k=1:(horzLen+1))
+	# constFun2(u,v)=ρADMM/2*sum((u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
+    # @objective(tM,Min, constFun1(-itotal,Vi[:,p])+constFun2(-itotal,Vi[:,p]))
+    @objective(tM,Min,sum(Lam[k,p]*(u[k,1]-v[k,1])+ρADMM/2*(u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
     @NLconstraint(tM,tempCon1,xt[1,1]==τP*xt0+γP*(itotal[1,1])^2+ρP*w[stepI*2,1])
     @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*(itotal[k+1,1])^2+ρP*w[stepI*2+k*2,1])
     if noTlimit==0

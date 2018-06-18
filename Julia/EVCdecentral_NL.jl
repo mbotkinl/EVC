@@ -57,10 +57,7 @@ for p=1:maxIt-1
         evM=Model(solver = IpoptSolver())
         @variable(evM,un[1:horzLen+1])
         @variable(evM,sn[1:horzLen+1])
-        objFun(x,u)=sum((x[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
-        			sum((u[k,1])^2*Ri[evInd,1]    for k=1:horzLen+1) +
-                    sum(Lam[k,p]*u[k,1]          for k=1:horzLen+1)
-        @objective(evM,Min, objFun(sn,un))
+		@objective(evM,Min,sum((sn[k,1]-1)^2*Qsi[evInd,1]+(un[k,1])^2*Ri[evInd,1]+Lam[k,p]*un[k,1] for k=1:horzLen+1))
 		@constraint(evM,sn[1,1]==sn0[evInd,1]+ηP[evInd,1]*un[1,1]) #fix for MPC loop
 		@constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+ηP[evInd,1]*un[k+1,1]) #check K+1
         @constraint(evM,sn.<=1)

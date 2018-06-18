@@ -27,9 +27,7 @@ cModel = Model(solver = IpoptSolver())
 @variable(cModel,itotal[1:(horzLen+1)])
 
 println("obj")
-@objective(cModel,Min, sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
-				sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
-				sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1))
+@objective(cModel,Min, sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]+(u[(k-1)*N+n,1])^2*Ri[n,1] for n=1:N) for k=1:horzLen+1)
 
 println("constraints")
 @constraint(cModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+ηP[:,1].*u[1:N,1])

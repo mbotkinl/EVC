@@ -17,9 +17,9 @@ if updateMethod=="fastAscent"
 	minAlpha=1e-6
 else
 	#alpha = .01 #for A
-	alpha = 8e3 #for kA
+	alpha = 1e4 #for kA
 	#alpha= 0.001
-	alphaDivRate=4
+	alphaDivRate=2
 	minAlpha=1e-6
 end
 
@@ -58,10 +58,7 @@ for p=1:maxIt-1
         evM=Model(solver = GurobiSolver(OutputFlag=0,NumericFocus=3))
         @variable(evM,un[1:horzLen+1])
         @variable(evM,sn[1:horzLen+1])
-        objFun(x,u)=sum((x[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
-        			sum((u[k,1])^2*Ri[evInd,1]    for k=1:horzLen+1) +
-                    sum(Lam[k,p]*u[k,1]          for k=1:horzLen+1)
-        @objective(evM,Min, objFun(sn,un))
+        @objective(evM,Min,sum((sn[k,1]-1)^2*Qsi[evInd,1]+(un[k,1])^2*Ri[evInd,1]+Lam[k,p]*un[k,1] for k=1:horzLen+1))
 		@constraint(evM,sn[1,1]==sn0[evInd,1]+ηP[evInd,1]*un[1,1]) #fix for MPC loop
 		@constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+ηP[evInd,1]*un[k+1,1]) #check K+1
         @constraint(evM,sn.<=1)
@@ -172,7 +169,7 @@ for p=1:maxIt-1
 	else
 		convGap = norm(Lam[:,p+1]-lamCurrStar,2)
 	end
-	fConvDual[p,1]=norm(fGap,2)
+	fConvDual[p,1]=abs(fGap)
 	snConvDual[p,1]=snGap
 	unConvDual[p,1]=unGap
 	itConvDual[p,1]=itGap
@@ -191,7 +188,7 @@ for p=1:maxIt-1
 	end
 end
 
-for name in ["f","sn","un","it",""]
+for name in ["const","f","sn","un","it",""]
 	s=Symbol(@sprintf("%sConvDual_%s",name,updateMethod))
 	v=Symbol(@sprintf("%sConvDual",name))
 	@eval(($s)=($v))

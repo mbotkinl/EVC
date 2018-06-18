@@ -175,10 +175,9 @@ for p=1:maxIt-1
     tM = Model(solver = IpoptSolver())
     @variable(tM,itotal[1:(horzLen+1)])
     @variable(tM,xt[1:(horzLen+1)])
-    tMobj=sum(-Lam[k,p]*itotal[k]+
+    @objective(tM,Min, sum(-Lam[k,p]*itotal[k]+
               ρALADp[1,p]/2*σI*(itotal[k]-Vi[k,p])^2+
-              ρALADp[1,p]/2*σT*(xt[k]-Vt[k,p])^2  for k=1:(horzLen+1))
-    @objective(tM,Min, tMobj)
+              ρALADp[1,p]/2*σT*(xt[k]-Vt[k,p])^2  for k=1:(horzLen+1)))
     @NLconstraint(tM,tempCon1,xt[1]-τP*xt0-γP*(itotal[1])^2-ρP*w[stepI*2,1]==0)
     @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1]-τP*xt[k]-γP*(itotal[k+1])^2-ρP*w[stepI*2+k*2,1]==0)
     if noTlimit==0
@@ -273,12 +272,11 @@ for p=1:maxIt-1
     @variable(cM,dI[1:(horzLen+1)])
     @variable(cM,dXt[1:(horzLen+1)])
     #@variable(cM,relaxS[1:(horzLen+1)])
-    objExp=sum(sum(0.5*dUn[(k-1)*N+i,1]^2*2*Ri[i,1]+Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1]+
-                   0.5*dSn[(k-1)*N+i,1]^2*2*Qsi[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N) for k=1:(horzLen+1))
-    objExp=objExp+sum(0.5*dI[k,1]^2*(Hi-lambdaTemp[k,1]*2*γP)+
-                      0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1))
     #objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
-	@objective(cM,Min, objExp)
+	@objective(cM,Min, sum(sum(0.5*dUn[(k-1)*N+i,1]^2*2*Ri[i,1]+Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1]+
+                               0.5*dSn[(k-1)*N+i,1]^2*2*Qsi[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N)+
+                           0.5*dI[k,1]^2*(Hi-lambdaTemp[k,1]*2*γP)+
+                           0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1)))
     @constraint(cM,currCon[k=1:horzLen+1],sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-(Itotal[k,p+1]+dI[k])==-w[(k-1)*2+1])#+relaxS[k,1])
     @constraint(cM,stateCon1[n=1:N],dSn[n,1]==ηP[n,1]*dUn[n,1])
     @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+ηP[n,1]*dUn[n+(k)*(N),1])

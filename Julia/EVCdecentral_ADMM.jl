@@ -70,9 +70,9 @@ for p in 1:maxIt-1
 	    	evM = Model(solver = GurobiSolver())
 	    	@variable(evM,sn[1:(horzLen+1)])
 	    	@variable(evM,u[1:(horzLen+1)])
-	    	objFun(sn,u)=sum((sn[k,1]-1)^2*Qsi[evInd,1] for k=1:horzLen+1) +
-	        			    sum((u[k,1])^2*Ri[evInd,1]     for k=1:horzLen+1)
-			@objective(evM,Min, sum(objFun(sn,u)+sum(lambda[k,1]*(u[k,1]-evV[k,1]) for k=1:horzLen+1)+ρI/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
+			@objective(evM,Min, sum((sn[k,1]-1)^2*Qsi[evInd,1]+(u[k,1])^2*Ri[evInd,1]+
+									lambda[k,1]*(u[k,1]-evV[k,1])+
+									ρI/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1))
 	        @constraint(evM,sn[1,1]==sn0[evInd,1]+ηP[evInd,1]*u[1,1])
 	        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+ηP[evInd,1]*u[k+1,1])
 	    	@constraint(evM,sn.<=1)
@@ -95,12 +95,11 @@ for p in 1:maxIt-1
 	    tM = Model(solver = GurobiSolver())
 	    @variable(tM,z[1:(S)*(horzLen+1)])
 	    @variable(tM,xt[1:(horzLen+1)])
-	    #@variable(tM,zSum[1:(horzLen+1)])
-	    constFun1(u,v)=sum(Lam[k,p]*sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
-	    constFun2(u,v)=ρI/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S)  for k=1:(horzLen+1))
-		#constFun1(u,v)=sum(Lam[k,p]*(u[k,1]-v[k,1])  for k=1:(horzLen+1))
-		#constFun2(u,v)=ρADMM/2*sum((u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
-	    @objective(tM,Min, constFun1(-z,Vz[:,p])+constFun2(-z,Vz[:,p]))
+	    # constFun1(u,v)=sum(Lam[k,p]*sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
+	    # constFun2(u,v)=ρI/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S)  for k=1:(horzLen+1))
+	    # @objective(tM,Min, constFun1(-z,Vz[:,p])+constFun2(-z,Vz[:,p]))
+		@objective(tM,Min,sum(Lam[k,p]*(sum(-z[(k-1)*(S)+s,1] for s=1:S)-sum(Vz[(k-1)*(S)+s,p] for s=1:S)) +
+							ρI/2*(sum(-z[(k-1)*(S)+s,1] for s=1:S)-sum(Vz[(k-1)*(S)+s,p] for s=1:S))^2  for k=1:(horzLen+1)))
 	    @constraint(tM,tempCon1,xt[1,1]==τP*xt0+γP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+ρP*w[stepI*2,1])
 	    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+ρP*w[stepI*2+k*2,1])
 	    if noTlimit==0
@@ -192,12 +191,12 @@ toc()
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
+uPlot=zeros(horzLen+1,N)
 for ii= 1:N
 	xPlot[:,ii]=Sn[collect(ii:N:length(Sn[:,convIt])),convIt]
+	uPlot[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
 end
 
-#plot(x=1:horzLen+1,y=xPlot2[:,ii])
-# plot(x=1:Kn[ii,1],y=xPlot2[1:Kn[ii,1],ii])
 
 pd1admm=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
@@ -205,12 +204,6 @@ pd1admm=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
 if drawFig==1 draw(PNG(path*"J_decentral_ADMM_SOC.png", 24inch, 12inch), pd1admm) end
-
-
-uPlot=zeros(horzLen+1,N)
-for ii= 1:N
-	uPlot[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
-end
 
 pd2admm=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),

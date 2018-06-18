@@ -29,10 +29,8 @@ centralModel = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1,NumericFo
 @variable(centralModel,z[1:S*(horzLen+1)])
 
 println("obj")
-objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
-				sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
-				sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-@objective(centralModel,Min, objFun(sn,xt,u))
+
+@objective(centralModel,Min,sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]+(u[(k-1)*N+n,1])^2*Ri[n,1]  for n=1:N) for k=1:horzLen+1)
 
 println("constraints")
 @constraint(centralModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+ηP[:,1].*u[1:N,1])
