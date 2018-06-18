@@ -7,7 +7,7 @@ using Distributions
 
 println("Creating EV Scenario...")
 
-N = 3
+N = 5
 
 #model parameters
 a   = rand(N,1)*.1 + 0.8               # efficiency of Li-ion batts is ~80-90%

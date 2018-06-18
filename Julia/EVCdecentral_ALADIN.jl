@@ -10,15 +10,16 @@ tic()
 #initialize with current states
 sn0=s0
 xt0=T0
-
-stepI = 1;
 horzLen=K1
+
+stepI = 1
 epsilon = 1e-8
 tolU=1e-4
 tolS=1e-8
 tolT=1e-4
 tolZ=1e-6
-maxIt=100
+maxIt=500
+
 convIt=maxIt
 ConvALAD=zeros(maxIt,1)
 constConvALAD=zeros(maxIt,1)
@@ -35,7 +36,6 @@ convCheck=zeros(maxIt,1)
 σZ=1/N
 σT=1/10000 #for kA
 #σT=1/10  #for A
-
 Hz=1e-6
 Ht=1e-6
 ρALAD=1
@@ -110,7 +110,7 @@ for p=1:maxIt-1
         #evV=zeros(horzLen+1,1)
         target=zeros((horzLen+1),1)
         target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
-        evM = Model(solver = GurobiSolver(NumericFocus=3))
+        evM = Model(solver = GurobiSolver())
         @variable(evM,sn[1:(horzLen+1)])
         @variable(evM,u[1:(horzLen+1)])
         @objective(evM,Min,sum((sn[k,1]-1)^2*Qsi[evInd,1]+(u[k,1])^2*Ri[evInd,1]+
@@ -167,15 +167,13 @@ for p=1:maxIt-1
     end
 
     #N+1 decoupled problem aka transformer current
-    tM = Model(solver = GurobiSolver(NumericFocus=3))
+    tM = Model(solver = GurobiSolver())
     #tM = Model(solver = IpoptSolver())
     @variable(tM,z[1:(S)*(horzLen+1)])
     @variable(tM,xt[1:(horzLen+1)])
-    tMobj=sum(-Lam[k,p]*sum(z[(k-1)*(S)+s] for s=1:S)+
-              #ρALADp[1,p]/2*σZ*sum((z[(k-1)*(S)+s]-Vz[(k-1)*(S)+s,p])^2 for s=1:S)+
+    @objective(tM,Min, sum(-Lam[k,p]*sum(z[(k-1)*(S)+s] for s=1:S)+
               ρALADp[1,p]/2*σZ*(sum(z[(k-1)*(S)+s] for s=1:S)-sum(Vz[(k-1)*(S)+s,p] for s=1:S))^2+
-              ρALADp[1,p]/2*σT*(xt[k]-Vt[k,p])^2  for k=1:(horzLen+1))
-    @objective(tM,Min, tMobj)
+              ρALADp[1,p]/2*σT*(xt[k]-Vt[k,p])^2  for k=1:(horzLen+1)))
     @constraint(tM,tempCon1,xt[1]-τP*xt0-γP*deltaI*sum((2*s-1)*z[s] for s=1:S)-ρP*w[stepI*2,1]==0)
     @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-τP*xt[k]-γP*deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)-ρP*w[stepI*2+k*2,1]==0)
     if noTlimit==0
@@ -262,7 +260,7 @@ for p=1:maxIt-1
 
 
     #coupled QP
-    cM = Model(solver = GurobiSolver(Presolve=0,NumericFocus=3))
+    cM = Model(solver = GurobiSolver())
     #cM = Model(solver = IpoptSolver())
     @variable(cM,dUn[1:(N)*(horzLen+1)])
     @variable(cM,dSn[1:(N)*(horzLen+1)])
@@ -276,12 +274,12 @@ for p=1:maxIt-1
     #     objExp=objExp+coupledObj(dUn[collect(n:N:(N)*(horzLen+1)),1],Hu[n,1],Gu[collect(n:N:(N)*(horzLen+1)),p+1])+
     #                   coupledObj(dSn[collect(n:N:(N)*(horzLen+1)),1],Hn[n,1],Gs[collect(n:N:(N)*(horzLen+1)),p+1])
 	# end
-    objExp=sum(sum(0.5*dUn[(k-1)*N+i,1]^2*2*Ri[i,1]+Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1]+
-                   0.5*dSn[(k-1)*N+i,1]^2*2*Qsi[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N) for k=1:(horzLen+1))
-    objExp=objExp+sum(0.5*dZ[k,1]^2*Hz+
-                      0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1))
+
     #objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
-	@objective(cM,Min, objExp)
+	@objective(cM,Min, sum(sum(0.5*dUn[(k-1)*N+i,1]^2*2*Ri[i,1]+Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1]+
+                   0.5*dSn[(k-1)*N+i,1]^2*2*Qsi[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N) +
+                   0.5*dZ[k,1]^2*Hz+
+                   0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1)))
     # @constraint(cM,currCon[k=1:horzLen+1],w[(k-1)*2+1]+relaxS[k,1]==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)+
     #                                          sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
     @constraint(cM,currCon[k=1:horzLen+1],sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
@@ -418,8 +416,9 @@ setChangesPlot=plot(x=3:convIt,y=setChanges[3:convIt],Geom.line,
                     Guide.xlabel("Iteration"), Guide.ylabel("Changes in Active inequality constraints",orientation=:vertical),
                     Coord.Cartesian(xmin=3,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
         			minor_label_font_size=26pt,key_label_font_size=26pt))
-solChangesplot=plot(layer(x=2:convIt,y=deltaY[2:convIt],Geom.line),
-                    layer(x=2:convIt,y=convCheck[2:convIt],Geom.line),Scale.y_log)
+solChangesplot=plot(layer(x=2:convIt,y=deltaY[2:convIt],Geom.line,Theme(default_color=colorant"green")),
+                    layer(x=2:convIt,y=convCheck[2:convIt],Geom.line,Theme(default_color=colorant"red")),
+                    Scale.y_log,Guide.manual_color_key("", ["ΔY","y-x"], ["green","red"]))
 
 convItPlotalad=plot(x=1:convIt,y=itConvALAD[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),

@@ -18,43 +18,40 @@ for ii=1:N
    target[ind]=Snmin[ii,1]
 end
 
-
-
 println("setting up model")
-m = Model(solver = IpoptSolver())
+cModel = Model(solver = IpoptSolver())
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
-@variable(m,u[1:N*(horzLen+1)])
-@variable(m,sn[1:(N)*(horzLen+1)])
-@variable(m,xt[1:(horzLen+1)])
-@variable(m,itotal[1:(horzLen+1)])
+@variable(cModel,u[1:N*(horzLen+1)])
+@variable(cModel,sn[1:(N)*(horzLen+1)])
+@variable(cModel,xt[1:(horzLen+1)])
+@variable(cModel,itotal[1:(horzLen+1)])
 
 println("obj")
-objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
+@objective(cModel,Min, sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
 				sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
-				sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-@objective(m,Min, objFun(sn,xt,u))
+				sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1))
 
 println("constraints")
-@constraint(m,stateCon1,sn[1:N,1].==sn0[1:N,1]+ηP[:,1].*u[1:N,1])
-@constraint(m,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+ηP[n,1]*u[n+(k)*(N),1])
-@NLconstraint(m,tempCon1,xt[1,1]==τP*xt0+γP*(itotal[1])^2+ρP*w[stepI*2,1])
-@NLconstraint(m,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*(itotal[k+1])^2+ρP*w[stepI*2+k*2,1]) #check id index???
-@constraint(m,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-w[(k-1)*2+1]+itotal[k]) #fix for MPC
-@constraint(m,sn.<=1)
-@constraint(m,sn.>=target)
+@constraint(cModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+ηP[:,1].*u[1:N,1])
+@constraint(cModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+ηP[n,1]*u[n+(k)*(N),1])
+@NLconstraint(cModel,tempCon1,xt[1,1]==τP*xt0+γP*(itotal[1])^2+ρP*w[stepI*2,1])
+@NLconstraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*(itotal[k+1])^2+ρP*w[stepI*2+k*2,1]) #check id index???
+@constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-w[(k-1)*2+1]+itotal[k]) #fix for MPC
+@constraint(cModel,sn.<=1)
+@constraint(cModel,sn.>=target)
 if noTlimit==0
-	@constraint(m,upperTCon,xt.<=Tmax)
+	@constraint(cModel,upperTCon,xt.<=Tmax)
 end
-@constraint(m,xt.>=0)
-@constraint(m,upperCCon,u.<=repmat(imax,horzLen+1,1))
-@constraint(m,u.>=repmat(imin,horzLen+1,1))
-@constraint(m,itotal.<=ItotalMax)
-@constraint(m,itotal.>=0)
+@constraint(cModel,xt.>=0)
+@constraint(cModel,upperCCon,u.<=repmat(imax,horzLen+1,1))
+@constraint(cModel,u.>=repmat(imin,horzLen+1,1))
+@constraint(cModel,itotal.<=ItotalMax)
+@constraint(cModel,itotal.>=0)
 
 println("solving....")
-statusC = solve(m)
+statusC = solve(cModel)
 if statusC!=:Optimal
-	@printf "Failed %s \n" status
+	@printf "Failed %s \n" statusC
     return
 else
 	toc()
@@ -76,7 +73,7 @@ else
     snStarNL=snRaw
     uStarNL=uRaw
     itotalStarNL=itotalRaw
-    fStarNL=getobjectivevalue(m)
+    fStarNL=getobjectivevalue(cModel)
     lamTempStarNL=lambdaTemp
     lamCurrStarNL=lambdaCurr
     kapTempStarNL=kappaUpperT

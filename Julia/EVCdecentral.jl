@@ -3,16 +3,8 @@
 
 tic()
 #initialize
-#initialize with current states
 sn0=s0
 xt0=T0
-
-# d = Truncated(Normal(0), 0, 50)
-# lambda0=rand(d, K1+1)
-#lambdaGuess=2
-#lambda0=ones(K1+1,1)*lambdaGuess
-#lambda0=[0;linspace(7,0,K)]
-#lambda0=rand(K1+1)/2
 
 lambda0=1000*ones(horzLen+1,1)
 #lambda0=lamCurrStar
@@ -21,18 +13,19 @@ if updateMethod=="fastAscent"
 	#alpha = 0.1  #for A
 	alpha = 5e3 #for kA
 	#alpha=0.001
+	alphaDivRate=2
 else
 	#alpha = .01 #for A
-	alpha = 5e4 #for kA
+	alpha = 6e3 #for kA
 	#alpha= 0.001
+	alphaDivRate=2
 end
 
 stepI = 1;
 horzLen=K1
 convChk = 1e-16
-maxIt=100
+maxIt=500
 convIt=maxIt
-
 
 ConvDual=zeros(maxIt,1)
 itConvDual=zeros(maxIt,1)
@@ -89,7 +82,7 @@ for p=1:maxIt-1
 
 	if updateMethod=="dualAscent"
 	    #solve coordinator problem
-	    coorM=Model(solver = GurobiSolver(Presolve=0,NumericFocus=3))
+	    coorM=Model(solver = GurobiSolver(Presolve=0,NumericFocus=1))
 		#coorM=Model(solver = IpoptSolver())
 	    @variable(coorM,z[1:S*(horzLen+1)])
 	    @variable(coorM,xt[1:horzLen+1])
@@ -136,7 +129,6 @@ for p=1:maxIt-1
 		Tactual[k+1,p+1]=τP*Tactual[k,p+1]+γP*ztotal[k+1,1]^2+ρP*w[k*2+2,1]  #fix for mpc
 	end
 
-
 	if updateMethod=="fastAscent"
 		#fast ascent
 		if noTlimit==0
@@ -144,8 +136,6 @@ for p=1:maxIt-1
 		else
 			gradL=zeros(horzLen+1,1)
 		end
-
-
 		#add some amount of future lambda
 		for k=1:(horzLen+1-2)
 			gradL[k,1]=.6*gradL[k,1]+.3*gradL[k+1,1]+.1*gradL[k+2,1]
@@ -156,11 +146,11 @@ for p=1:maxIt-1
 
     #update lambda
 	if updateMethod=="fastAscent"
-		alpha_p = alpha/ceil(p/2)
+		alpha_p = alpha/ceil(p/alphaDivRate)
 		#alpha_p = alpha/(p*5)
 	else
 		#alpha_p=alpha
-		alpha_p = alpha/ceil(p/2)
+		alpha_p = alpha/ceil(p/alphaDivRate)
 		#alpha_p = alpha/(p*5)
 	end
 

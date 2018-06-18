@@ -71,7 +71,16 @@ end
 # end
 
 
+# @time runALADit(1)
+#@time testALAD(1)
+
 # Profile.clear()
-# testALAD(1)
-# @profile testALAD(1)
+# runALADit(1)
+# @profile runALADit(1)
+# Juno.profiler()
+
+
+# Profile.clear()
+# testDual(1)
+# @profile testDual(1)
 # Juno.profiler()

@@ -14,7 +14,7 @@ xt0=T0
 stepI = 1;
 horzLen=K1
 convChk = 1e-8
-maxIt=100
+maxIt=500
 convIt=maxIt
 ConvADMM=zeros(maxIt,1)
 itConvADMM=zeros(maxIt,1)
@@ -27,32 +27,29 @@ unConvADMM=zeros(maxIt,1)
 #ρADMM=10.0^(0)
 ρADMM=10^6 #for kA
 #ρADMM=1    #for A
-#d = Truncated(Normal(0), 0, 1)
-#lambda0=5*rand(d, horzLen+1)
-#lambda0=lamCurrStar
+
+
 lambda0=1000*ones(horzLen+1,1)
+vz0=-ones(S*(horzLen+1),1)
+vu0=.01*ones(N*(horzLen+1),1)
+#vz0=-zStar
+#vu0=uStar
+#lambda0=lamCurrStar
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+η*u[k+1]
 Un=SharedArray{Float64}(N*(horzLen+1),maxIt) #row are time,  columns are iteration
 #Un[:,1]=u0
 Lam=zeros((horzLen+1),maxIt) #(rows are time, columns are iteration)
-Lam[:,1]=lambda0
 Sn=SharedArray{Float64}(N*(horzLen+1),maxIt)  #row are time,  columns are iteration
 Xt=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 Z=zeros(S*(horzLen+1),maxIt)  #row are time,  columns are iteration
 Tactual=zeros((horzLen+1),maxIt) #rows are time
-
 Vu=zeros((N)*(horzLen+1),maxIt) #row are time,  columns are iteration
-#Vn[:,1]=max.(uStar + rand(Truncated(Normal(0), -0.1, 0.1), N*(horzLen+1)),0)
-#Vn[:,1]=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
-Vu[:,1]=uStar
 Vz=zeros(S*(horzLen+1),maxIt)
-#Vz=zeros((horzLen+1),numIteration)
-#Vz[:,1]=max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
-#Vz[:,1]=-max.(zStar-rand(Truncated(Normal(0), 0, 5), S*(horzLen+1)),0)
-#Vz[:,1]=rand(Truncated(Normal(0), 0, deltaI), (horzLen+1))
-#Vz[:,1]=-ItotalMax*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
-Vz[:,1]=-zStar
+
+Lam[:,1]=lambda0
+Vz[:,1]=vz0
+Vu[:,1]=vu0
 
 #for debugging
 CC=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
