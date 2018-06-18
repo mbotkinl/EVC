@@ -7,19 +7,22 @@ tic()
 sn0=s0
 xt0=T0
 
-lambda0=1000*ones(horzLen+1,1)
-#lambda0=lamCurrStarNL
+#lambda0=1000*ones(horzLen+1,1)
+lambda0=lamCurrStarNL
 #lambda0=max.(lamCurrStarNL,0)
 
 if updateMethod=="fastAscent"
 	#alpha = 0.1 #for A
 	alpha = 5e3 #for kA
 	#alpha=0.001
+	alphaDivRate=2
+	minAlpha=1e-6
 else
 	#alpha = .01 #for A
 	alpha = 5e3 #for kA
-
 	#alpha= 0.001
+	alphaDivRate=2
+	minAlpha=1e-6
 end
 
 stepI = 1;
@@ -28,6 +31,7 @@ convChk = 1e-8
 maxIt=100
 convIt=maxIt
 
+alphaP=zeros(maxIt,1)
 ConvDual=zeros(maxIt,1)
 itConvDual=zeros(maxIt,1)
 constConvDual=zeros(maxIt,1)
@@ -78,7 +82,6 @@ for p=1:maxIt-1
         end
     end
 
-
 	if updateMethod=="dualAscent"
 	    #solve coordinator problem
 		coorM=Model(solver = IpoptSolver())
@@ -106,7 +109,6 @@ for p=1:maxIt-1
 		end
 
 	    #grad of lagragian
-
 		gradL=zeros(horzLen+1,1)
 		for k=1:horzLen+1
 			uSum[k,p+1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
@@ -114,7 +116,6 @@ for p=1:maxIt-1
 		end
 		constConvDual[p,1]=norm(gradL,2)
 	end
-
 
 	if updateMethod=="fastAscent"
 		#fast ascent
@@ -131,18 +132,17 @@ for p=1:maxIt-1
 		end
 	end
 
-
     #update lambda
 	if updateMethod=="fastAscent"
-		alpha_p = alpha/ceil(p/2)
+		alphaP[p,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
 		#alpha_p = alpha/(p*5)
 	else
-		alpha_p = alpha/ceil(p/4)
+		alphaP[p,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
 		#alpha_p = alpha/(p*5)
 	end
 
 	#Lam[:,p+1]=Lam[:,p]+alpha_p*gradL
-    Lam[:,p+1]=max.(Lam[:,p]+alpha_p*gradL,0)
+    Lam[:,p+1]=max.(Lam[:,p]+alphaP[p,1]*gradL,0)
 
 	#check convergence
 	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
@@ -156,7 +156,7 @@ for p=1:maxIt-1
 	else
 		convGap = norm(Lam[:,p+1]-lamCurrStarNL,2)
 	end
-	fConvDual[p,1]=norm(fGap,2)
+	fConvDual[p,1]=abs(fGap)
 	snConvDual[p,1]=snGap
 	unConvDual[p,1]=unGap
 	itConvDual[p,1]=itGap
@@ -171,7 +171,6 @@ for p=1:maxIt-1
         @printf "snGap   %e after %g iterations\n" snGap p
 		@printf "unGap   %e after %g iterations\n" unGap p
 		@printf("fGap    %e after %g iterations\n\n",fGap,p)
-
 	end
 end
 
@@ -184,7 +183,6 @@ end
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
 uPlotd=zeros(horzLen+1,N)
-
 for ii= 1:N
 	xPlot[:,ii]=Sn[collect(ii:N:length(Sn[:,convIt])),convIt]
 	uPlotd[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
@@ -196,7 +194,6 @@ pd1nl=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=3pt,
 		minor_label_font_size=20pt,key_label_font_size=20pt))
 if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_SOC.png", 24inch, 12inch), pd1) end
-
 
 pd2nl=plot(uPlotd,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
@@ -228,7 +225,6 @@ pd4nl=plot(layer(x=1:horzLen+1,y=Lam[:,convIt],Geom.line,Theme(line_width=3pt)),
 		minor_label_font_size=20pt,key_label_font_size=20pt))
 if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Lam.png", 24inch, 12inch), pd4) end
 
-
 #fName="J_Decentral_notfast.png"
 #fName="J_Decentral_fast.png"
 #draw(PNG(path*fName, 13inch, 14inch), vstack(pd1,pd2,pd3,pd4))
@@ -255,15 +251,15 @@ fPlotNL=plot(x=1:convIt-1,y=fConvDual[1:convIt-1,1],Geom.line,Scale.y_log10,
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 convItPlotNL=plot(x=1:convIt,y=itConvDual[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
+			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 convPlotNL=plot(x=1:convIt,y=ConvDual[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("Lambda Star Gap"),
+			Guide.xlabel("Iteration"), Guide.ylabel("Lambda Star Gap",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 constPlotNL=plot(x=1:convIt,y=constConvDual[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("Const Gap"),
+			Guide.xlabel("Iteration"), Guide.ylabel("Const Gap",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Conv.png", 36inch, 12inch), convPlot) end

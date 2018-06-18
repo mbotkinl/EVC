@@ -24,13 +24,15 @@ snConv=zeros(numIteration,1)
 
 #admm  initial parameters and guesses
 #ρADMM=10.0^(0)
-ρADMM=10^6
-#d = Truncated(Normal(0), 0, 5)
-#lambda0=rand(d, horzLen+1)
-#lambda0=lamCurrStar
+ρADMM=1e6
+
+# lambda0=lamCurrStarNL
+# vi0=-itotalStarNL
+# vu0=uStarNL
+
 lambda0=1000*ones(horzLen+1,1)
-vi0=ones(horzLen+1,1)
-vu0=ones(N*(horzLen+1),1)
+vi0=-ones(horzLen+1,1)
+vu0=.01*ones(N*(horzLen+1),1)
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
 Lam=zeros((horzLen+1),numIteration) #(rows are time, columns are iteration)
@@ -55,17 +57,15 @@ for p in 1:numIteration-1
 
     #x minimization eq 7.66 in Bertsekas
     @sync @parallel for evInd=1:N
-		lambda=Lam[:,p]
         evV=Vu[collect(evInd:N:length(Vu[:,p])),p]
-		#evV=zeros(horzLen+1,1)
         target=zeros((horzLen+1),1)
-		target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Sn[evInd,1]
+		target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
     	evM = Model(solver = GurobiSolver())
     	@variable(evM,sn[1:(horzLen+1)])
     	@variable(evM,u[1:(horzLen+1)])
 		@objective(evM,Min, sum((sn[k,1]-1)^2*Qsi[evInd,1]+(u[k,1])^2*Ri[evInd,1]+
-                                lambda[k,1]*(u[k,1]-evV[k,1])+
-                                ρ_p/2*sum((u[k,1]-evV[k,1])^2 for k=1:horzLen+1)))
+                                Lam[k,p]*(u[k,1]-evV[k,1])+
+                                ρ_p/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1))
         @constraint(evM,sn[1,1]==sn0[evInd,1]+ηP[evInd,1]*u[1,1])
         @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+ηP[evInd,1]*u[k+1,1])
     	@constraint(evM,sn.<=1)
@@ -92,7 +92,8 @@ for p in 1:numIteration-1
 	# constFun1(u,v)=sum(Lam[k,p]*(u[k,1]-v[k,1])  for k=1:(horzLen+1))
 	# constFun2(u,v)=ρADMM/2*sum((u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
     # @objective(tM,Min, constFun1(-itotal,Vi[:,p])+constFun2(-itotal,Vi[:,p]))
-    @objective(tM,Min,sum(Lam[k,p]*(u[k,1]-v[k,1])+ρADMM/2*(u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
+    @objective(tM,Min,sum(Lam[k,p]*(-itotal[k,1]-Vi[k,p])+
+                          ρADMM/2*(-itotal[k,1]-Vi[k,p])^2  for k=1:(horzLen+1)))
     @NLconstraint(tM,tempCon1,xt[1,1]==τP*xt0+γP*(itotal[1,1])^2+ρP*w[stepI*2,1])
     @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*(itotal[k+1,1])^2+ρP*w[stepI*2+k*2,1])
     if noTlimit==0
@@ -127,7 +128,7 @@ for p in 1:numIteration-1
     for k=1:horzLen+1
         Vu[(k-1)*N+collect(1:N),p+1]=min.(max.(Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/ρ_p,imin),imax)
         #Vi[(k-1)*(S)+collect(1:S),p+1]=-Z[(k-1)*(S)+collect(1:S),p+1]+(Lam[k,p]-Lam[k,p+1])/ρ_p
-		Vi[k,p+1]=min.(max.(-Itotal[k,p+1]+(Lam[k,p]-Lam[k,p+1])/ρ_p,0),-ItotalMax)
+		Vi[k,p+1]=max.(min.(-Itotal[k,p+1]+(Lam[k,p]-Lam[k,p+1])/ρ_p,0),-ItotalMax)
     end
 
 
