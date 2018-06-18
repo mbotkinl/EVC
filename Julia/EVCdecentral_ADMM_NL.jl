@@ -14,17 +14,17 @@ xt0=T0
 stepI = 1;
 horzLen=K1
 convChk = 1e-8
-numIteration=100
-convIt=numIteration
-Conv=zeros(numIteration,1)
-itConv=zeros(numIteration,1)
-constConv=zeros(numIteration,1)
-fConv=zeros(numIteration,1)
-snConv=zeros(numIteration,1)
+maxIt=200
+convIt=maxIt
+Conv=zeros(maxIt,1)
+itConv=zeros(maxIt,1)
+constConv=zeros(maxIt,1)
+fConv=zeros(maxIt,1)
+snConv=zeros(maxIt,1)
 
 #admm  initial parameters and guesses
 #ρADMM=10.0^(0)
-ρADMM=1e6
+ρADMM=5e5
 
 # lambda0=lamCurrStarNL
 # vi0=-itotalStarNL
@@ -35,25 +35,25 @@ vi0=-ones(horzLen+1,1)
 vu0=.01*ones(N*(horzLen+1),1)
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
-Lam=zeros((horzLen+1),numIteration) #(rows are time, columns are iteration)
+Lam=zeros((horzLen+1),maxIt) #(rows are time, columns are iteration)
 
-Un=SharedArray{Float64}(N*(horzLen+1),numIteration) #row are time,  columns are iteration
-Sn=SharedArray{Float64}(N*(horzLen+1),numIteration)  #row are time,  columns are iteration
-Xt=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
-Itotal=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
-Vu=zeros((N)*(horzLen+1),numIteration) #row are time,  columns are iteration
-Vi=zeros((horzLen+1),numIteration)
+Un=SharedArray{Float64}(N*(horzLen+1),maxIt) #row are time,  columns are iteration
+Sn=SharedArray{Float64}(N*(horzLen+1),maxIt)  #row are time,  columns are iteration
+Xt=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+Itotal=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+Vu=zeros((N)*(horzLen+1),maxIt) #row are time,  columns are iteration
+Vi=zeros((horzLen+1),maxIt)
 
 Vi[:,1]=vi0
 Vu[:,1]=vu0
 Lam[:,1]=lambda0
 
 #for debugging
-CC=zeros((horzLen+1),numIteration)  #row are time,  columns are iteration
+CC=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 
-for p in 1:numIteration-1
-	#ρ_p = ρADMM/ceil(p/2)
-    ρ_p = ρADMM
+for p in 1:maxIt-1
+	#ρADMMp = ρADMM*ceil(p/2)
+    ρADMMp = ρADMM
 
     #x minimization eq 7.66 in Bertsekas
     @sync @parallel for evInd=1:N
@@ -65,7 +65,7 @@ for p in 1:numIteration-1
     	@variable(evM,u[1:(horzLen+1)])
 		@objective(evM,Min, sum((sn[k,1]-1)^2*Qsi[evInd,1]+(u[k,1])^2*Ri[evInd,1]+
                                 Lam[k,p]*(u[k,1]-evV[k,1])+
-                                ρ_p/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1))
+                                ρADMMp/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1))
         @constraint(evM,sn[1,1]==sn0[evInd,1]+ηP[evInd,1]*u[1,1])
         @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+ηP[evInd,1]*u[k+1,1])
     	@constraint(evM,sn.<=1)
@@ -119,18 +119,16 @@ for p in 1:numIteration-1
 	for k=1:horzLen+1
 		uSum[k,p+1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
 		currConst[k,1]=uSum[k,p+1] + w[(k-1)*2+(stepI*2-1),1] - Itotal[k,p+1]
-		#Lam[k,p+1]=max.(Lam[k,p]+ρ_p/(S*(N))*(currConst[k,1]),0)
-		Lam[k,p+1]=Lam[k,p]+ρ_p/(S*(N))*(currConst[k,1])
+		#Lam[k,p+1]=max.(Lam[k,p]+ρADMMp/(S*(N))*(currConst[k,1]),0)
+		Lam[k,p+1]=Lam[k,p]+ρADMMp/(S*(N))*(currConst[k,1])
 	end
 	CC[:,p+1]=currConst
 
     #v upate eq 7.67
     for k=1:horzLen+1
-        Vu[(k-1)*N+collect(1:N),p+1]=min.(max.(Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/ρ_p,imin),imax)
-        #Vi[(k-1)*(S)+collect(1:S),p+1]=-Z[(k-1)*(S)+collect(1:S),p+1]+(Lam[k,p]-Lam[k,p+1])/ρ_p
-		Vi[k,p+1]=max.(min.(-Itotal[k,p+1]+(Lam[k,p]-Lam[k,p+1])/ρ_p,0),-ItotalMax)
+        Vu[(k-1)*N+collect(1:N),p+1]=min.(max.(Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/ρADMMp,imin),imax)
+		Vi[k,p+1]=max.(min.(-Itotal[k,p+1]+(Lam[k,p]-Lam[k,p+1])/ρADMMp,0),-ItotalMax)
     end
-
 
     #check convergence
 	objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
@@ -142,7 +140,7 @@ for p in 1:numIteration-1
 	constGap=norm(currConst,2)
 	itGap = norm(Lam[:,p+1]-Lam[:,p],2)
 	convGap = norm(Lam[:,p+1]-lamCurrStarNL,2)
-	fConv[p,1]=fGap
+	fConv[p,1]=abs(fGap)
 	snConv[p,1]=snGap
 	constConv[p,1]=constGap
 	itConv[p,1]=itGap
@@ -164,12 +162,11 @@ toc()
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
+uPlot=zeros(horzLen+1,N)
 for ii= 1:N
 	xPlot[:,ii]=Sn[collect(ii:N:length(Sn[:,convIt])),convIt]
+    uPlot[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
 end
-
-#plot(x=1:horzLen+1,y=xPlot2[:,ii])
-# plot(x=1:Kn[ii,1],y=xPlot2[1:Kn[ii,1],ii])
 
 pd1NLadmm=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
@@ -177,12 +174,6 @@ pd1NLadmm=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
 if drawFig==1 draw(PNG(path*"J_centralNL_ADMM_SOC.png", 24inch, 12inch), pd1NLadmm) end
-
-
-uPlot=zeros(horzLen+1,N)
-for ii= 1:N
-	uPlot[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
-end
 
 pd2NLadmm=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
@@ -211,29 +202,29 @@ fName="J_Central.png"
 
 lamPlotNLadmm=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
             layer(x=1:horzLen+1,y=lamCurrStarNL,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
+			Guide.xlabel("Time"), Guide.ylabel("Lambda",orientation=:vertical),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 constPlotNLadmm2=plot(CC[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-			Guide.xlabel("Time"), Guide.ylabel("curr constraint diff"),Guide.ColorKey(title="Iteration"),
+			Guide.xlabel("Time"), Guide.ylabel("curr constraint diff",orientation=:vertical),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_ADMM_LamConv.png", 36inch, 12inch), lamPlotadmm) end
 
 convItPlotNLadmm=plot(x=1:convIt,y=itConv[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
+			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 convPlotNLadmm=plot(x=1:convIt,y=Conv[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
+			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 fPlotadmm=plot(x=1:convIt-1,y=fConv[1:convIt-1,1],Geom.line,#Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
+			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 constPlotadmm=plot(x=1:convIt,y=constConv[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
+			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_ADMM_Conv.png", 36inch, 12inch), convPlotadmm) end
