@@ -47,7 +47,7 @@ muALAD=10^8
 # vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 # vs0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
 
-lambda0=ones(horzLen+1,1)
+lambda0=1000*ones(horzLen+1,1)
 vt0=ones(horzLen+1,1)
 vz0=ones(S*(horzLen+1),1)
 vu0=.01*ones(N*(horzLen+1),1)
@@ -237,7 +237,7 @@ for p=1:maxIt-1
                     sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
     fGap= abs(objFun(Sn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar)
     snGap=norm((Sn[:,p+1]-snStar),2)
-    unGap=norm((Un[:,p+1]-unStar),2)
+    unGap=norm((Un[:,p+1]-uStar),2)
     itGap = norm(Lam[:,p]-Lam[:,max(p-1,1)],2)
     convGap = norm(Lam[:,p]-lamCurrStar,2)
     fConvALAD[p,1]=fGap
@@ -430,7 +430,7 @@ convPlotalad=plot(x=1:convIt,y=ConvALAD[1:convIt,1],Geom.line,Scale.y_log10,
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 constPlotalad=plot(x=1:convIt,y=constConvALAD[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("central lambda gap"),
+			Guide.xlabel("Iteration"), Guide.ylabel("const gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 fPlotalad=plot(x=1:convIt-1,y=fConvALAD[1:convIt-1,1],Geom.line,Scale.y_log10,

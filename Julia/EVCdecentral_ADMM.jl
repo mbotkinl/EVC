@@ -30,7 +30,7 @@ unConvADMM=zeros(maxIt,1)
 #d = Truncated(Normal(0), 0, 1)
 #lambda0=5*rand(d, horzLen+1)
 #lambda0=lamCurrStar
-lambda0=ones(horzLen+1,1)
+lambda0=1000*ones(horzLen+1,1)
 
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+η*u[k+1]
 Un=SharedArray{Float64}(N*(horzLen+1),maxIt) #row are time,  columns are iteration
@@ -61,7 +61,7 @@ US=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 
 
 for p in 1:maxIt-1
-	try
+	#try
 		#ρ_p = ρADMM/ceil(p/2)
 		ρI = ρADMM
 	    #x minimization eq 7.66 in Bertsekas
@@ -184,9 +184,9 @@ for p in 1:maxIt-1
 			@printf "unGap    %e after %g iterations\n" unGap p
 			@printf("fGap     %e after %g iterations\n\n",fGap,p)
 		end
-	catch e
-		@printf "error %s after %g iterations\n" e p
-	end
+	# catch e
+	# 	@printf "error %s after %g iterations\n" e p
+	# end
 end
 toc()
 
