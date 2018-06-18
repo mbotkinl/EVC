@@ -7,25 +7,23 @@ tic()
 sn0=s0
 xt0=T0
 
-lambda0=ones(horzLen+1,1)
-#lambda0=lamCurrStarNL
+#lambda0=ones(horzLen+1,1)
+lambda0=lamCurrStarNL
 #lambda0=max.(lamCurrStarNL,0)
-
 
 if updateMethod=="fastAscent"
 	alpha = 0.1
 	#alpha=0.001
 else
-	alpha = 500
+	alpha = .01
 	#alpha= 0.001
 end
 
 stepI = 1;
 horzLen=K1
 convChk = 1e-8
-maxIt=50
+maxIt=100
 convIt=maxIt
-
 
 ConvDual=zeros(maxIt,1)
 itConvDual=zeros(maxIt,1)
@@ -46,6 +44,10 @@ Un=SharedArray{Float64}(N*(horzLen+1),maxIt)
 for p=1:maxIt-1
     #solve subproblem for each EV
 	@sync @parallel for evInd=1:N
+		ind=[evInd]
+		for k=1:horzLen
+			append!(ind,k*N+evInd)
+		end
         target=zeros((horzLen+1),1)
 		target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
         evM=Model(solver = IpoptSolver())
@@ -70,8 +72,8 @@ for p=1:maxIt-1
 		if status!=:Optimal
             break
         else
-            Sn[collect(evInd:N:N*(horzLen+1)),p+1]=getvalue(sn) #solved state goes in next time slot
-            Un[collect(evInd:N:N*(horzLen+1)),p+1]=getvalue(un) #current go
+            Sn[ind,p+1]=getvalue(sn) #solved state goes in next time slot
+            Un[ind,p+1]=getvalue(un) #current go
         end
     end
 
@@ -80,10 +82,10 @@ for p=1:maxIt-1
 	    #solve coordinator problem
 		coorM=Model(solver = IpoptSolver())
 	    @variable(coorM,itotal[1:(horzLen+1)])
-	    @variable(coorM,xt[1:horzLen+1])
+	    @variable(coorM,xt[1:(horzLen+1)])
 	    @objective(coorM,Min,-sum(Lam[k,p]*itotal[k,1] for k=1:(horzLen+1)))
-		@constraint(coorM,xt[1,1]==τP*xt0+γP*(itotal[1])^2+ρP*w[2,1]) #fix for MPC loop
-		@constraint(coorM,[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*(itotal[k+1,1])^2+ρP*w[k*2+2,1])
+		@NLconstraint(coorM,xt[1,1]==τP*xt0+γP*(itotal[1])^2+ρP*w[2,1]) #fix for MPC loop
+		@NLconstraint(coorM,[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*(itotal[k+1,1])^2+ρP*w[k*2+2,1])
 		if noTlimit==0
 			@constraint(coorM,upperTCon,xt.<=Tmax)
 		end
@@ -138,7 +140,7 @@ for p=1:maxIt-1
 		#alpha_p = alpha/(p*5)
 	end
 
-	#lambda_new=lambda+alpha_p*gradL
+	#Lam[:,p+1]=Lam[:,p]+alpha_p*gradL
     Lam[:,p+1]=max.(Lam[:,p]+alpha_p*gradL,0)
 
 	#check convergence
@@ -231,7 +233,6 @@ if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Lam.png", 24inch, 12inch), pd4) 
 #fName="J_Decentral_notfast.png"
 #fName="J_Decentral_fast.png"
 #draw(PNG(path*fName, 13inch, 14inch), vstack(pd1,pd2,pd3,pd4))
-
 
 
 lamPlotNL=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,

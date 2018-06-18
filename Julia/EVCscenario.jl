@@ -7,7 +7,7 @@ using Distributions
 
 println("Creating EV Scenario...")
 
-N = 5
+N = 3
 
 #model parameters
 a   = rand(N,1)*.1 + 0.8               # efficiency of Li-ion batts is ~80-90%
@@ -31,7 +31,7 @@ Ts = Rh*C/9              # s, sampling time in seconds
 
 # PWL Parameters:
 #S = 3;
-S=4
+S=50
 #ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
 ItotalMax = 4  #kA
 #ItotalMax = 4000  #A
@@ -48,10 +48,10 @@ K  = K1+K2;                        # Total horizon (8 PM to 10 AM)Qs  = 10;     
 #K=199
 
 # Constraint parameters:
-Tmax = 372                             # Short-term over-loading --> 120 C = 393 Kelvin
-#imin = zeros(N,1)                      # A, q_min < 0 if V2G is allowed
+Tmax = 393                             # Short-term over-loading --> 120 C = 393 Kelvin
+imin = zeros(N,1)                      # A, q_min < 0 if V2G is allowed
 imax = (10 + 16*rand(N,1))/1000             # kA, charging with 10-24 A
-imax = (10 + 16*rand(N,1))             # A, charging with 10-24 A
+#imax = (10 + 16*rand(N,1))             # A, charging with 10-24 A
 SOCmin = 1 - 0.20*rand(N,1)            # Required min final states of charge (~0.80-1)
 FullChargeTime_relative = .25*rand(N,1)+.75
 FullChargeTime = convert(Array{Int,2},round.(K1*FullChargeTime_relative))
@@ -66,9 +66,9 @@ Kn=FullChargeTime
 
 # Disturbances
 #Dload_amplitude = 2;  # base-demand factor
-#Dload_amplitude = 85 #kWatts?
+Dload_amplitude = 75 #kWatts?
 #Dload_amplitude = 85000 #Watts?
-Dload_amplitude = 0 #Watts?
+#Dload_amplitude = 0 #Watts?
 Tamb_amplitude  = 370   # assume hot night in summer (30 C) 363K
 
 # Disturbance scenario:

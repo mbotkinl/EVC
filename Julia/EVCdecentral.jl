@@ -30,7 +30,7 @@ end
 stepI = 1;
 horzLen=K1
 convChk = 1e-16
-maxIt=1000
+maxIt=100
 convIt=maxIt
 
 
