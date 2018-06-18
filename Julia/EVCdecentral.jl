@@ -14,23 +14,23 @@ xt0=T0
 #lambda0=[0;linspace(7,0,K)]
 #lambda0=rand(K1+1)/2
 
-lambda0=ones(horzLen+1,1)
+lambda0=1000*ones(horzLen+1,1)
 #lambda0=lamCurrStar
 
 if updateMethod=="fastAscent"
 	#alpha = 0.1  #for A
-	alpha = 1e3 #for kA
+	alpha = 5e3 #for kA
 	#alpha=0.001
 else
 	#alpha = .01 #for A
-	alpha = 1e4 #for kA
+	alpha = 5e4 #for kA
 	#alpha= 0.001
 end
 
 stepI = 1;
 horzLen=K1
 convChk = 1e-16
-maxIt=100
+maxIt=1000
 convIt=maxIt
 
 
@@ -49,6 +49,9 @@ Tactual=zeros((horzLen+1),maxIt) #rows are time
 
 Sn=SharedArray{Float64}(N*(horzLen+1),maxIt)
 Un=SharedArray{Float64}(N*(horzLen+1),maxIt)
+
+uSum=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+zSum=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 
 #iterate at each time step until convergence
 for p=1:maxIt-1
@@ -112,13 +115,13 @@ for p=1:maxIt-1
 		end
 
 	    #grad of lagragian
-		zSum=zeros(horzLen+1,1)
+		#zSum=zeros(horzLen+1,1)
 		#uSum=zeros(horzLen+1,1)
 		gradL=zeros(horzLen+1,1)
 		for k=1:horzLen+1
-			zSum[k,1]=sum(zVal[(k-1)*(S)+s] for s=1:S)
-			#uSum[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
-			gradL[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N) + w[(k-1)*2+(stepI*2-1),1] - zSum[k,1]
+			zSum[k,p+1]=sum(zVal[(k-1)*(S)+s] for s=1:S)
+			uSum[k,p+1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
+			gradL[k,1]=uSum[k,p+1] + w[(k-1)*2+(stepI*2-1),1] - zSum[k,p+1]
 		end
 		constConvDual[p,1]=norm(gradL,2)
 	end
@@ -203,8 +206,10 @@ end
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
+uPlotd=zeros(horzLen+1,N)
 for ii= 1:N
 	xPlot[:,ii]=Sn[collect(ii:N:length(Sn[:,convIt])),convIt]
+	uPlotd[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
 end
 
 pd1=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
@@ -213,12 +218,6 @@ pd1=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=3pt,
 		minor_label_font_size=20pt,key_label_font_size=20pt))
 if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_SOC.png", 24inch, 12inch), pd1) end
-
-
-uPlotd=zeros(horzLen+1,N)
-for ii= 1:N
-	uPlotd[:,ii]=Un[collect(ii:N:length(Un[:,convIt])),convIt]
-end
 
 pd2=plot(uPlotd,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
@@ -257,7 +256,16 @@ if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Lam.png", 24inch, 12inch), pd4) 
 #draw(PNG(path*fName, 13inch, 14inch), vstack(pd1,pd2,pd3,pd4))
 
 
-
+uSumPlotalad=plot(uSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+			layer(x=1:horzLen+1,y=uSumStar,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
+			Guide.xlabel("Time"), Guide.ylabel("U sum"),Guide.ColorKey(title="Iteration"),
+			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+			minor_label_font_size=26pt,key_label_font_size=26pt))
+zSumPlotalad=plot(zSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+			layer(x=1:horzLen+1,y=zSumStar,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
+			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
+			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+			minor_label_font_size=26pt,key_label_font_size=26pt))
 lamPlot=plot(Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			layer(x=1:horzLen+1,y=lamCurrStar,Geom.line,Theme(default_color=colorant"black",line_width=4pt)),
 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
