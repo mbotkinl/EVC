@@ -29,8 +29,7 @@ centralModel = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1,NumericFo
 @variable(centralModel,z[1:S*(horzLen+1)])
 
 println("obj")
-
-@objective(centralModel,Min,sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]+(u[(k-1)*N+n,1])^2*Ri[n,1]  for n=1:N) for k=1:horzLen+1)
+@objective(centralModel,Min,sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]+(u[(k-1)*N+n,1])^2*Ri[n,1]  for n=1:N) for k=1:horzLen+1))
 
 println("constraints")
 @constraint(centralModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+ηP[:,1].*u[1:N,1])
@@ -61,8 +60,7 @@ else
 	snRaw=getvalue(sn)
 	xtRaw=getvalue(xt)
 	zRaw=getvalue(z)
-	f=objFun(snRaw,xtRaw,uRaw)
-
+	#f=objFun(snRaw,xtRaw,uRaw)
 
 	#calculate actual temp
 	Tactual=zeros(horzLen+1,1)
@@ -115,7 +113,7 @@ else
 
 	p1=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
-			Coord.Cartesian(xmin=0,xmax=horzLen+1),
+			Coord.Cartesian(xmin=0,xmax=horzLen+1,ymax=1),
 			Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=3pt,
 			minor_label_font_size=20pt,key_label_font_size=20pt))
 	p1b=plot(xPlot2,x=Row.index,y=Col.value,color=Col.index,Geom.line,
