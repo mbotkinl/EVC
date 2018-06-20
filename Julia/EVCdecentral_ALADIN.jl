@@ -135,43 +135,40 @@ for p=1:maxIt-1
 
         TT = STDOUT # save original STDOUT stream
         redirect_stdout()
-        status = solve(evM)
+        statusEVM = solve(evM)
         redirect_stdout(TT)
-        if status!=:Optimal
-            println("solver issues with EV NLP")
-            return
-        else
-			# kappaMax=-getdual(curKappaMax)
-			# kappaMin=-getdual(curKappaMin)
-            # socMax=-getdual(socKappaMax)
-            # socMin=-getdual(socKappaMin)
-            uVal=getvalue(u)
-            snVal=getvalue(sn)
+        @assert statusEVM==:Optimal "ALAD EV NLP optimization not solved to optimality"
 
-            cValMax=abs.(uVal-evS.imax[evInd,1]).<tolU
-            cValMin=abs.(uVal-evS.imin[evInd,1]).<tolU
-            # cVal=kappaMax
-            # cVal[cVal.>0]=1
-            # cVal=kappaMin
-            # cVal[cVal.<0]=-1
-            Cu[ind,p+1]=1cValMax-1cValMin
+		# kappaMax=-getdual(curKappaMax)
+		# kappaMin=-getdual(curKappaMin)
+        # socMax=-getdual(socKappaMax)
+        # socMin=-getdual(socKappaMin)
+        uVal=getvalue(u)
+        snVal=getvalue(sn)
+
+        cValMax=abs.(uVal-evS.imax[evInd,1]).<tolU
+        cValMin=abs.(uVal-evS.imin[evInd,1]).<tolU
+        # cVal=kappaMax
+        # cVal[cVal.>0]=1
+        # cVal=kappaMin
+        # cVal[cVal.<0]=-1
+        Cu[ind,p+1]=1cValMax-1cValMin
 
 
-            cValMax=abs.(snVal-1).<tolS
-            cValMin=abs.(snVal-target).<tolS
-            # cVal=socMax
-            # cVal[cVal.>0]=1
-            # cVal=socMin
-            # cVal[cVal.<0]=-1
-            Cs[ind,p+1]=1cValMax-1cValMin
+        cValMax=abs.(snVal-1).<tolS
+        cValMin=abs.(snVal-target).<tolS
+        # cVal=socMax
+        # cVal[cVal.>0]=1
+        # cVal=socMin
+        # cVal[cVal.<0]=-1
+        Cs[ind,p+1]=1cValMax-1cValMin
 
-            Sn[ind,p+1]=snVal
-    		Un[ind,p+1]=uVal
-            Gu[ind,p+1]=2*evS.Ri[evInd,1]*uVal
-            Gs[ind,p+1]=2*evS.Qsi[evInd,1]*snVal-2*evS.Qsi[evInd,1]
-            #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=σU[evInd,1]*(evVu-uVal)+lambda
-            #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=σN[evInd,1]*(evVs-snVal)-lambda
-        end
+        Sn[ind,p+1]=snVal
+		Un[ind,p+1]=uVal
+        Gu[ind,p+1]=2*evS.Ri[evInd,1]*uVal
+        Gs[ind,p+1]=2*evS.Qsi[evInd,1]*snVal-2*evS.Qsi[evInd,1]
+        #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=σU[evInd,1]*(evVu-uVal)+lambda
+        #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=σN[evInd,1]*(evVs-snVal)-lambda
     end
 
     #N+1 decoupled problem aka transformer current
@@ -194,39 +191,36 @@ for p=1:maxIt-1
     redirect_stdout()
     statusTM = solve(tM)
     redirect_stdout(TT)
-    if statusTM!=:Optimal
-        println("solver issues with XFRM NLP")
-        return
-    else
-		#kappaMax=-getdual(pwlKappaMax)
-		#kappaMin=-getdual(pwlKappaMin)
-        #tMax=-getdual(upperTCon)
-        #tMin=-getdual(lowerTCon)
-        lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
-        zVal=getvalue(z)
-        xtVal=getvalue(xt)
+    @assert statusTM==:Optimal "ALAD XFRM NLP optimization not solved to optimality"
 
-        cValMax=abs.(zVal-evS.deltaI).<tolZ
-        cValMin=abs.(zVal-0).<tolZ
-        # cVal=kappaMax
-        # cVal=kappaMin
-        # cVal[cVal.<0]=-1
-        # cVal[cVal.>0]=1
-        Cz[:,p+1]=1cValMax-1cValMin
+	#kappaMax=-getdual(pwlKappaMax)
+	#kappaMin=-getdual(pwlKappaMin)
+    #tMax=-getdual(upperTCon)
+    #tMin=-getdual(lowerTCon)
+    lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
+    zVal=getvalue(z)
+    xtVal=getvalue(xt)
 
-        cValMax=abs.(xtVal-evS.Tmax).<tolT
-        cValMin=abs.(xtVal-0).<tolT
-        # cVal=tMin
-        # cVal[cVal.<0]=-1
-        # cVal=tMax
-        # cVal[cVal.>0]=1
-        Ct[:,p+1]=1cValMax-1cValMin
+    cValMax=abs.(zVal-evS.deltaI).<tolZ
+    cValMin=abs.(zVal-0).<tolZ
+    # cVal=kappaMax
+    # cVal=kappaMin
+    # cVal[cVal.<0]=-1
+    # cVal[cVal.>0]=1
+    Cz[:,p+1]=1cValMax-1cValMin
 
-        Xt[:,p+1]=xtVal
-        Z[:,p+1]=zVal
-        Gz[:,p+1]=0
-        #Gz[:,p+1]=σZ*(Vz[:,p]-zVal)-repeat(-Lam[:,p],inner=S)
-    end
+    cValMax=abs.(xtVal-evS.Tmax).<tolT
+    cValMin=abs.(xtVal-0).<tolT
+    # cVal=tMin
+    # cVal[cVal.<0]=-1
+    # cVal=tMax
+    # cVal[cVal.>0]=1
+    Ct[:,p+1]=1cValMax-1cValMin
+
+    Xt[:,p+1]=xtVal
+    Z[:,p+1]=zVal
+    Gz[:,p+1]=0
+    #Gz[:,p+1]=σZ*(Vz[:,p]-zVal)-repeat(-Lam[:,p],inner=S)
 
     for k=1:horzLen+1
         uSum[k,p+1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
@@ -320,10 +314,7 @@ for p=1:maxIt-1
     redirect_stdout()
     statusM = solve(cM)
     redirect_stdout(TT)
-    if statusM!=:Optimal
-        println("solver issues with Central QP")
-        break
-    end
+    @assert statusM==:Optimal "ALAD Central QP optimization not solved to optimality"
 
     #update step
     # Lam[:,p+1]=-getdual(currCon)

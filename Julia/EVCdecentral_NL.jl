@@ -73,15 +73,13 @@ for p=1:maxIt-1
 
 		TT = STDOUT # save original STDOUT stream
 		redirect_stdout()
-        status = solve(evM)
+        statusEVM = solve(evM)
 		redirect_stdout(TT)
 
-		if status!=:Optimal
-            break
-        else
-            Sn[ind,p+1]=getvalue(sn) #solved state goes in next time slot
-            Un[ind,p+1]=getvalue(un) #current go
-        end
+		@assert statusEVM==:Optimal "EV NL optimization not solved to optimality"
+
+        Sn[ind,p+1]=getvalue(sn) #solved state goes in next time slot
+        Un[ind,p+1]=getvalue(un) #current go
     end
 
 	if updateMethod=="dualAscent"
@@ -103,12 +101,10 @@ for p=1:maxIt-1
 	    statusC = solve(coorM)
 		redirect_stdout(TT)
 
-	    if statusC!=:Optimal
-	        break
-		else
-			 Xt[:,p+1]=getvalue(xt)
-			 Itotal[:,p+1]=getvalue(itotal)
-		end
+		@assert statusC==:Optimal "XFRM NL optimization not solved to optimality"
+
+		 Xt[:,p+1]=getvalue(xt)
+		 Itotal[:,p+1]=getvalue(itotal)
 
 	    #grad of lagragian
 		gradL=zeros(horzLen+1,1)

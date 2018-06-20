@@ -70,15 +70,13 @@ for p=1:maxIt-1
 
 		TT = STDOUT # save original STDOUT stream
 		redirect_stdout()
-        status = solve(evM)
+        statusEVM = solve(evM)
 		redirect_stdout(TT)
 
-		if status!=:Optimal
-            break
-        else
-            Sn[collect(evInd:N:N*(horzLen+1)),p+1]=getvalue(sn) #solved state goes in next time slot
-            Un[collect(evInd:N:N*(horzLen+1)),p+1]=getvalue(un) #current go
-        end
+		@assert statusEVM==:Optimal "EV NLP optimization not solved to optimality"
+
+        Sn[collect(evInd:N:N*(horzLen+1)),p+1]=getvalue(sn) #solved state goes in next time slot
+        Un[collect(evInd:N:N*(horzLen+1)),p+1]=getvalue(un) #current go
     end
 
 	if updateMethod=="dualAscent"
@@ -102,12 +100,10 @@ for p=1:maxIt-1
 	    statusC = solve(coorM)
 		redirect_stdout(TT)
 
-	    if statusC!=:Optimal
-	        break
-		else
-			 Xt[:,p+1]=getvalue(xt)
-			 zVal=getvalue(z)
-		end
+		@assert statusC==:Optimal "Dual Ascent central optimization not solved to optimality"
+
+		 Xt[:,p+1]=getvalue(xt)
+		 zVal=getvalue(z)
 
 	    #grad of lagragian
 		gradL=zeros(horzLen+1,1)
