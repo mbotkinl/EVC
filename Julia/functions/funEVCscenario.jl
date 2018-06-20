@@ -51,7 +51,7 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
 
     # Initial conditions:
     s0 = 0.2*rand(N,1)      # initial states of charge (0 - 0.20)
-    t0 = 368                 # initial temp (~65 K below Tmax) 368K
+    t0 = 370                 # initial temp (~65 K below Tmax) 368K
 
     #desired states
     SOCmin = 1 - 0.20*rand(N,1)            # Required min final states of charge (~0.80-1)
@@ -65,7 +65,7 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
     #Dload_amplitude = 85 #kWatts?
     #Dload_amplitude = 75000 #Watts?
     #Dload_amplitude = 0
-    Tamb_amplitude  = 363   # assume hot night in summer (30 C) 363K
+    Tamb_amplitude  = 370   # assume hot night in summer (30 C) 363K
 
     # Disturbance scenario:
     #FullinelasticDemand = [normpdf(0,linspace(0,8,round((K1-1)/2)),3) normpdf(0,linspace(-8,0,round(K1/2)),3)]; # let demand per household be peaking at 8PM and 8 PM with nadir inbetween
@@ -106,7 +106,6 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
                             ηP,τP,ρP,γP,s0,t0,Snmin,Kn,w,Qsi,Ri)
 
     if saveS==true
-        using JLD
         JLD.save("EVCscenarioN$(N).jld","evScenario",evScenario)
     end
 

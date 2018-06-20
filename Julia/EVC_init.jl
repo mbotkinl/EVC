@@ -1,10 +1,13 @@
 
-N=4
-datafile="jld" #"mat" #"jld" #"n"
+N=40
+datafile="n" #"mat" #"jld" #"n"
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
 noTlimit=0
-#if datafile in ["mat" "jld"]; N=5 end
+
+Tmax=371
+Dload_amplitude=0
+saveS=false
 
 println("Loading Packages...")
 
@@ -51,6 +54,7 @@ struct scenarioStruct
     #User def penalty matrix
     Qsi::Array{Float64,2}
     Ri::Array{Float64,2}
+end
 
 if datafile=="mat"
 	using MAT #to read in scenarios from matlab
@@ -96,10 +100,11 @@ elseif datafile=="jld"
 	loadF=JLD.load(path*file)
 	evS=loadF["evScenario"]
 else #create scenatio
+    if saveS==true using JLD end
 	using Distributions
 	println("Creating EV Scenario...")
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
-	evS=setupScenario(5)
+	evS=setupScenario(N;Tmax=Tmax,Dload_amplitude=Dload_amplitude,saveS=saveS)
 end
 
 
