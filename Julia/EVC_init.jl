@@ -1,11 +1,10 @@
-
-N=40
+N=10
 datafile="n" #"mat" #"jld" #"n"
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
 noTlimit=0
 
-Tmax=371
+Tmax=393
 Dload_amplitude=0
 saveS=false
 
@@ -15,46 +14,7 @@ using JuMP
 using Gadfly
 using Cairo #for png output
 using Fontconfig
-
-struct scenarioStruct
-    N::Int
-
-    #horizon
-    K1::Int
-    K2::Int
-    K::Int
-
-    #PWL
-    S::Int
-    ItotalMax::Int
-    deltaI::Float64
-
-    #limits
-    Tmax::Float64
-    imin::Array{Float64,2} #switch these to 1 dim array/vectors
-    imax::Array{Float64,2}
-
-    #Discretization Paramters
-    ηP::Array{Float64,2}
-    τP::Float64
-    ρP::Float64
-    γP::Float64
-
-    #initial conditions
-    s0::Array{Float64,2}
-    t0::Int
-
-    #desired conditions
-    Snmin::Array{Float64,2}
-    Kn::Array{Int,2}
-
-    #disturbances
-    w::Array{Float64,2}
-
-    #User def penalty matrix
-    Qsi::Array{Float64,2}
-    Ri::Array{Float64,2}
-end
+using Parameters
 
 if datafile=="mat"
 	using MAT #to read in scenarios from matlab
@@ -100,10 +60,10 @@ elseif datafile=="jld"
 	loadF=JLD.load(path*file)
 	evS=loadF["evScenario"]
 else #create scenatio
+	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
     if saveS==true using JLD end
 	using Distributions
 	println("Creating EV Scenario...")
-	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
 	evS=setupScenario(N;Tmax=Tmax,Dload_amplitude=Dload_amplitude,saveS=saveS)
 end
 
