@@ -4,7 +4,7 @@ updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
 noTlimit=0
 
-Tmax=393
+Tmax=371
 Dload_amplitude=0
 saveS=false
 

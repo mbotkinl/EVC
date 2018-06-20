@@ -2,7 +2,6 @@
 #4/8/18
 using Gurobi
 
-
 tic()
 
 #pull out a few key variables

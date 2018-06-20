@@ -14,6 +14,7 @@ xt0=evS.t0
 
 #add mpc loop here ??
 stepI=1
+horzLen=evS.K1
 
 #desired SOC
 target=zeros(N*(horzLen+1),1);
