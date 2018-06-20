@@ -42,6 +42,8 @@ convCheck=zeros(maxIt,1)
 σS=ones(N,1)/10
 σI=1/N
 σT=1/10000
+Hu=2*evS.Ri *(1+rand())
+Hs=2*evS.Qsi *(1+rand())
 Hi=1e-6
 Ht=1e-6
 ρALAD=1
@@ -276,8 +278,8 @@ for p=1:maxIt-1
     @variable(cM,dXt[1:(horzLen+1)])
     #@variable(cM,relaxS[1:(horzLen+1)])
     #objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
-	@objective(cM,Min, sum(sum(0.5*dUn[(k-1)*N+i,1]^2*2*evS.Ri[i,1]+Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1]+
-                               0.5*dSn[(k-1)*N+i,1]^2*2*evS.Qsi[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N)+
+	@objective(cM,Min, sum(sum(0.5*dUn[(k-1)*N+i,1]^2*Hu[i,1]+Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1]+
+                               0.5*dSn[(k-1)*N+i,1]^2*Hs[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N)+
                            0.5*dI[k,1]^2*(Hi-lambdaTemp[k,1]*2*evS.γP)+
                            0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1)))
     @constraint(cM,currCon[k=1:horzLen+1],sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-(Itotal[k,p+1]+dI[k])==-evS.w[(k-1)*2+1])#+relaxS[k,1])

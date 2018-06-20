@@ -22,7 +22,7 @@ tolU=1e-4
 tolS=1e-8
 tolT=1e-4
 tolZ=1e-6
-maxIt=30
+maxIt=50
 
 convIt=maxIt
 ConvALAD=zeros(maxIt,1)
@@ -40,8 +40,12 @@ convCheck=zeros(maxIt,1)
 σZ=1/N
 σT=1/10000 #for kA
 #σT=1/10  #for A
+
+Hu=2*evS.Ri *(1+rand())
+Hs=2*evS.Qsi *(1+rand())
 Hz=1e-6
 Ht=1e-6
+
 ρALAD=1
 ρRate=1.15
 muALAD=10^8
@@ -280,10 +284,10 @@ for p=1:maxIt-1
 	# end
 
     #objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
-	@objective(cM,Min, sum(sum(0.5*dUn[(k-1)*N+i,1]^2*2*evS.Ri[i,1]+Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1]+
-                   0.5*dSn[(k-1)*N+i,1]^2*2*evS.Qsi[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N) +
-                   0.5*dZ[k,1]^2*Hz+
-                   0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1)))
+	@objective(cM,Min, sum(sum(0.5*dUn[(k-1)*N+i,1]^2*Hu[i,1]+Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1] +
+                               0.5*dSn[(k-1)*N+i,1]^2*Hs[i,1]+Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N) +
+                               0.5*dZ[k,1]^2*Hz+
+                               0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1)))
     # @constraint(cM,currCon[k=1:horzLen+1],w[(k-1)*2+1]+relaxS[k,1]==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)+
     #                                          sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
     @constraint(cM,currCon[k=1:horzLen+1],sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
