@@ -11,8 +11,7 @@ tic()
 sn0=s0
 xt0=T0
 
-stepI = 1;
-horzLen=K1
+stepI = 1
 convChk = 1e-8
 maxIt=200
 convIt=maxIt

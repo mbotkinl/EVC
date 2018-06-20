@@ -1,5 +1,7 @@
 #Micah Botkin-Levy
 #4/8/18
+using Gurobi
+
 
 tic()
 #initialize with current states

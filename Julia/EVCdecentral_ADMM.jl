@@ -12,9 +12,8 @@ sn0=s0
 xt0=T0
 
 stepI = 1;
-horzLen=K1
-convChk = 1e-8
-maxIt=500
+convChk = 1e-16
+maxIt=1000
 convIt=maxIt
 ConvADMM=zeros(maxIt,1)
 itConvADMM=zeros(maxIt,1)

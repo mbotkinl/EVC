@@ -11,25 +11,23 @@ lambda0=1000*ones(horzLen+1,1)
 
 if updateMethod=="fastAscent"
 	#alpha = 0.1  #for A
-	alpha = 1e4 #for kA
-	#alpha=0.001
+	alpha = 5e4 #for kA
 	alphaDivRate=2
 	minAlpha=1e-6
 else
-	#alpha = .01 #for A
-	alpha = 1e4 #for kA
-	#alpha= 0.001
+	#alpha = 3e-3 #for A
+	alpha = 5e5 #for kA
 	alphaDivRate=2
+	#alphaRate=.99
 	minAlpha=1e-6
 end
 
 stepI = 1;
-horzLen=K1
 convChk = 1e-16
-maxIt=500
+maxIt=1000
 convIt=maxIt
 
-alphaP=zeros(maxIt,1)
+alphaP=alpha*ones(maxIt,1)
 ConvDual=zeros(maxIt,1)
 itConvDual=zeros(maxIt,1)
 constConvDual=zeros(maxIt,1)
@@ -55,7 +53,7 @@ for p=1:maxIt-1
 	@sync @parallel for evInd=1:N
         target=zeros((horzLen+1),1)
 		target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
-        evM=Model(solver = GurobiSolver(OutputFlag=0,NumericFocus=3))
+        evM=Model(solver = GurobiSolver(NumericFocus=1))
         @variable(evM,un[1:horzLen+1])
         @variable(evM,sn[1:horzLen+1])
         @objective(evM,Min,sum((sn[k,1]-1)^2*Qsi[evInd,1]+(un[k,1])^2*Ri[evInd,1]+Lam[k,p]*un[k,1] for k=1:horzLen+1))
@@ -79,14 +77,14 @@ for p=1:maxIt-1
         end
     end
 
-
 	if updateMethod=="dualAscent"
 	    #solve coordinator problem
-	    coorM=Model(solver = GurobiSolver(Presolve=0,NumericFocus=1))
+	    #coorM=Model(solver = GurobiSolver(Presolve=0,NumericFocus=1))
+		coorM=Model(solver = GurobiSolver())
 		#coorM=Model(solver = IpoptSolver())
 	    @variable(coorM,z[1:S*(horzLen+1)])
 	    @variable(coorM,xt[1:horzLen+1])
-	    @objective(coorM,Min,-sum(Lam[k,p]*sum(z[(k-1)*S+s,1] for s=1:S) for k=1:(horzLen+1)))
+	    @objective(coorM,Min,sum(Lam[k,p]*sum(-z[(k-1)*S+s,1] for s=1:S) for k=1:(horzLen+1)))
 		@constraint(coorM,xt[1,1]==τP*xt0+γP*deltaI*sum((2*s-1)*z[s,1] for s=1:S)+ρP*w[2,1]) #fix for MPC loop
 		@constraint(coorM,[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+ρP*w[k*2+2,1])
 		if noTlimit==0
@@ -108,8 +106,6 @@ for p=1:maxIt-1
 		end
 
 	    #grad of lagragian
-		#zSum=zeros(horzLen+1,1)
-		#uSum=zeros(horzLen+1,1)
 		gradL=zeros(horzLen+1,1)
 		for k=1:horzLen+1
 			zSum[k,p+1]=sum(zVal[(k-1)*(S)+s] for s=1:S)
@@ -143,19 +139,12 @@ for p=1:maxIt-1
 		end
 	end
 
-
     #update lambda
-	if updateMethod=="fastAscent"
-		alphaP[p,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
-		#alpha_p = alpha/(p*5)
-	else
-		#alpha_p=alpha
-		alphaP[p,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
-		#alpha_p = alpha/(p*5)
-	end
+	alphaP[p+1,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
+	#alphaP[p+1,1] = alphaP[p,1]*alphaRate
 
 	#lambda_new=lambda+alpha_p*gradL
-    Lam[:,p+1]=max.(Lam[:,p]+alphaP[p,1]*gradL,0)
+    Lam[:,p+1]=max.(Lam[:,p]+alphaP[p+1,1]*gradL,0)
 
 	#check convergence
 	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +

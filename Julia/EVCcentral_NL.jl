@@ -1,5 +1,6 @@
 #Micah Botkin-Levy
 #4/8/18
+using Ipopt
 
 tic()
 #initialize with current states
@@ -8,7 +9,6 @@ xt0=T0
 
 #add mpc loop here ??
 stepI=1
-horzLen=K1
 
 #desired SOC
 target=zeros(N*(horzLen+1),1);
@@ -96,7 +96,7 @@ else
 
 	p1nl=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 			Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
-			Coord.Cartesian(xmin=0,xmax=horzLen+1),
+			Coord.Cartesian(xmin=0,xmax=horzLen+1,ymax=1),
 			Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 			minor_label_font_size=16pt,key_label_font_size=16pt))
 	p1bnl=plot(xPlot2,x=Row.index,y=Col.value,color=Col.index,Geom.line,

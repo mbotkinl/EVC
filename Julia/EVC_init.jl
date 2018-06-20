@@ -8,8 +8,6 @@ println("Loading Packages...")
 
 using Gadfly
 using JuMP
-using Gurobi
-using Ipopt
 using Cairo #for png output
 using Fontconfig
 using Distributions

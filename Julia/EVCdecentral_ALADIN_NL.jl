@@ -11,8 +11,7 @@ tic()
 sn0=s0
 xt0=T0
 
-stepI = 1;
-horzLen=K1
+stepI = 1
 epsilon = 1e-12
 tolU=1e-4
 tolS=1e-8

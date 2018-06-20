@@ -10,7 +10,7 @@ tic()
 #initialize with current states
 sn0=s0
 xt0=T0
-horzLen=K1
+#horzLen=K1
 
 stepI = 1
 epsilon = 1e-8
@@ -18,7 +18,7 @@ tolU=1e-4
 tolS=1e-8
 tolT=1e-4
 tolZ=1e-6
-maxIt=500
+maxIt=100
 
 convIt=maxIt
 ConvALAD=zeros(maxIt,1)
