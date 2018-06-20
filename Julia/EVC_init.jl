@@ -1,21 +1,24 @@
-datafile="jld" #"mat" #"jld" #"n"
+
+N=5
+datafile="n" #"mat" #"jld" #"n"
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
 noTlimit=0
-if datafile in ["mat" "jld"]; N=5 end
+#if datafile in ["mat" "jld"]; N=5 end
 
 println("Loading Packages...")
 
-using Gadfly
 using JuMP
+using Gadfly
 using Cairo #for png output
 using Fontconfig
-using Distributions
 
 if datafile=="mat"
 	using MAT #to read in scenarios from matlab
 elseif datafile=="jld"
 	using JLD
+else #create scenatio
+	using Distributions
 end
 
 if datafile in ["mat" "jld"]
@@ -54,18 +57,22 @@ if datafile in ["mat" "jld"]
 	if datafile=="mat"
 		Kn=convert(Array{Int,2},Kn)
 	end
+else
+	println("Creating EV Scenario...")
+	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
+	evS=setupScenario(5)
 end
 
 #temp backwards capability
-if isdefined(:ηP)==false
-	ηP=eta
-	γP=gamma
-	ρP=rho
-	τP=tau
+if isassigned(evS.ηP)==false
+	evS.ηP=eta
+	evS.γP=gamma
+	evS.ρP=rho
+	evS.τP=tau
 end
 
-if isdefined(:Snmin)==false
-	Snmin=Sn
+if isassigned(evS.Snmin)==false
+	evS.Snmin=Sn
 end
 
 
