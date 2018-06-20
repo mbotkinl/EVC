@@ -1,6 +1,6 @@
 
-N=5
-datafile="n" #"mat" #"jld" #"n"
+N=4
+datafile="jld" #"mat" #"jld" #"n"
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
 noTlimit=0
@@ -13,16 +13,47 @@ using Gadfly
 using Cairo #for png output
 using Fontconfig
 
+struct scenarioStruct
+    N::Int
+
+    #horizon
+    K1::Int
+    K2::Int
+    K::Int
+
+    #PWL
+    S::Int
+    ItotalMax::Int
+    deltaI::Float64
+
+    #limits
+    Tmax::Float64
+    imin::Array{Float64,2} #switch these to 1 dim array/vectors
+    imax::Array{Float64,2}
+
+    #Discretization Paramters
+    ηP::Array{Float64,2}
+    τP::Float64
+    ρP::Float64
+    γP::Float64
+
+    #initial conditions
+    s0::Array{Float64,2}
+    t0::Int
+
+    #desired conditions
+    Snmin::Array{Float64,2}
+    Kn::Array{Int,2}
+
+    #disturbances
+    w::Array{Float64,2}
+
+    #User def penalty matrix
+    Qsi::Array{Float64,2}
+    Ri::Array{Float64,2}
+
 if datafile=="mat"
 	using MAT #to read in scenarios from matlab
-elseif datafile=="jld"
-	using JLD
-else #create scenatio
-	using Distributions
-end
-
-if datafile in ["mat" "jld"]
-	println("Reading in Data...")
 
 	function string_as_varname(s::String,v::Any)
 		 s=Symbol(s)
@@ -57,11 +88,21 @@ if datafile in ["mat" "jld"]
 	if datafile=="mat"
 		Kn=convert(Array{Int,2},Kn)
 	end
-else
+elseif datafile=="jld"
+	using JLD
+	println("Reading in Data...")
+	path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N$(N)\\"
+	file="EVCscenarioN$(N)."*datafile
+	loadF=JLD.load(path*file)
+	evS=loadF["evScenario"]
+else #create scenatio
+	using Distributions
 	println("Creating EV Scenario...")
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
 	evS=setupScenario(5)
 end
+
+
 
 #temp backwards capability
 if isassigned(evS.ηP)==false

@@ -2,45 +2,6 @@
 #Micah Botkin-Levy
 #4/13/18
 #from Mads Almassakhi code
-struct scenarioStruct
-    N::Int
-
-    #horizon
-    K1::Int
-    K2::Int
-    K::Int
-
-    #PWL
-    S::Int
-    ItotalMax::Int
-    deltaI::Float64
-
-    #limits
-    Tmax::Float64
-    imin::Array{Float64,2} #switch these to 1 dim array/vectors
-    imax::Array{Float64,2}
-
-    #Discretization Paramters
-    ηP::Array{Float64,2}
-    τP::Float64
-    ρP::Float64
-    γP::Float64
-
-    #initial conditions
-    s0::Array{Float64,2}
-    t0::Int
-
-    #desired conditions
-    Snmin::Array{Float64,2}
-    Kn::Array{Int,2}
-
-    #disturbances
-    w::Array{Float64,2}
-
-    #User def penalty matrix
-    Qsi::Array{Float64,2}
-    Ri::Array{Float64,2}
-end
 
 function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
 
@@ -145,8 +106,8 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
                             ηP,τP,ρP,γP,s0,t0,Snmin,Kn,w,Qsi,Ri)
 
     if saveS==true
-        # using JLD
-        # JLD.@save("EVCscenarioN$(N).jld")
+        using JLD
+        JLD.save("EVCscenarioN$(N).jld","evScenario",evScenario)
     end
 
     return evScenario
