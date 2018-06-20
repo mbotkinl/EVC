@@ -7,31 +7,30 @@ tic()
 sn0=s0
 xt0=T0
 
-#lambda0=1000*ones(horzLen+1,1)
-lambda0=lamCurrStarNL
+lambda0=1000*ones(horzLen+1,1)
+#lambda0=lamCurrStarNL
 #lambda0=max.(lamCurrStarNL,0)
 
 if updateMethod=="fastAscent"
 	#alpha = 0.1 #for A
 	alpha = 5e3 #for kA
-	#alpha=0.001
 	alphaDivRate=2
 	minAlpha=1e-6
+	#alphaRate=.99
 else
 	#alpha = .01 #for A
 	alpha = 5e3 #for kA
-	#alpha= 0.001
 	alphaDivRate=2
 	minAlpha=1e-6
+	#alphaRate=.99
 end
 
-stepI = 1;
-horzLen=K1
+stepI = 1
 convChk = 1e-8
-maxIt=100
+maxIt=500
 convIt=maxIt
 
-alphaP=zeros(maxIt,1)
+alphaP=alpha*ones(maxIt,1)
 ConvDual=zeros(maxIt,1)
 itConvDual=zeros(maxIt,1)
 constConvDual=zeros(maxIt,1)
@@ -133,16 +132,11 @@ for p=1:maxIt-1
 	end
 
     #update lambda
-	if updateMethod=="fastAscent"
-		alphaP[p,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
-		#alpha_p = alpha/(p*5)
-	else
-		alphaP[p,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
-		#alpha_p = alpha/(p*5)
-	end
+	alphaP[p+1,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
+	#alphaP[p+1,1] = alphaP[p,1]*alphaRate
 
 	#Lam[:,p+1]=Lam[:,p]+alpha_p*gradL
-    Lam[:,p+1]=max.(Lam[:,p]+alphaP[p,1]*gradL,0)
+    Lam[:,p+1]=max.(Lam[:,p]+alphaP[p+1,1]*gradL,0)
 
 	#check convergence
 	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
