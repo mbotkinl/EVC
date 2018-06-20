@@ -31,7 +31,7 @@ Ts = Rh*C/9              # s, sampling time in seconds
 
 # PWL Parameters:
 #S = 3;
-S=50
+S=10
 #ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
 ItotalMax = 4  #kA
 #ItotalMax = 4000  #A
@@ -52,23 +52,23 @@ Tmax = 393                             # Short-term over-loading --> 120 C = 393
 imin = zeros(N,1)                      # A, q_min < 0 if V2G is allowed
 imax = (10 + 16*rand(N,1))/1000             # kA, charging with 10-24 A
 #imax = (10 + 16*rand(N,1))             # A, charging with 10-24 A
-SOCmin = 1 - 0.20*rand(N,1)            # Required min final states of charge (~0.80-1)
-FullChargeTime_relative = .25*rand(N,1)+.75
-FullChargeTime = convert(Array{Int,2},round.(K1*FullChargeTime_relative))
 
 # Initial conditions:
 s0 = 0.2*rand(N,1)      # initial states of charge (0 - 0.20)
 T0 = 370                 # initial temp (~65 K below Tmax) 368K
 
 #desired states
+SOCmin = 1 - 0.20*rand(N,1)            # Required min final states of charge (~0.80-1)
+FullChargeTime_relative = .25*rand(N,1)+.75
+FullChargeTime = convert(Array{Int,2},round.(K1*FullChargeTime_relative))
 Snmin=SOCmin
 Kn=FullChargeTime
 
 # Disturbances
 #Dload_amplitude = 2;  # base-demand factor
-Dload_amplitude = 75 #kWatts?
-#Dload_amplitude = 85000 #Watts?
-#Dload_amplitude = 0 #Watts?
+#Dload_amplitude = 85 #kWatts?
+#Dload_amplitude = 75000 #Watts?
+Dload_amplitude = 0
 Tamb_amplitude  = 370   # assume hot night in summer (30 C) 363K
 
 # Disturbance scenario:
