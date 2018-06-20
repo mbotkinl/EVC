@@ -7,13 +7,17 @@
 #current constraint is coupling
 
 tic()
+#pull out a few key variables
+N=evS.N
+S=evS.S
+
 #initialize with current states
-sn0=s0
-xt0=T0
+sn0=evS.s0
+xt0=evS.t0
 
 stepI = 1
 convChk = 1e-8
-maxIt=200
+maxIt=50
 convIt=maxIt
 Conv=zeros(maxIt,1)
 itConv=zeros(maxIt,1)
@@ -58,19 +62,19 @@ for p in 1:maxIt-1
     @sync @parallel for evInd=1:N
         evV=Vu[collect(evInd:N:length(Vu[:,p])),p]
         target=zeros((horzLen+1),1)
-		target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
+		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
     	evM = Model(solver = GurobiSolver())
     	@variable(evM,sn[1:(horzLen+1)])
     	@variable(evM,u[1:(horzLen+1)])
-		@objective(evM,Min, sum((sn[k,1]-1)^2*Qsi[evInd,1]+(u[k,1])^2*Ri[evInd,1]+
+		@objective(evM,Min, sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
                                 Lam[k,p]*(u[k,1]-evV[k,1])+
                                 ρADMMp/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1))
-        @constraint(evM,sn[1,1]==sn0[evInd,1]+ηP[evInd,1]*u[1,1])
-        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+ηP[evInd,1]*u[k+1,1])
+        @constraint(evM,sn[1,1]==sn0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
+        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
     	@constraint(evM,sn.<=1)
     	@constraint(evM,sn.>=target)
-        @constraint(evM,u.<=imax[evInd,1])
-        @constraint(evM,u.>=imin[evInd,1])
+        @constraint(evM,u.<=evS.imax[evInd,1])
+        @constraint(evM,u.>=evS.imin[evInd,1])
     	TT = STDOUT # save original STDOUT stream
     	redirect_stdout()
     	status = solve(evM)
@@ -93,14 +97,14 @@ for p in 1:maxIt-1
     # @objective(tM,Min, constFun1(-itotal,Vi[:,p])+constFun2(-itotal,Vi[:,p]))
     @objective(tM,Min,sum(Lam[k,p]*(-itotal[k,1]-Vi[k,p])+
                           ρADMM/2*(-itotal[k,1]-Vi[k,p])^2  for k=1:(horzLen+1)))
-    @NLconstraint(tM,tempCon1,xt[1,1]==τP*xt0+γP*(itotal[1,1])^2+ρP*w[stepI*2,1])
-    @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*(itotal[k+1,1])^2+ρP*w[stepI*2+k*2,1])
+    @NLconstraint(tM,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1,1])^2+evS.ρP*evS.w[stepI*2,1])
+    @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.w[stepI*2+k*2,1])
     if noTlimit==0
-    	@constraint(tM,upperTCon,xt.<=Tmax)
+    	@constraint(tM,upperTCon,xt.<=evS.Tmax)
     end
     @constraint(tM,xt.>=0)
     @constraint(tM,itotal.>=0)
-    @constraint(tM,itotal.<=ItotalMax)
+    @constraint(tM,itotal.<=evS.ItotalMax)
 
     TT = STDOUT # save original STDOUT stream
     redirect_stdout()
@@ -117,7 +121,7 @@ for p in 1:maxIt-1
     currConst=zeros(horzLen+1,1)
 	for k=1:horzLen+1
 		uSum[k,p+1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
-		currConst[k,1]=uSum[k,p+1] + w[(k-1)*2+(stepI*2-1),1] - Itotal[k,p+1]
+		currConst[k,1]=uSum[k,p+1] + evS.w[(k-1)*2+(stepI*2-1),1] - Itotal[k,p+1]
 		#Lam[k,p+1]=max.(Lam[k,p]+ρADMMp/(S*(N))*(currConst[k,1]),0)
 		Lam[k,p+1]=Lam[k,p]+ρADMMp/(S*(N))*(currConst[k,1])
 	end
@@ -125,14 +129,14 @@ for p in 1:maxIt-1
 
     #v upate eq 7.67
     for k=1:horzLen+1
-        Vu[(k-1)*N+collect(1:N),p+1]=min.(max.(Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/ρADMMp,imin),imax)
-		Vi[k,p+1]=max.(min.(-Itotal[k,p+1]+(Lam[k,p]-Lam[k,p+1])/ρADMMp,0),-ItotalMax)
+        Vu[(k-1)*N+collect(1:N),p+1]=min.(max.(Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/ρADMMp,evS.imin),evS.imax)
+		Vi[k,p+1]=max.(min.(-Itotal[k,p+1]+(Lam[k,p]-Lam[k,p+1])/ρADMMp,0),-evS.ItotalMax)
     end
 
     #check convergence
-	objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
-					sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
-					sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
+	objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
+					sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
+					sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
 	fGap= objFun(Sn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStarNL
 	#fGap= objFun(Sn[:,p],Xt[:,p],Un[:,p])-fStar
 	snGap=norm((Sn[:,p+1]-snStarNL),2)
@@ -183,7 +187,7 @@ if drawFig==1 draw(PNG(path*"J_centralNL_ADMM_Curr.png", 24inch, 12inch), pd2NLa
 
 pd3NLadmm=plot(layer(x=1:horzLen+1,y=Xt[:,convIt],Geom.line,Theme(default_color=colorant"blue")),
 		#layer(x=1:horzLen+1,y=Tactual,Geom.line,Theme(default_color=colorant"green")),
-		yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
+		yintercept=[evS.Tmax],Geom.hline(color=["red"],style=:dot),
 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))

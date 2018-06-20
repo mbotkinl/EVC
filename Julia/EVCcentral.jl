@@ -4,19 +4,24 @@ using Gurobi
 
 
 tic()
+
+#pull out a few key variables
+N=evS.N
+S=evS.S
+
 #initialize with current states
-sn0=s0
-xt0=T0
+sn0=evS.s0
+xt0=evS.t0
 
 stepI=1
-horzLen=K1
+horzLen=evS.K1
 
 #desired SOC
 target=zeros(N*(horzLen+1),1);
 for ii=1:N
-   cur=Kn[ii]-(stepI-1)
+   cur=evS.Kn[ii]-(stepI-1)
    ind=max(0,(cur-1)*N)+ii:N:length(target)
-   target[ind]=Snmin[ii,1]
+   target[ind]=evS.Snmin[ii,1]
 end
 
 
@@ -28,27 +33,27 @@ centralModel = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1,NumericFo
 @variable(centralModel,u[1:N*(horzLen+1)])
 @variable(centralModel,sn[1:(N)*(horzLen+1)])
 @variable(centralModel,xt[1:(horzLen+1)])
-@variable(centralModel,z[1:S*(horzLen+1)])
+@variable(centralModel,z[1:evS.S*(horzLen+1)])
 
 println("obj")
-@objective(centralModel,Min,sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]+(u[(k-1)*N+n,1])^2*Ri[n,1]  for n=1:N) for k=1:horzLen+1))
+@objective(centralModel,Min,sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1]  for n=1:N) for k=1:horzLen+1))
 
 println("constraints")
-@constraint(centralModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+ηP[:,1].*u[1:N,1])
-@constraint(centralModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+ηP[n,1]*u[n+(k)*(N),1])
-@constraint(centralModel,tempCon1,xt[1,1]==τP*xt0+γP*deltaI*sum((2*s-1)*z[s,1] for s=1:S)+ρP*w[stepI*2,1])
-@constraint(centralModel,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+ρP*w[stepI*2+k*2,1])
-@constraint(centralModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-w[(k-1)*2+1]+sum(z[(k-1)*(S)+s] for s=1:S))
+@constraint(centralModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+evS.ηP[:,1].*u[1:N,1])
+@constraint(centralModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+evS.ηP[n,1]*u[n+(k)*(N),1])
+@constraint(centralModel,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*evS.deltaI*sum((2*s-1)*z[s,1] for s=1:S)+evS.ρP*evS.w[stepI*2,1])
+@constraint(centralModel,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+evS.ρP*evS.w[stepI*2+k*2,1])
+@constraint(centralModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-evS.w[(k-1)*2+1]+sum(z[(k-1)*(S)+s] for s=1:S))
 @constraint(centralModel,sn.<=1)
 @constraint(centralModel,sn.>=target)
 if noTlimit==0
-	@constraint(centralModel,upperTCon,xt.<=Tmax)
+	@constraint(centralModel,upperTCon,xt.<=evS.Tmax)
 end
 @constraint(centralModel,xt.>=0)
-@constraint(centralModel,upperCCon,u.<=repmat(imax,horzLen+1,1))
-@constraint(centralModel,u.>=repmat(imin,horzLen+1,1))
+@constraint(centralModel,upperCCon,u.<=repmat(evS.imax,horzLen+1,1))
+@constraint(centralModel,u.>=repmat(evS.imin,horzLen+1,1))
 @constraint(centralModel,z.>=0)
-@constraint(centralModel,z.<=deltaI)
+@constraint(centralModel,z.<=evS.deltaI)
 
 println("solving....")
 statusM = solve(centralModel)
@@ -68,24 +73,23 @@ else
 	Tactual=zeros(horzLen+1,1)
 	ztotal=zeros(horzLen+1,1)
 	for k=1:horzLen+1
-		ztotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + w[(k-1)*2+1,1]
+		ztotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + evS.w[(k-1)*2+1,1]
 	end
-	Tactual[1,1]=τP*T0+γP*ztotal[1,1]^2+ρP*w[2,1]
+	Tactual[1,1]=evS.τP*xt0+evS.γP*ztotal[1,1]^2+evS.ρP*evS.w[2,1]
 	for k=1:horzLen
-		Tactual[k+1,1]=τP*Tactual[k,1]+γP*ztotal[k+1,1]^2+ρP*w[k*2+2,1]
+		Tactual[k+1,1]=evS.τP*Tactual[k,1]+evS.γP*ztotal[k+1,1]^2+evS.ρP*evS.w[k*2+2,1]
 	end
 
 	#getobjectivevalue(m)
 	lambdaCurr=-getdual(currCon)
 	#lambdaTemp=[getdual(tempCon1);getdual(tempCon2)]
 	#lambdaState=[getdual(stateCon1)';getdual(stateCon2)]
+	#lambdaUpperC=-getdual(upperCCon)
 	if noTlimit==0
 		lambdaUpperT=-getdual(upperTCon)
 	else
 		lambdaUpperT=zeros(horzLen+1,1)
 	end
-
-	#lambdaUpperC=-getdual(upperCCon)
 
 	xtStar=xtRaw
     snStar=snRaw
@@ -107,7 +111,7 @@ else
 	xPlot2=zeros(horzLen+1,N)
 	for ii= 1:N
 		xPlot[:,ii]=snRaw[collect(ii:N:length(snRaw))]
-		xPlot2[:,ii]=(Snmin[ii,1]-xPlot[:,ii])./(Kn[ii,1]-(1:1:length(xPlot[:,ii])))
+		xPlot2[:,ii]=(evS.Snmin[ii,1]-xPlot[:,ii])./(evS.Kn[ii,1]-(1:1:length(xPlot[:,ii])))
 	end
 
 	#plot(x=1:horzLen+1,y=xPlot2[:,ii])
@@ -140,7 +144,7 @@ else
 
 	p3=plot(layer(x=1:horzLen+1,y=xtRaw,Geom.line,Theme(default_color=colorant"blue")),
 			layer(x=1:horzLen+1,y=Tactual,Geom.line,Theme(default_color=colorant"green")),
-			yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
+			yintercept=[evS.Tmax],Geom.hline(color=["red"],style=:dot),
 			Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
 			minor_label_font_size=16pt,key_label_font_size=16pt),

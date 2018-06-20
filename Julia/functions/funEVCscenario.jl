@@ -2,7 +2,7 @@
 #Micah Botkin-Levy
 #4/13/18
 #from Mads Almassakhi code
-struct scenarioPWL
+struct scenarioStruct
     N::Int
 
     #horizon
@@ -140,7 +140,8 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
     #move this into struct???
     @assert all(ηP.*K.*FullChargeTime_relative.*imax+s0 .>= SOCmin) "Some PEVs may not be able to meet SOC min level by desired time!"
 
-    evScenario=scenarioPWL(N,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,
+
+    evScenario=scenarioStruct(N,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,
                             ηP,τP,ρP,γP,s0,t0,Snmin,Kn,w,Qsi,Ri)
 
     if saveS==true

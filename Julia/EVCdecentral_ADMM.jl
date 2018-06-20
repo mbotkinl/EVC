@@ -7,13 +7,18 @@
 #current constraint is coupling
 
 tic()
-#initialize with current states
-sn0=s0
-xt0=T0
+
+#pull out a few key variables
+N=evS.N
+S=evS.S
+
+#initialize
+sn0=evS.s0
+xt0=evS.t0
 
 stepI = 1;
 convChk = 1e-16
-maxIt=1000
+maxIt=50
 convIt=maxIt
 ConvADMM=zeros(maxIt,1)
 itConvADMM=zeros(maxIt,1)
@@ -65,19 +70,19 @@ for p in 1:maxIt-1
 			lambda=Lam[:,p]
 	        evV=Vu[collect(evInd:N:length(Vu[:,p])),p]
 	        target=zeros((horzLen+1),1)
-			target[(Kn[evInd,1]-(stepI-1)):1:length(target),1]=Snmin[evInd,1]
+			target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
 	    	evM = Model(solver = GurobiSolver())
 	    	@variable(evM,sn[1:(horzLen+1)])
 	    	@variable(evM,u[1:(horzLen+1)])
-			@objective(evM,Min, sum((sn[k,1]-1)^2*Qsi[evInd,1]+(u[k,1])^2*Ri[evInd,1]+
+			@objective(evM,Min, sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
 									lambda[k,1]*(u[k,1]-evV[k,1])+
 									ρI/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1))
-	        @constraint(evM,sn[1,1]==sn0[evInd,1]+ηP[evInd,1]*u[1,1])
-	        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+ηP[evInd,1]*u[k+1,1])
+	        @constraint(evM,sn[1,1]==sn0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
+	        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
 	    	@constraint(evM,sn.<=1)
 	    	@constraint(evM,sn.>=target)
-	        @constraint(evM,u.<=imax[evInd,1])
-	        @constraint(evM,u.>=imin[evInd,1])
+	        @constraint(evM,u.<=evS.imax[evInd,1])
+	        @constraint(evM,u.>=evS.imin[evInd,1])
 	    	TT = STDOUT # save original STDOUT stream
 	    	redirect_stdout()
 	    	status = solve(evM)
@@ -99,14 +104,14 @@ for p in 1:maxIt-1
 	    # @objective(tM,Min, constFun1(-z,Vz[:,p])+constFun2(-z,Vz[:,p]))
 		@objective(tM,Min,sum(Lam[k,p]*(sum(-z[(k-1)*(S)+s,1] for s=1:S)-sum(Vz[(k-1)*(S)+s,p] for s=1:S)) +
 							ρI/2*(sum(-z[(k-1)*(S)+s,1] for s=1:S)-sum(Vz[(k-1)*(S)+s,p] for s=1:S))^2  for k=1:(horzLen+1)))
-	    @constraint(tM,tempCon1,xt[1,1]==τP*xt0+γP*deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+ρP*w[stepI*2,1])
-	    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+ρP*w[stepI*2+k*2,1])
+	    @constraint(tM,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*evS.deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+evS.ρP*evS.w[stepI*2,1])
+	    @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+evS.ρP*evS.w[stepI*2+k*2,1])
 	    if noTlimit==0
-	    	@constraint(tM,upperTCon,xt.<=Tmax)
+	    	@constraint(tM,upperTCon,xt.<=evS.Tmax)
 	    end
 	    @constraint(tM,xt.>=0)
 	    @constraint(tM,z.>=0)
-	    @constraint(tM,z.<=deltaI)
+	    @constraint(tM,z.<=evS.deltaI)
 	    #@constraint(tM,zC[k=1:horzLen+1],zSum[k,1]==sum(z[(k-1)*(S)+s] for s=1:S))
 
 	    TT = STDOUT # save original STDOUT stream
@@ -128,15 +133,15 @@ for p in 1:maxIt-1
 		for k=1:horzLen+1
 			uSum[k,1]=sum(Un[(k-1)*N+n,p+1] for n=1:N)
 			zSum[k,1]=sum(Z[(k-1)*(S)+s,p+1] for s=1:S)
-			currConst[k,1]= uSum[k,1] + w[(k-1)*2+(stepI*2-1),1] - zSum[k,1]
+			currConst[k,1]= uSum[k,1] + evS.w[(k-1)*2+(stepI*2-1),1] - zSum[k,1]
 			#Lam[k,p+1]=max.(Lam[k,p]+ρADMM/(horzLen+1)*(currConst[k,1]),0)
 			Lam[k,p+1]=Lam[k,p]+ρI/(S*(N))*(currConst[k,1])
 		end
 
 		#calculate actual temperature from nonlinear model of XFRM
-		Tactual[1,p+1]=τP*xt0+γP*zSum[1,1]^2+ρP*w[2,1] #fix for mpc
+		Tactual[1,p+1]=evS.τP*xt0+evS.γP*zSum[1,1]^2+evS.ρP*evS.w[2,1] #fix for mpc
 		for k=1:horzLen
-			Tactual[k+1,p+1]=τP*Tactual[k,p+1]+γP*zSum[k+1,1]^2+ρP*w[k*2+2,1]  #fix for mpc
+			Tactual[k+1,p+1]=evS.τP*Tactual[k,p+1]+evS.γP*zSum[k+1,1]^2+evS.ρP*evS.w[k*2+2,1]  #fix for mpc
 		end
 
 		CC[:,p+1]=currConst
@@ -145,15 +150,15 @@ for p in 1:maxIt-1
 
 	    #v upate eq 7.67
 	    for k=1:horzLen+1
-	        Vu[(k-1)*N+collect(1:N),p+1]=min.(max.(Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/ρI,imin),imax)
-	        Vz[(k-1)*(S)+collect(1:S),p+1]=max.(min.(-Z[(k-1)*(S)+collect(1:S),p+1]+(Lam[k,p]-Lam[k,p+1])/ρI,0),-deltaI)
+	        Vu[(k-1)*N+collect(1:N),p+1]=min.(max.(Un[(k-1)*N+collect(1:N),p+1]+(Lam[k,p]-Lam[k,p+1])/ρI,evS.imin),evS.imax)
+	        Vz[(k-1)*(S)+collect(1:S),p+1]=max.(min.(-Z[(k-1)*(S)+collect(1:S),p+1]+(Lam[k,p]-Lam[k,p+1])/ρI,0),-evS.deltaI)
 			#Vz[k,p+1]=-zSum[k,1]+(Lam[k,p]-Lam[k,p+1])/ρADMM
 	    end
 
 	    #check convergence
-		objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
-						sum((xt[k,1]-1)^2*Qsi[N+1,1]                 for k=1:horzLen+1) +
-						sum(sum((u[(k-1)*N+n,1])^2*Ri[n,1]           for n=1:N) for k=1:horzLen+1)
+		objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
+						sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
+						sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
 		fGap= abs(objFun(Sn[:,p+1],Xt[:,p+1],Un[:,p+1])-fStar)
 		#fGap= objFun(Sn[:,p],Xt[:,p],Un[:,p])-fStar
 		snGap=norm((Sn[:,p+1]-snStar),2)
@@ -213,7 +218,7 @@ if drawFig==1 draw(PNG(path*"J_decentral_ADMM_Curr.png", 24inch, 12inch), pd2adm
 
 pd3admm=plot(layer(x=1:horzLen+1,y=Xt[:,convIt],Geom.line,Theme(default_color=colorant"blue")),
 		layer(x=1:horzLen+1,y=Tactual[:,convIt],Geom.line,Theme(default_color=colorant"green")),
-		yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
+		yintercept=[evS.Tmax],Geom.hline(color=["red"],style=:dot),
 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt),

@@ -3,9 +3,14 @@
 using Ipopt
 
 tic()
+
+#pull out a few key variables
+N=evS.N
+S=evS.S
+
 #initialize with current states
-sn0=s0
-xt0=T0
+sn0=evS.s0
+xt0=evS.t0
 
 #add mpc loop here ??
 stepI=1
@@ -13,9 +18,9 @@ stepI=1
 #desired SOC
 target=zeros(N*(horzLen+1),1);
 for ii=1:N
-   cur=Kn[ii]-(stepI-1)
+   cur=evS.Kn[ii]-(stepI-1)
    ind=max(0,(cur-1)*N)+ii:N:length(target)
-   target[ind]=Snmin[ii,1]
+   target[ind]=evS.Snmin[ii,1]
 end
 
 println("setting up model")
@@ -27,24 +32,24 @@ cModel = Model(solver = IpoptSolver())
 @variable(cModel,itotal[1:(horzLen+1)])
 
 println("obj")
-@objective(cModel,Min, sum(sum((sn[(k-1)*(N)+n,1]-1)^2*Qsi[n,1]+
-                               (u[(k-1)*N+n,1])^2*Ri[n,1] for n=1:N) for k=1:(horzLen+1)))
+@objective(cModel,Min, sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+
+                               (u[(k-1)*N+n,1])^2*evS.Ri[n,1] for n=1:N) for k=1:(horzLen+1)))
 
 println("constraints")
-@constraint(cModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+ηP[:,1].*u[1:N,1])
-@constraint(cModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+ηP[n,1]*u[n+(k)*(N),1])
-@NLconstraint(cModel,tempCon1,xt[1,1]==τP*xt0+γP*(itotal[1])^2+ρP*w[stepI*2,1])
-@NLconstraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]==τP*xt[k,1]+γP*(itotal[k+1])^2+ρP*w[stepI*2+k*2,1]) #check id index???
-@constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-w[(k-1)*2+1]+itotal[k]) #fix for MPC
+@constraint(cModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+evS.ηP[:,1].*u[1:N,1])
+@constraint(cModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+evS.ηP[n,1]*u[n+(k)*(N),1])
+@NLconstraint(cModel,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.w[stepI*2,1])
+@NLconstraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1])^2+evS.ρP*evS.w[stepI*2+k*2,1]) #check id index???
+@constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-evS.w[(k-1)*2+1]+itotal[k]) #fix for MPC
 @constraint(cModel,sn.<=1)
 @constraint(cModel,sn.>=target)
 if noTlimit==0
-	@constraint(cModel,upperTCon,xt.<=Tmax)
+	@constraint(cModel,upperTCon,xt.<=evS.Tmax)
 end
 @constraint(cModel,xt.>=0)
-@constraint(cModel,upperCCon,u.<=repmat(imax,horzLen+1,1))
-@constraint(cModel,u.>=repmat(imin,horzLen+1,1))
-@constraint(cModel,itotal.<=ItotalMax)
+@constraint(cModel,upperCCon,u.<=repmat(evS.imax,horzLen+1,1))
+@constraint(cModel,u.>=repmat(evS.imin,horzLen+1,1))
+@constraint(cModel,itotal.<=evS.ItotalMax)
 @constraint(cModel,itotal.>=0)
 
 println("solving....")
@@ -88,7 +93,7 @@ else
 	xPlot2=zeros(horzLen+1,N)
 	for ii= 1:N
 		xPlot[:,ii]=snRaw[collect(ii:N:length(snRaw))]
-		xPlot2[:,ii]=(Snmin[ii,1]-xPlot[:,ii])./(Kn[ii,1]-(1:1:length(xPlot[:,ii])))
+		xPlot2[:,ii]=(evS.Snmin[ii,1]-xPlot[:,ii])./(evS.Kn[ii,1]-(1:1:length(xPlot[:,ii])))
 	end
 
 	#plot(x=1:horzLen+1,y=xPlot2[:,ii])
@@ -120,7 +125,7 @@ else
 	if drawFig==1 draw(PNG(path*"J_centralNL_Curr.png", 24inch, 12inch), p2nl) end
 
 	p3nl=plot(layer(x=1:horzLen+1,y=xtRaw,Geom.line,Theme(default_color=colorant"blue")),
-			yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
+			yintercept=[evS.Tmax],Geom.hline(color=["red"],style=:dot),
 			Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
 			minor_label_font_size=16pt,key_label_font_size=16pt))
