@@ -46,7 +46,7 @@ Ht=1e-6
 muALAD=10^8
 
 
-include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCsetup.jl")
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 dCMalad=convMetrics()
 dLogalad=itLogPWL()
 convCheck=zeros(maxIt,1)

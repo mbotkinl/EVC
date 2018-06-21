@@ -1,3 +1,4 @@
+using Parameters
 
 #structures
 @with_kw struct convMetrics
@@ -76,4 +77,32 @@ end
     Cu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt)  #row are time,  columns are iteration
     Ci::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
     Ct::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+end
+#
+# @with_kw struct centralSolution
+#     xt::Array
+#     sn::Array
+#     un::Array
+#     z::Array #for PWL
+#     itotal::Array #for NL
+#     objVal::Float64
+#     lamTemp::Array
+#     lamCoupl::Array
+#     uSum::Array
+#     zSum::Array
+#     Tactual::Array
+# end
+
+@with_kw struct centralSolution
+    xt::Array=zeros((horzLen+1),1)
+    sn::Array=zeros(N*(horzLen+1),1)
+    un::Array=zeros(N*(horzLen+1),1)
+    z::Array=zeros(S*(horzLen+1),1) #for PWL
+    itotal::Array=zeros((horzLen+1),1) #for NL
+    objVal::Float64=0
+    lamTemp::Array=zeros((horzLen+1),1)
+    lamCoupl::Array=zeros((horzLen+1),1)
+    uSum::Array=zeros(N*(horzLen+1),1)
+    zSum::Array=zeros(S*(horzLen+1),1)
+    Tactual::Array=zeros((horzLen+1),1)
 end

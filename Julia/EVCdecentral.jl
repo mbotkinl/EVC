@@ -31,7 +31,7 @@ convIt=maxIt
 #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
 alphaP=alpha*ones(maxIt,1)
 
-include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCsetup.jl")
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 dCM=convMetrics()
 dLog=itLogPWL()
 

@@ -42,7 +42,7 @@ muALAD=10^8
 #.01/2 increasing ρ helps const
 #.1/1.1 best so far???
 
-include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCsetup.jl")
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 dCMalad=convMetrics()
 dLogalad=itLogNL()
 convCheck=zeros(maxIt,1)
