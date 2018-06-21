@@ -6,7 +6,6 @@ using Ipopt
 N=evS.N
 S=evS.S
 horzLen=evS.K1
-maxIt=0
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
@@ -19,13 +18,11 @@ println("plotting....")
 xPlot=zeros(horzLen+1,N)
 xPlot2=zeros(horzLen+1,N)
 uPlot=zeros(horzLen+1,N)
-
 for ii= 1:N
 	xPlot[:,ii]=cSolnl.sn[collect(ii:N:length(cSolnl.sn))]
 	xPlot2[:,ii]=(evS.Snmin[ii,1]-xPlot[:,ii])./(evS.Kn[ii,1]-(1:1:length(xPlot[:,ii])))
     uPlot[:,ii]=cSolnl.un[collect(ii:N:length(cSolnl.un))]
 end
-
 
 p1nl=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
