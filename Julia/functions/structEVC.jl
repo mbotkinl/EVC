@@ -78,20 +78,6 @@ end
     Ci::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
     Ct::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 end
-#
-# @with_kw struct centralSolution
-#     xt::Array
-#     sn::Array
-#     un::Array
-#     z::Array #for PWL
-#     itotal::Array #for NL
-#     objVal::Float64
-#     lamTemp::Array
-#     lamCoupl::Array
-#     uSum::Array
-#     zSum::Array
-#     Tactual::Array
-# end
 
 @with_kw struct centralSolution
     xt::Array=zeros((horzLen+1),1)

@@ -6,7 +6,6 @@ using Gurobi
 N=evS.N
 S=evS.S
 horzLen=evS.K1
-maxIt=0
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
@@ -24,9 +23,6 @@ for ii= 1:N
 	xPlot2[:,ii]=(evS.Snmin[ii,1]-xPlot[:,ii])./(evS.Kn[ii,1]-(1:1:length(xPlot[:,ii])))
     uPlot[:,ii]=cSol.un[collect(ii:N:length(cSol.un))]
 end
-
-#plot(x=1:horzLen+1,y=xPlot2[:,ii])
-# plot(x=1:Kn[ii,1],y=xPlot2[1:Kn[ii,1],ii])
 
 p1=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),

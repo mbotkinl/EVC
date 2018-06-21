@@ -3,6 +3,7 @@ datafile="n" #"mat" #"jld" #"n"
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
 noTlimit=0
+maxIt=50
 
 Tmax=371
 Dload_amplitude=0
