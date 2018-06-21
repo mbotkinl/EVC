@@ -34,8 +34,10 @@ convIt=maxIt
 σT=1/10000 #for kA
 #σT=1/10  #for A
 
-Hu=2*evS.Ri *(1+rand())
-Hs=2*evS.Qsi *(1+rand())
+# Hu=2*evS.Ri
+# Hs=2*evS.Qsi
+Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
+Hs=2*evS.Qsi *((1.5-2.5)*rand()+2.5)
 Hz=1e-6
 Ht=1e-6
 
