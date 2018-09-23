@@ -5,6 +5,7 @@ function saveRun(path::String, filename::String, time::Float64, scenario::scenar
     "convMetrics", convMetrics, "convIt", convIt)
 end
 
-
 function clips()
+    t=clipboard()
+    return t[2:length(t)-1]
 end
