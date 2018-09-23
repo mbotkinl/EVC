@@ -75,7 +75,7 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
         uSum[k,1]=sum(uRaw[(k-1)*N+n,1] for n=1:N)
     end
 
-    cSol=centralSolution(xt=xtRaw,un=uRaw,sn=snRaw,z=zRaw,
+    cSol=centralSolutionStruct(xt=xtRaw,un=uRaw,sn=snRaw,z=zRaw,
                         itotal=itotal,uSum=uSum,zSum=zSum,
                         objVal=getobjectivevalue(centralModel),
                         lamTemp=lambdaUpperT,lamCoupl=lambdaCurr,
@@ -84,12 +84,12 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
 end
 
 #dual
-function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS::scenarioStruct,cSol::centralSolution)
+function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS::scenarioStruct,cSol::centralSolutionStruct)
 
     #initialize
     sn0=evS.s0
     xt0=evS.t0
-    dCM=convMetrics()
+    dCM=convMetricsStruct()
     dLog=itLogPWL()
 
     if updateMethod=="fastAscent"
@@ -252,7 +252,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
 end
 
 #ADMM
-function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolution)
+function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolutionStruct)
     #initialize
     sn0=evS.s0
     xt0=evS.t0
@@ -267,7 +267,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     #ρADMM=1    #for A
 
     #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+η*u[k+1]
-    dCMadmm=convMetrics()
+    dCMadmm=convMetricsStruct()
     dLogadmm=itLogPWL()
 
     #initialize with guess
@@ -396,7 +396,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 end
 
 #ALADIN
-function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolution)
+function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolutionStruct)
     #initialize
     sn0=evS.s0
     xt0=evS.t0
@@ -429,7 +429,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     ρRate=1.15
     muALAD=10^8
 
-    dCMalad=convMetrics()
+    dCMalad=convMetricsStruct()
     dLogalad=itLogPWL()
     convCheck=zeros(maxIt,1)
 

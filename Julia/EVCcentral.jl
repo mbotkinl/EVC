@@ -8,10 +8,20 @@ S=evS.S
 horzLen=evS.K1
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
-
 tic()
 cSol=pwlEVcentral(N,S,horzLen,evS)
-cSol.timeT=toc()
+timeT=toc()
+
+filename = "central_N$(N)"
+# save
+if saveResults==1 saveRun(path,filename,timeT, evS,cSol) end
+# load
+if loadResults==1
+	loadF=JLD.load(path*filename*".jld")
+	evS=loadF["scenario"]
+	cSol=loadF["solution"]
+end
+
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)

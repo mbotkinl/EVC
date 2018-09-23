@@ -8,7 +8,20 @@
 
 tic()
 dLogadmm,dCMadmm,convIt=pwlEVadmm(N,S,horzLen,maxIt,evS,cSol)
-dLogadmm.timeT=toc()
+timeT=toc()
+
+
+filename = "dADMM_N$(N)"
+# save
+if saveResults==1 saveRun(path,filename,timeT, evS,dLogadmm, dCMadmm, convIt) end
+# load
+if loadResults==1
+	loadF=JLD.load(path*filename*".jld")
+	evS=loadF["scenario"]
+	dLogadmm=loadF["solution"]
+	convIt=loadF["convIt"]
+end
+
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
@@ -17,7 +30,6 @@ for ii= 1:N
 	xPlot[:,ii]=dLogadmm.Sn[collect(ii:N:length(dLogadmm.Sn[:,convIt])),convIt]
 	uPlot[:,ii]=dLogadmm.Un[collect(ii:N:length(dLogadmm.Un[:,convIt])),convIt]
 end
-
 
 pd1admm=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),

@@ -69,7 +69,7 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
         uSum[k,1]=sum(uRaw[(k-1)*N+n,1] for n=1:N)
     end
 
-    cSol=centralSolution(xt=xtRaw,un=uRaw,sn=snRaw,
+    cSol=centralSolutionStruct(xt=xtRaw,un=uRaw,sn=snRaw,
                         itotal=itotalRaw,uSum=uSum,
                         objVal=getobjectivevalue(cModel),
                         lamTemp=lambdaTemp,lamCoupl=lambdaCurr)
@@ -103,7 +103,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS
 
     alphaP=alpha*ones(maxIt,1)
 
-    dCM=convMetrics()
+    dCM=convMetricsStruct()
     dLog=itLogNL()
 
     #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
@@ -246,7 +246,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     ρADMM=5e5
 
     #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
-    dCMadmm=convMetrics()
+    dCMadmm=convMetricsStruct()
     dLogadmm=itLogNL()
 
     # lambda0=lamCurrStarNL
@@ -399,7 +399,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     #.01/2 increasing ρ helps const
     #.1/1.1 best so far???
 
-    dCMalad=convMetrics()
+    dCMalad=convMetricsStruct()
     dLogalad=itLogNL()
     convCheck=zeros(maxIt,1)
 

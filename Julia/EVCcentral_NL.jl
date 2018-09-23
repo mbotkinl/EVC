@@ -12,7 +12,19 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 
 tic()
 cSolnl=nlEVcentral(N,S,horzLen,evS)
-cSolnl.timet=toc()
+timeT=toc()
+
+filename = "central_NL_N$(N)"
+# save
+if saveResults==1 saveRun(path,filename,timeT, evS,cSolnl) end
+# load
+if loadResults==1
+	loadF=JLD.load(path*filename*".jld")
+	evS=loadF["scenario"]
+	cSolnl=loadF["solution"]
+end
+
+
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)

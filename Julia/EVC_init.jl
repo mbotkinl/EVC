@@ -1,11 +1,15 @@
 #C:\Users\micah\AppData\Local\JuliaPro-0.6.2.2\Julia-0.6.2\bin\julia
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\Julia\\PWLvNL\\"
 N=10
 datafile="jld" #"mat" #"jld" #"n"
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
+saveResults=1
+loadResults=0
 noTlimit=0
 maxIt=10
 
@@ -60,11 +64,10 @@ if datafile=="mat"
 elseif datafile=="jld"
 	using JLD
 	println("Reading in Data...")
-	path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\Julia\\PWLvNL\\"
 	file="EVCscenarioN$(N)."*datafile
 	loadF=JLD.load(path*file)
 	evS=loadF["evScenario"]
-else #create scenatio
+else #create scenario
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
     if saveS==true using JLD end
 	using Distributions

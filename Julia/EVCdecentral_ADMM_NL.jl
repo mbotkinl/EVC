@@ -9,8 +9,18 @@
 
 tic()
 dLognladmm,dCMnladmm,convIt=nlEVadmm(N,S,horzLen,maxIt,evS,cSolnl)
-dLognladmm.timeT=toc()
+timeT=toc()
 
+filename = "dADMM_NL_N$(N)"
+# save
+if saveResults==1 saveRun(path,filename,timeT, evS,dLognladmm, dCMnladmm, convIt) end
+# load
+if loadResults==1
+	loadF=JLD.load(path*filename*".jld")
+	evS=loadF["scenario"]
+	dLognladmm=loadF["solution"]
+	convIt=loadF["convIt"]
+end
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)

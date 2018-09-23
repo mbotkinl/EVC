@@ -9,8 +9,18 @@
 
 tic()
 dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl)
-dLognlalad.timeT=toc()
+timeT=toc()
 
+filename = "dALADIN_NL_N$(N)"
+# save
+if saveResults==1 saveRun(path,filename,timeT, evS,dLognlalad, dCMnlalad, convIt) end
+# load
+if loadResults==1
+	loadF=JLD.load(path*filename*".jld")
+	evS=loadF["scenario"]
+	dLognlalad=loadF["solution"]
+	convIt=loadF["convIt"]
+end
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)

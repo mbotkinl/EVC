@@ -3,11 +3,26 @@
 
 tic()
 dLog,dCM,convIt=pwlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSol)
-dLog.timeT=toc()
+timeT=toc()
 
 s=Symbol(@sprintf("dCM_%s",updateMethod))
 v=Symbol(@sprintf("dCM"))
 @eval(($s)=($v))
+
+
+filename = "d_$updateMethod_N$(N)"
+# save
+if saveResults==1 saveRun(path,filename,timeT, evS,dLog, dCM, convIt) end
+# load
+if loadResults==1
+	loadF=JLD.load(path*filename*".jld")
+	evS=loadF["scenario"]
+	dLog=loadF["solution"]
+	convIt=loadF["convIt"]
+end
+
+
+
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)

@@ -9,6 +9,19 @@ s=Symbol(@sprintf("dCMnl_%s",updateMethod))
 v=Symbol(@sprintf("dCMnl"))
 @eval(($s)=($v))
 
+
+filename = "d_$updateMethod_NL_N$(N)"
+# save
+if saveResults==1 saveRun(path,filename,timeT, evS,dLognl, dCMnl, convIt) end
+# load
+if loadResults==1
+	loadF=JLD.load(path*filename*".jld")
+	evS=loadF["scenario"]
+	dLognl=loadF["solution"]
+	convIt=loadF["convIt"]
+end
+
+
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
 uPlotd=zeros(horzLen+1,N)

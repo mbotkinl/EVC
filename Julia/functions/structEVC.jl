@@ -45,7 +45,7 @@ end
 
 
 #structures
-@with_kw struct convMetrics
+@with_kw struct convMetricsStruct
     objVal::Array=zeros(maxIt,1)
     couplConst::Array=zeros(maxIt,1)
     lam::Array=zeros(maxIt,1)
@@ -58,8 +58,6 @@ end
 end
 
 @with_kw struct itLogPWL
-    # total time
-    timeT:: Float64
 
     #model variables
     Xt::Array{Float64}=zeros((horzLen+1),maxIt) #rows are time
@@ -95,8 +93,6 @@ end
 end
 
 @with_kw struct itLogNL
-    # total time
-    timeT:: Float64
 
     #model variables
     Xt::Array{Float64}=zeros((horzLen+1),maxIt) #rows are time
@@ -129,10 +125,8 @@ end
     Ct::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
 end
 
-@with_kw struct centralSolution
-    # total time
-    timeT:: Float64
-    
+@with_kw struct centralSolutionStruct
+
     xt::Array=zeros((horzLen+1),1)
     sn::Array=zeros(N*(horzLen+1),1)
     un::Array=zeros(N*(horzLen+1),1)
