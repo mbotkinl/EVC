@@ -8,7 +8,7 @@
 
 tic()
 dLogalad,dCMalad,convIt,ΔY,convCheck=pwlEValad(N,S,horzLen,maxIt,evS,cSol)
-toc()
+dLogalad.timeT=toc()
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)

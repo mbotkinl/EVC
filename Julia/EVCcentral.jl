@@ -11,7 +11,7 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 
 tic()
 cSol=pwlEVcentral(N,S,horzLen,evS)
-toc()
+cSol.timeT=toc()
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)

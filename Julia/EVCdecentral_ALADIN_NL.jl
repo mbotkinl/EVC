@@ -9,7 +9,7 @@
 
 tic()
 dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl)
-toc()
+dLognlalad.timeT=toc()
 
 
 println("plotting....")

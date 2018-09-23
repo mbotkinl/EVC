@@ -8,7 +8,7 @@
 
 tic()
 dLogadmm,dCMadmm,convIt=pwlEVadmm(N,S,horzLen,maxIt,evS,cSol)
-toc()
+dLogadmm.timeT=toc()
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)

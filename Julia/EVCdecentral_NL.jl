@@ -3,7 +3,7 @@
 
 tic()
 dLognl,dCMnl,convIt=nlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSolnl)
-toc()
+dLognl.timeT=toc()
 
 s=Symbol(@sprintf("dCMnl_%s",updateMethod))
 v=Symbol(@sprintf("dCMnl"))

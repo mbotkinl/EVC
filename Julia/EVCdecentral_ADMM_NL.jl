@@ -9,7 +9,7 @@
 
 tic()
 dLognladmm,dCMnladmm,convIt=nlEVadmm(N,S,horzLen,maxIt,evS,cSolnl)
-toc()
+dLognladmm.timeT=toc()
 
 
 println("plotting....")

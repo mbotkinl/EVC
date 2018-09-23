@@ -12,7 +12,7 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 
 tic()
 cSolnl=nlEVcentral(N,S,horzLen,evS)
-toc()
+cSolnl.timet=toc()
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
