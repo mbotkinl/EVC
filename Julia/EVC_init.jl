@@ -1,5 +1,9 @@
+#C:\Users\micah\AppData\Local\JuliaPro-0.6.2.2\Julia-0.6.2\bin\julia
+
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
+
 N=10
-datafile="n" #"mat" #"jld" #"n"
+datafile="jld" #"mat" #"jld" #"n"
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
 noTlimit=0
@@ -56,7 +60,7 @@ if datafile=="mat"
 elseif datafile=="jld"
 	using JLD
 	println("Reading in Data...")
-	path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N$(N)\\"
+	path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\Julia\\PWLvNL\\"
 	file="EVCscenarioN$(N)."*datafile
 	loadF=JLD.load(path*file)
 	evS=loadF["evScenario"]
