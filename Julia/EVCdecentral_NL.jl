@@ -3,14 +3,14 @@
 
 tic()
 dLognl,dCMnl,convIt=nlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSolnl)
-dLognl.timeT=toc()
+timeT=toc()
 
 s=Symbol(@sprintf("dCMnl_%s",updateMethod))
 v=Symbol(@sprintf("dCMnl"))
 @eval(($s)=($v))
 
 
-filename = "d_$updateMethod_NL_N$(N)"
+filename = "d_$(updateMethod)_NL_N$(N)"
 # save
 if saveResults==1 saveRun(path,filename,timeT, evS,dLognl, dCMnl, convIt) end
 # load

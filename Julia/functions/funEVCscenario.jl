@@ -28,7 +28,7 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
 
     # PWL Parameters:
     #S = 3;
-    S=10
+    S=15
     #ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
     ItotalMax = 4  #kA
     #ItotalMax = 4000  #A

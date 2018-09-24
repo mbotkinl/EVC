@@ -7,7 +7,6 @@ N=evS.N
 S=evS.S
 horzLen=evS.K1
 
-include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
 tic()

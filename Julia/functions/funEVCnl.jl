@@ -77,7 +77,7 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
 end
 
 #dual
-function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS::scenarioStruct,cSolnl::centralSolution)
+function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS::scenarioStruct,cSolnl::centralSolutionStruct)
 
     #initialize with current states
     sn0=evS.s0
@@ -232,7 +232,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS
 end
 
 #admm
-function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolution)
+function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct)
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
@@ -368,7 +368,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 end
 
 #aladin
-function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolution)
+function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct)
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0

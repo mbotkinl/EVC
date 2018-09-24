@@ -10,7 +10,7 @@ v=Symbol(@sprintf("dCM"))
 @eval(($s)=($v))
 
 
-filename = "d_$updateMethod_N$(N)"
+filename = "d_$(updateMethod)_N$(N)"
 # save
 if saveResults==1 saveRun(path,filename,timeT, evS,dLog, dCM, convIt) end
 # load
@@ -20,8 +20,6 @@ if loadResults==1
 	dLog=loadF["solution"]
 	convIt=loadF["convIt"]
 end
-
-
 
 
 println("plotting....")

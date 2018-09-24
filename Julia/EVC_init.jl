@@ -3,18 +3,21 @@
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\Julia\\PWLvNL\\"
 N=10
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\Julia\\PWLvNL\\N$(N)\\"
 datafile="jld" #"mat" #"jld" #"n"
+file="EVCscenarioN$(N)."*datafile
+
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
-saveResults=1
+saveResults=0
 loadResults=0
 noTlimit=0
-maxIt=10
+maxIt=50
+verbose=false
 
-Tmax=371
-Dload_amplitude=0
+Tmax=385
+Dload_amplitude=10
 saveS=false
 
 println("Loading Packages...")
@@ -34,13 +37,8 @@ if datafile=="mat"
 	end
 
 	#read in mat scenario
-	path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\N$(N)\\"
-	file="EVCscenarioN$(N)."*datafile
-	if datafile=="mat"
-		vars = matread(path*file)
-	elseif datafile=="jld"
-		vars=load(path*file)
-	end
+	vars = matread(path*file)
+
 	varnames=keys(vars)
 	varNum=length(varnames)
 	varKeys=collect(varnames)
@@ -64,7 +62,6 @@ if datafile=="mat"
 elseif datafile=="jld"
 	using JLD
 	println("Reading in Data...")
-	file="EVCscenarioN$(N)."*datafile
 	loadF=JLD.load(path*file)
 	evS=loadF["evScenario"]
 else #create scenario
