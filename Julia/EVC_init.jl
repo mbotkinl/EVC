@@ -4,7 +4,7 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
 N=10
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\EVC code\\Julia\\PWLvNL\\N$(N)\\"
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\PWLvNL\\N$(N)\\"
 datafile="jld" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
 
