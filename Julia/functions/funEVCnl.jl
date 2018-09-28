@@ -101,7 +101,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS
     convChk = 1e-8
     convIt=maxIt
 
-    alphaP=alpha*ones(maxIt,1)
+    alphaP=alpha*ones(maxIt+1,1)
 
     dCM=convMetricsStruct()
     dLog=itLogNL()
@@ -113,7 +113,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS
     dLog.Lam[:,1]=lambda0
 
     #iterate at each time step until convergence
-    for p=1:maxIt-1
+    for p=1:maxIt
         #solve subproblem for each EV
     	@sync @parallel for evInd=1:N
     		ind=[evInd]
@@ -259,7 +259,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     dLogadmm.Vu[:,1]=vu0
     dLogadmm.Lam[:,1]=lambda0
 
-    for p in 1:maxIt-1
+    for p in 1:maxIt
     	#ρADMMp = ρADMM*ceil(p/2)
         ρADMMp = ρADMM
 
@@ -401,7 +401,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
     dCMalad=convMetricsStruct()
     dLogalad=itLogNL()
-    convCheck=zeros(maxIt,1)
+    convCheck=zeros(maxIt+1,1)
 
     lambda0=ones(horzLen+1,1)
     vt0=ones(horzLen+1,1)
@@ -419,10 +419,10 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     dLogalad.Vt[:,1]=vt0
     dLogalad.Lam[:,1]=lambda0
 
-    ρALADp=ρALAD*ones(1,maxIt)
-    ΔY=zeros(1,maxIt)
+    ρALADp=ρALAD*ones(1,maxIt+1)
+    ΔY=zeros(1,maxIt+1)
 
-    for p=1:maxIt-1
+    for p=1:maxIt
         @printf "Starting iteration %g \n" p
 
         #solve decoupled

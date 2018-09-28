@@ -60,69 +60,69 @@ end
 @with_kw struct itLogPWL
 
     #model variables
-    Xt::Array{Float64}=zeros((horzLen+1),maxIt) #rows are time
-    Sn::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt)
-    Un::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt)
-    Z::Array{Float64}=zeros(S*(horzLen+1),maxIt)  #row are time,  columns are iteration
+    Xt::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
+    Sn::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
+    Un::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
+    Z::Array{Float64}=zeros(S*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
 
     #extra model variables
-    Tactual::Array{Float64}=zeros((horzLen+1),maxIt) #rows are time
-    uSum::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
-    zSum::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
-    couplConst::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+    Tactual::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
+    uSum::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    zSum::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    couplConst::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
 
     #dual vairables
-    Lam::Array{Float64}=zeros((horzLen+1),maxIt) #(rows are time, columns are iteration)
+    Lam::Array{Float64}=zeros((horzLen+1),maxIt+1) #(rows are time, columns are iteration)
 
     #auxillary variables
-    Vu::Array{Float64}=zeros((N)*(horzLen+1),maxIt) #row are time,  columns are iteration
-    Vz::Array{Float64}=zeros(S*(horzLen+1),maxIt)
-    Vs::Array{Float64}=zeros((N)*(horzLen+1),maxIt) #row are time,  columns are iteration
-    Vt::Array{Float64}=zeros((horzLen+1),maxIt) #row are time,  columns are iteration
+    Vu::Array{Float64}=zeros((N)*(horzLen+1),maxIt+1) #row are time,  columns are iteration
+    Vz::Array{Float64}=zeros(S*(horzLen+1),maxIt+1)
+    Vs::Array{Float64}=zeros((N)*(horzLen+1),maxIt+1) #row are time,  columns are iteration
+    Vt::Array{Float64}=zeros((horzLen+1),maxIt+1) #row are time,  columns are iteration
 
     #Gradian Vectors
-    Gu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
-    Gs::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
-    Gz::Array{Float64}=zeros(S*(horzLen+1),maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
+    Gu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1) #row are time (N states for k=1, them N states for k=2),  columns are iteration
+    Gs::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1) #row are time (N states for k=1, them N states for k=2),  columns are iteration
+    Gz::Array{Float64}=zeros(S*(horzLen+1),maxIt+1) #row are time (N states for k=1, them N states for k=2),  columns are iteration
 
     #Jacobian C Vectors
-    Cs::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt)  #row are time,  columns are iteration
-    Cu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt)  #row are time,  columns are iteration
-    Cz::Array{Float64}=zeros(S*(horzLen+1),maxIt)  #row are time,  columns are iteration
-    Ct::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+    Cs::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Cu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Cz::Array{Float64}=zeros(S*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Ct::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
 end
 
 @with_kw struct itLogNL
 
     #model variables
-    Xt::Array{Float64}=zeros((horzLen+1),maxIt) #rows are time
-    Sn::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt)
-    Un::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt)
-    Itotal::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+    Xt::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
+    Sn::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
+    Un::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
+    Itotal::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
 
     #extra model variables
-    uSum::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
-    couplConst::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+    uSum::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    couplConst::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
 
     #dual vairables
-    Lam::Array{Float64}=zeros((horzLen+1),maxIt) #(rows are time, columns are iteration)
+    Lam::Array{Float64}=zeros((horzLen+1),maxIt+1) #(rows are time, columns are iteration)
 
     #auxillary variables
-    Vu::Array{Float64}=zeros((N)*(horzLen+1),maxIt) #row are time,  columns are iteration
-    Vi::Array{Float64}=zeros((horzLen+1),maxIt)
-    Vs::Array{Float64}=zeros((N)*(horzLen+1),maxIt) #row are time,  columns are iteration
-    Vt::Array{Float64}=zeros((horzLen+1),maxIt) #row are time,  columns are iteration
+    Vu::Array{Float64}=zeros((N)*(horzLen+1),maxIt+1) #row are time,  columns are iteration
+    Vi::Array{Float64}=zeros((horzLen+1),maxIt+1)
+    Vs::Array{Float64}=zeros((N)*(horzLen+1),maxIt+1) #row are time,  columns are iteration
+    Vt::Array{Float64}=zeros((horzLen+1),maxIt+1) #row are time,  columns are iteration
 
     #Gradian Vectors
-    Gu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
-    Gs::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
-    Gi::Array{Float64}=zeros((horzLen+1),maxIt) #row are time (N states for k=1, them N states for k=2),  columns are iteration
+    Gu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1) #row are time (N states for k=1, them N states for k=2),  columns are iteration
+    Gs::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1) #row are time (N states for k=1, them N states for k=2),  columns are iteration
+    Gi::Array{Float64}=zeros((horzLen+1),maxIt+1) #row are time (N states for k=1, them N states for k=2),  columns are iteration
 
     #Jacobian C Vectors
-    Cs::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt)  #row are time,  columns are iteration
-    Cu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt)  #row are time,  columns are iteration
-    Ci::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
-    Ct::Array{Float64}=zeros((horzLen+1),maxIt)  #row are time,  columns are iteration
+    Cs::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Cu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Ci::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Ct::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
 end
 
 @with_kw struct centralSolutionStruct

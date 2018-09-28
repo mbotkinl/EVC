@@ -110,7 +110,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     convIt=maxIt
 
     #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
-    alphaP=alpha*ones(maxIt,1)
+    alphaP=alpha*ones(maxIt+1,1)
 
     #initialize with guess
     lambda0=1000*ones(horzLen+1,1)
@@ -118,7 +118,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     dLog.Lam[:,1]=lambda0
 
     #iterate at each time step until convergence
-    for p=1:maxIt-1
+    for p=1:maxIt
         #solve subproblem for each EV
     	@sync @parallel for evInd=1:N
             target=zeros((horzLen+1),1)
@@ -281,7 +281,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     dLogadmm.Vz[:,1]=vz0
     dLogadmm.Vu[:,1]=vu0
 
-    for p in 1:maxIt-1
+    for p in 1:maxIt
     	#ρ_p = ρADMM/ceil(p/2)
     	ρI = ρADMM
         #x minimization eq 7.66 in Bertsekas
@@ -431,7 +431,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 
     dCMalad=convMetricsStruct()
     dLogalad=itLogPWL()
-    convCheck=zeros(maxIt,1)
+    convCheck=zeros(maxIt+1,1)
 
     # lambda0=5*rand(Truncated(Normal(0), 0, 1), horzLen+1)
     # vt0=Tmax*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
@@ -454,10 +454,10 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     dLogalad.Vt[:,1]=vt0
     dLogalad.Lam[:,1]=lambda0
 
-    ΔY=zeros(1,maxIt)
-    ρALADp=ρALAD*ones(1,maxIt)
+    ΔY=zeros(1,maxIt+1)
+    ρALADp=ρALAD*ones(1,maxIt+1)
 
-    for p=1:maxIt-1
+    for p=1:maxIt
 
         #solve decoupled
         @sync @parallel for evInd=1:N
