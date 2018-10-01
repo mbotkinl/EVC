@@ -18,6 +18,7 @@ if loadResults==1
 	loadF=JLD.load(path*filename*".jld")
 	evS=loadF["scenario"]
 	dLognl=loadF["solution"]
+	dCMnl=loadF["convMetrics"]
 	convIt=loadF["convIt"]
 end
 
