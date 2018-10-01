@@ -178,9 +178,18 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS
     	end
 
     	if updateMethod=="fastAscent"
+            ztotal=zeros(horzLen+1,1)
+            for k=1:horzLen+1
+                ztotal[k,1]=sum(dLog.Un[(k-1)*N+n,p+1]    for n=1:N) + evS.w[(k-1)*2+(stepI*2-1),1]
+            end
+            dLog.Xt[1,p+1]=evS.τP*xt0+evS.γP*ztotal[1,1]^2+evS.ρP*evS.w[2,1] #fix for mpc
+            for k=1:horzLen
+                dLog.Xt[k+1,p+1]=evS.τP*dLog.Xt[k,p+1]+evS.γP*ztotal[k+1,1]^2+evS.ρP*evS.w[k*2+2,1]  #fix for mpc
+            end
+
     		#fast ascent
     		if noTlimit==0
-    			gradL=dLog.Tactual[:,p+1]-evS.Tmax*ones(horzLen+1,1)
+    			gradL=dLog.Xt[:,p+1]-evS.Tmax*ones(horzLen+1,1)
     		else
     			gradL=zeros(horzLen+1,1)
     		end
