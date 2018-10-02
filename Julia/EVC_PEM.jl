@@ -15,32 +15,22 @@ T[1]=evS.t0
 
 for k =1:horzLen
     for n =1:N
-        if sn[k,n]<evS.Snmin[n]
-            R[k,n]=(evS.Snmin[n]-sn[k,n])/(evS.ηP[n]*evS.imax[n]*(evS.Kn[n]-k))
+		desiredSOC=1 # for now
+		# desiredSOC=evS.Snmin[n]
+        if sn[k,n]<desiredSOC
+			R[k,n]=(desiredSOC-sn[k,n])/(evS.ηP[n]*evS.imax[n]*(evS.Kn[n]-k))
         else
             R[k,n]=0 # not sure if this is what we want***
         end
-	end
-
-	Iest = sum(if R[k,n]>0 evS.imax[n] else 0 end for n=1:N)
-	Test = evS.τP*T[k]+evS.γP*Iest^2+evS.ρP*evS.w[k*2+2,1]
-
-	for n=1:N
-		# use probability
         t=rand()
-        # un[k+1,n]= if t>(1-R[k,n]) evS.imax[n] else  0  end
-
-		# decide only on temp
-		un[k+1,n]= if R[k,n]>=1 evS.imax[n] elseif (Test<evS.Tmax) & (R[k,n]>0) evS.imax[n] else  0  end 
-
 		#decided by Temp and probability
-		un[k+1,n]= if R[k,n]>=1 evS.imax[n] elseif (Test<evS.Tmax) & (t>(1-R[k,n])) evS.imax[n] else  0  end
-
+		un[k+1,n]= if R[k,n]>=1 evS.imax[n] elseif (T[k]<evS.Tmax) & (t>(1-R[k,n])) evS.imax[n] else  0  end
         sn[k+1,n]=sn[k,n]+evS.ηP[n]*un[k+1,n]
 	end
-	T[k+1] = evS.τP*T[k]+evS.γP*sum(un[k+1,n] for n=1:n)^2+evS.ρP*evS.w[k*2+2,1]
+	T[k+1] = evS.τP*T[k]+evS.γP*sum(un[k+1,n] for n=1:N)^2+evS.ρP*evS.w[k*2+2,1]
 end
 
+objVal=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,1]+(un[k,n])^2*evS.Ri[n,1] for n=1:N) for k=1:(horzLen+1))
 
 p1=plot(sn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
