@@ -417,8 +417,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     σS=ones(N,1)/10
     σI=1/N
     σT=1/10000
-    Hu=2*evS.Ri*(1+rand())
-    Hs=2*evS.Qsi*(1+rand())
+    Hu=2*evS.Ri#*(1+rand())
+    Hs=2*evS.Qsi#*(1+rand())
     Hi=1e-6
     Ht=1e-6
     ρALAD=1
@@ -433,7 +433,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     dLogalad=itLogNL()
     convCheck=zeros(maxIt+1,1)
 
-    lambda0=ones(horzLen+1,1)
+    lambda0=1000*ones(horzLen+1,1)
     vt0=ones(horzLen+1,1)
     vi0=ones((horzLen+1),1)
     vu0=.01*ones(N*(horzLen+1),1)

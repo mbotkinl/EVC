@@ -9,8 +9,8 @@ s=Symbol(@sprintf("dCMnl_%s",updateMethod))
 v=Symbol(@sprintf("dCMnl"))
 @eval(($s)=($v))
 
-
-filename = "d_$(updateMethod)_NL_N$(N)"
+relaxString= if relaxed==true "_relax"else "" end
+filename = "d_$(updateMethod)_NL_N$(N)"*relaxString
 # save
 if saveResults==1 saveRun(path,filename,timeT, evS,dLognl, dCMnl, convIt) end
 # load

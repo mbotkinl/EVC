@@ -11,7 +11,8 @@ tic()
 dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl,relaxed)
 timeT=toc()
 
-filename = "dALADIN_NL_N$(N)"
+relaxString= if relaxed==true "_relax"else "" end
+filename = "dALADIN_NL_N$(N)"*relaxString
 # save
 if saveResults==1 saveRun(path,filename,timeT, evS,dLognlalad, dCMnlalad, convIt) end
 # load

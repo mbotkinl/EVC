@@ -11,7 +11,8 @@ tic()
 dLognladmm,dCMnladmm,convIt=nlEVadmm(N,S,horzLen,maxIt,evS,cSolnl,relaxed)
 timeT=toc()
 
-filename = "dADMM_NL_N$(N)"
+relaxString= if relaxed==true "_relax"else "" end
+filename = "dADMM_NL_N$(N)"*relaxString
 # save
 if saveResults==1 saveRun(path,filename,timeT, evS,dLognladmm, dCMnladmm, convIt) end
 # load

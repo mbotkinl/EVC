@@ -14,7 +14,8 @@ tic()
 cSolnl=nlEVcentral(N,S,horzLen,evS,relaxed)
 timeT=toc()
 
-filename = "central_NL_N$(N)"
+relaxString= if relaxed==true "_relax"else "" end
+filename = "central_NL_N$(N)"*relaxString
 # save
 if saveResults==1 saveRun(path,filename,timeT, evS,cSolnl) end
 # load
