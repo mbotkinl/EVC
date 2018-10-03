@@ -101,8 +101,8 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	#alphaRate=.99
     else
     	#alpha = .01 #for A
-    	alpha = 5e3 #for kA
-    	alphaDivRate=2
+    	alpha = 1e4 #for kA
+    	alphaDivRate=4
     	minAlpha=1e-6
     	#alphaRate=.99
     end
@@ -269,6 +269,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     #admm  initial parameters and guesses
     #ρADMM=10.0^(0)
     ρADMM=5e5
+    ρDivRate=10
 
     #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
     dCMadmm=convMetricsStruct()
@@ -285,8 +286,8 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     dLogadmm.Lam[:,1]=lambda0
 
     for p in 1:maxIt
-    	#ρADMMp = ρADMM*ceil(p/2)
-        ρADMMp = ρADMM
+        ρADMMp = ρADMM/ceil(p/ρDivRate)
+        #ρADMMp = ρADMM
 
         #x minimization eq 7.66 in Bertsekas
         @sync @parallel for evInd=1:N
@@ -384,11 +385,11 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     		convIt=p+1
     		break
     	else
-    		@printf "lastGap %e after %g iterations\n" itGap p
-    		@printf "convGap %e after %g iterations\n" convGap p
+    		@printf "lastGap  %e after %g iterations\n" itGap p
+    		@printf "convGap  %e after %g iterations\n" convGap p
     		@printf "constGap %e after %g iterations\n" constGap p
-            @printf "snGap %e after %g iterations\n" snGap p
-    		@printf("fGap %e after %g iterations\n\n",fGap,p)
+            @printf "snGap    %e after %g iterations\n" snGap p
+    		@printf("fGap     %e after %g iterations\n\n",fGap,p)
 
     	end
     end
