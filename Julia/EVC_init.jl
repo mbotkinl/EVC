@@ -3,22 +3,19 @@
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
-N=10
+N=50
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\PWLvNL\\N$(N)\\"
 datafile="jld" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
 
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
-saveResults=0
+saveResults=1
 loadResults=0
-noTlimit=0
-maxIt=50
+noTlimit=false
+maxIt=100
+relaxed=false
 verbose=false
-
-Tmax=385
-Dload_amplitude=10
-saveS=false
 
 println("Loading Packages...")
 
@@ -65,14 +62,17 @@ elseif datafile=="jld"
 	loadF=JLD.load(path*file)
 	evS=loadF["evScenario"]
 else #create scenario
+
+	Tmax=400
+	Dload_amplitude=0
+	saveS=false
+
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
     if saveS==true using JLD end
 	using Distributions
 	println("Creating EV Scenario...")
 	evS=setupScenario(N;Tmax=Tmax,Dload_amplitude=Dload_amplitude,saveS=saveS)
 end
-
-
 
 #temp backwards capability
 if isassigned(evS.ηP)==false

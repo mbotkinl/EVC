@@ -2,7 +2,7 @@
 
 
 #central
-function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
+function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=false)
 
     #initialize with current states
     sn0=evS.s0
@@ -32,12 +32,17 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
     println("constraints")
     @constraint(cModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+evS.ηP[:,1].*u[1:N,1])
     @constraint(cModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+evS.ηP[n,1]*u[n+(k)*(N),1])
-    @NLconstraint(cModel,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.w[stepI*2,1])
-    @NLconstraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1])^2+evS.ρP*evS.w[stepI*2+k*2,1]) #check id index???
+    if relaxed==true
+        @constraint(cModel,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.w[stepI*2,1])
+        @constraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1])^2+evS.ρP*evS.w[stepI*2+k*2,1]) #check id index???
+    else
+        @NLconstraint(cModel,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.w[stepI*2,1])
+        @NLconstraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1])^2+evS.ρP*evS.w[stepI*2+k*2,1]) #check id index???
+    end
     @constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-evS.w[(k-1)*2+1]+itotal[k]) #fix for MPC
     @constraint(cModel,sn.<=1)
     @constraint(cModel,sn.>=target)
-    if noTlimit==0
+    if noTlimit==false
     	@constraint(cModel,upperTCon,xt.<=evS.Tmax)
     end
     @constraint(cModel,xt.>=0)
@@ -56,13 +61,17 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
     xtRaw=getvalue(xt)
     itotalRaw=getvalue(itotal)
 
-    if noTlimit==0
+    if noTlimit==false
     	kappaUpperT=-getdual(upperTCon)
     else
     	kappaUpperT=zeros(horzLen+1,1)
     end
     lambdaCurr=-getdual(currCon)
-    lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
+    if relaxed==true
+        lambdaTemp=zeros(horzLen+1,1)
+    else
+        lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
+    end
 
     uSum=zeros(horzLen+1,1)
     for k=1:horzLen+1
@@ -77,7 +86,8 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
 end
 
 #dual
-function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS::scenarioStruct,cSolnl::centralSolutionStruct)
+function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
+    evS::scenarioStruct,cSolnl::centralSolutionStruct, relaxed=false)
 
     #initialize with current states
     sn0=evS.s0
@@ -146,13 +156,19 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS
 
     	if updateMethod=="dualAscent"
     	    #solve coordinator problem
-    		coorM=Model(solver = IpoptSolver())
+
+            coorM = Model(solver = IpoptSolver())
     	    @variable(coorM,itotal[1:(horzLen+1)])
     	    @variable(coorM,xt[1:(horzLen+1)])
     	    @objective(coorM,Min,-sum(dLog.Lam[k,p]*itotal[k,1] for k=1:(horzLen+1)))
-    		@NLconstraint(coorM,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.w[2,1]) #fix for MPC loop
-    		@NLconstraint(coorM,[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.w[k*2+2,1])
-    		if noTlimit==0
+            if relaxed==true
+                @constraint(coorM,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.w[2,1]) #fix for MPC loop
+        		@constraint(coorM,[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.w[k*2+2,1])
+            else
+                @NLconstraint(coorM,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.w[2,1]) #fix for MPC loop
+        		@NLconstraint(coorM,[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.w[k*2+2,1])
+            end
+    		if noTlimit==false
     			@constraint(coorM,upperTCon,xt.<=evS.Tmax)
     		end
     	    @constraint(coorM,xt.>=0)
@@ -188,7 +204,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS
             end
 
     		#fast ascent
-    		if noTlimit==0
+    		if noTlimit==false
     			gradL=dLog.Xt[:,p+1]-evS.Tmax*ones(horzLen+1,1)
     		else
     			gradL=zeros(horzLen+1,1)
@@ -241,7 +257,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS
 end
 
 #admm
-function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct)
+function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct, relaxed=false)
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
@@ -277,7 +293,6 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             evV=dLogadmm.Vu[collect(evInd:N:length(dLogadmm.Vu[:,p])),p]
             target=zeros((horzLen+1),1)
     		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
-        	#evM = Model(solver = GurobiSolver())
             evM = Model(solver = IpoptSolver())
         	@variable(evM,sn[1:(horzLen+1)])
         	@variable(evM,u[1:(horzLen+1)])
@@ -310,9 +325,14 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         # @objective(tM,Min, constFun1(-itotal,Vi[:,p])+constFun2(-itotal,Vi[:,p]))
         @objective(tM,Min,sum(dLogadmm.Lam[k,p]*(-itotal[k,1]-dLogadmm.Vi[k,p])+
                               ρADMM/2*(-itotal[k,1]-dLogadmm.Vi[k,p])^2  for k=1:(horzLen+1)))
-        @NLconstraint(tM,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1,1])^2+evS.ρP*evS.w[stepI*2,1])
-        @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.w[stepI*2+k*2,1])
-        if noTlimit==0
+        if relaxed==true
+            @constraint(tM,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1,1])^2+evS.ρP*evS.w[stepI*2,1])
+            @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.w[stepI*2+k*2,1])
+        else
+            @NLconstraint(tM,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1,1])^2+evS.ρP*evS.w[stepI*2,1])
+            @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.w[stepI*2+k*2,1])
+        end
+        if noTlimit==false
         	@constraint(tM,upperTCon,xt.<=evS.Tmax)
         end
         @constraint(tM,xt.>=0)
@@ -377,7 +397,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 end
 
 #aladin
-function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct)
+function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct, relaxed=false)
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
@@ -505,9 +525,14 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @objective(tM,Min, sum(-dLogalad.Lam[k,p]*itotal[k]+
                   ρALADp[1,p]/2*σI*(itotal[k]-dLogalad.Vi[k,p])^2+
                   ρALADp[1,p]/2*σT*(xt[k]-dLogalad.Vt[k,p])^2  for k=1:(horzLen+1)))
-        @NLconstraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*(itotal[1])^2-evS.ρP*evS.w[stepI*2,1]==0)
-        @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*(itotal[k+1])^2-evS.ρP*evS.w[stepI*2+k*2,1]==0)
-        if noTlimit==0
+        if relaxed
+            @constraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*(itotal[1])^2-evS.ρP*evS.w[stepI*2,1]>=0)
+            @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*(itotal[k+1])^2-evS.ρP*evS.w[stepI*2+k*2,1]>=0)
+        else
+            @NLconstraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*(itotal[1])^2-evS.ρP*evS.w[stepI*2,1]==0)
+            @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*(itotal[k+1])^2-evS.ρP*evS.w[stepI*2+k*2,1]==0)
+        end
+        if noTlimit==false
         	@constraint(tM,upperTCon,xt.<=evS.Tmax)
         end
         @constraint(tM,lowerTCon,xt.>=0)
@@ -637,5 +662,4 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     end
 
     return dLogalad,dCMalad,convIt,ΔY,convCheck
-
 end

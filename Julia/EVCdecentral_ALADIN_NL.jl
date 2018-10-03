@@ -8,7 +8,7 @@
 
 
 tic()
-dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl)
+dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl,relaxed)
 timeT=toc()
 
 filename = "dALADIN_NL_N$(N)"

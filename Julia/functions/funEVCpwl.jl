@@ -33,7 +33,7 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
     @constraint(centralModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-evS.w[(k-1)*2+1]+sum(z[(k-1)*(S)+s] for s=1:S))
     @constraint(centralModel,sn.<=1)
     @constraint(centralModel,sn.>=target)
-    if noTlimit==0
+    if noTlimit==false
     	@constraint(centralModel,upperTCon,xt.<=evS.Tmax)
     end
     @constraint(centralModel,xt.>=0)
@@ -62,7 +62,7 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
         Tactual[k+1,1]=evS.τP*Tactual[k,1]+evS.γP*itotal[k+1,1]^2+evS.ρP*evS.w[k*2+2,1]
     end
     lambdaCurr=-getdual(currCon)
-    if noTlimit==0
+    if noTlimit==false
     	lambdaUpperT=-getdual(upperTCon)
     else
     	lambdaUpperT=zeros(horzLen+1,1)
@@ -155,7 +155,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	    @objective(coorM,Min,sum(dLog.Lam[k,p]*sum(-z[(k-1)*S+s,1] for s=1:S) for k=1:(horzLen+1)))
     		@constraint(coorM,xt[1,1]==evS.τP*xt0+evS.γP*evS.deltaI*sum((2*s-1)*z[s,1] for s=1:S)+evS.ρP*evS.w[2,1]) #fix for MPC loop
     		@constraint(coorM,[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+evS.ρP*evS.w[k*2+2,1])
-    		if noTlimit==0
+    		if noTlimit==false
     			@constraint(coorM,upperTCon,xt.<=evS.Tmax)
     		end
     	    @constraint(coorM,xt.>=0)
@@ -193,7 +193,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
 
     	if updateMethod=="fastAscent"
     		#fast ascent
-    		if noTlimit==0
+    		if noTlimit==false
     			gradL=dLog.Tactual[:,p+1]-evS.Tmax*ones(horzLen+1,1)
     		else
     			gradL=zeros(horzLen+1,1)
@@ -323,7 +323,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     						ρI/2*(sum(-z[(k-1)*(S)+s,1] for s=1:S)-sum(dLogadmm.Vz[(k-1)*(S)+s,p] for s=1:S))^2  for k=1:(horzLen+1)))
         @constraint(tM,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*evS.deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+evS.ρP*evS.w[stepI*2,1])
         @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+evS.ρP*evS.w[stepI*2+k*2,1])
-        if noTlimit==0
+        if noTlimit==false
         	@constraint(tM,upperTCon,xt.<=evS.Tmax)
         end
         @constraint(tM,xt.>=0)
@@ -534,7 +534,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
                   ρALADp[1,p]/2*σT*(xt[k]-dLogalad.Vt[k,p])^2  for k=1:(horzLen+1)))
         @constraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*evS.deltaI*sum((2*s-1)*z[s] for s=1:S)-evS.ρP*evS.w[stepI*2,1]==0)
         @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*evS.deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)-evS.ρP*evS.w[stepI*2+k*2,1]==0)
-        if noTlimit==0
+        if noTlimit==false
         	@constraint(tM,upperTCon,xt.<=evS.Tmax)
         end
         @constraint(tM,lowerTCon,xt.>=0)

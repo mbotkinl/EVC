@@ -8,7 +8,7 @@
 
 
 tic()
-dLognladmm,dCMnladmm,convIt=nlEVadmm(N,S,horzLen,maxIt,evS,cSolnl)
+dLognladmm,dCMnladmm,convIt=nlEVadmm(N,S,horzLen,maxIt,evS,cSolnl,relaxed)
 timeT=toc()
 
 filename = "dADMM_NL_N$(N)"

@@ -1,5 +1,6 @@
 #Micah Botkin-Levy
 #4/8/18
+
 using Ipopt
 
 #pull out a few key variables
@@ -10,7 +11,7 @@ horzLen=evS.K1
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
 tic()
-cSolnl=nlEVcentral(N,S,horzLen,evS)
+cSolnl=nlEVcentral(N,S,horzLen,evS,relaxed)
 timeT=toc()
 
 filename = "central_NL_N$(N)"
@@ -22,8 +23,6 @@ if loadResults==1
 	evS=loadF["scenario"]
 	cSolnl=loadF["solution"]
 end
-
-
 
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
