@@ -352,8 +352,8 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     	for k=1:horzLen+1
     		dLogadmm.uSum[k,p+1]=sum(dLogadmm.Un[(k-1)*N+n,p+1] for n=1:N)
     		dLogadmm.couplConst[k,p+1]=dLogadmm.uSum[k,p+1] + evS.w[(k-1)*2+(stepI*2-1),1] - dLogadmm.Itotal[k,p+1]
-    		#Lam[k,p+1]=max.(Lam[k,p]+ρADMMp/(S*(N))*(currConst[k,1]),0)
-    		dLogadmm.Lam[k,p+1]=dLogadmm.Lam[k,p]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p+1])
+            dLogadmm.Lam[k,p+1]=max.(dLogadmm.Lam[k,p]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p+1]),0)
+    		# dLogadmm.Lam[k,p+1]=dLogadmm.Lam[k,p]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p+1])
     	end
 
         #v upate eq 7.67

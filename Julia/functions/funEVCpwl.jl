@@ -99,9 +99,8 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	minAlpha=1e-6
     else
     	#alpha = 3e-3 #for A
-    	alpha = 5e5 #for kA
-    	alphaDivRate=2
-    	#alphaRate=.99
+    	alpha = 5e3 #for kA
+    	alphaDivRate=4
     	minAlpha=1e-6
     end
 
@@ -262,9 +261,9 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     convIt=maxIt
 
     #admm  initial parameters and guesses
-    #ρADMM=10.0^(0)
-    ρADMM=10^6 #for kA
     #ρADMM=1    #for A
+    ρADMM=1e6 #for kA
+    ρDivRate=10
 
     #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+η*u[k+1]
     dCMadmm=convMetricsStruct()
@@ -282,8 +281,9 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     dLogadmm.Vu[:,1]=vu0
 
     for p in 1:maxIt
-    	#ρ_p = ρADMM/ceil(p/2)
-    	ρI = ρADMM
+    	ρI = ρADMM/ceil(p/ρDivRate)
+    	#ρI = ρADMM
+
         #x minimization eq 7.66 in Bertsekas
         @sync @parallel for evInd=1:N
     		lambda=dLogadmm.Lam[:,p]
@@ -345,8 +345,8 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     		dLogadmm.uSum[k,p+1]=sum(dLogadmm.Un[(k-1)*N+n,p+1] for n=1:N)
     		dLogadmm.zSum[k,p+1]=sum(dLogadmm.Z[(k-1)*(S)+s,p+1] for s=1:S)
     		dLogadmm.couplConst[k,p+1]= dLogadmm.uSum[k,p+1] + evS.w[(k-1)*2+(stepI*2-1),1] - dLogadmm.zSum[k,p+1]
-    		#Lam[k,p+1]=max.(Lam[k,p]+ρADMM/(horzLen+1)*(currConst[k,1]),0)
-    		dLogadmm.Lam[k,p+1]=dLogadmm.Lam[k,p]+ρI/(S*(N))*(dLogadmm.couplConst[k,p+1])
+            dLogadmm.Lam[k,p+1]=max.(dLogadmm.Lam[k,p]+ρI/(S*(N))*(dLogadmm.couplConst[k,p+1]),0)
+    		#dLogadmm.Lam[k,p+1]=dLogadmm.Lam[k,p]+ρI/(S*(N))*(dLogadmm.couplConst[k,p+1])
     	end
 
     	#calculate actual temperature from nonlinear model of XFRM
@@ -378,7 +378,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     	dCMadmm.couplConst[p,1]=constGap
     	dCMadmm.lamIt[p,1]=itGap
     	dCMadmm.lam[p,1]=convGap
-    	if(itGap <= convChk )
+    	if(convGap <= convChk )
     		@printf "Converged after %g iterations\n" p
     		convIt=p+1
     		break
