@@ -78,8 +78,8 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
         uSum[k,1]=sum(uRaw[(k-1)*N+n,1] for n=1:N)
     end
 
-    cSol=centralSolutionStruct(xt=xtRaw,un=uRaw,sn=snRaw,
-                        itotal=itotalRaw,uSum=uSum,
+    cSol=centralSolutionStruct(Xt=xtRaw,Un=uRaw,Sn=snRaw,
+                        Itotal=itotalRaw,uSum=uSum,
                         objVal=getobjectivevalue(cModel),
                         lamTemp=lambdaTemp,lamCoupl=lambdaCurr)
     return cSol

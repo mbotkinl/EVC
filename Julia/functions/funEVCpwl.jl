@@ -75,8 +75,8 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
         uSum[k,1]=sum(uRaw[(k-1)*N+n,1] for n=1:N)
     end
 
-    cSol=centralSolutionStruct(xt=xtRaw,un=uRaw,sn=snRaw,z=zRaw,
-                        itotal=itotal,uSum=uSum,zSum=zSum,
+    cSol=centralSolutionStruct(Xt=xtRaw,Un=uRaw,Sn=snRaw,z=zRaw,
+                        Itotal=itotal,uSum=uSum,zSum=zSum,
                         objVal=getobjectivevalue(centralModel),
                         lamTemp=lambdaUpperT,lamCoupl=lambdaCurr,
                         Tactual=Tactual)

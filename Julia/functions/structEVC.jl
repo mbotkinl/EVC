@@ -127,11 +127,11 @@ end
 
 @with_kw struct centralSolutionStruct
 
-    xt::Array=zeros((horzLen+1),1)
-    sn::Array=zeros(N*(horzLen+1),1)
-    un::Array=zeros(N*(horzLen+1),1)
+    Xt::Array=zeros((horzLen+1),1)
+    Sn::Array=zeros(N*(horzLen+1),1)
+    Un::Array=zeros(N*(horzLen+1),1)
     z::Array=zeros(S*(horzLen+1),1) #for PWL
-    itotal::Array=zeros((horzLen+1),1) #for NL
+    Itotal::Array=zeros((horzLen+1),1) #for NL
     objVal::Float64=0
     lamTemp::Array=zeros((horzLen+1),1)
     lamCoupl::Array=zeros((horzLen+1),1)
