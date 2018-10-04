@@ -25,6 +25,7 @@ using Gadfly
 using Cairo #for png output
 using Fontconfig
 using Parameters
+using Printf
 
 if datafile=="mat"
 	using MAT #to read in scenarios from matlab

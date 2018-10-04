@@ -31,7 +31,7 @@ xPlot2=zeros(horzLen+1,N)
 uPlot=zeros(horzLen+1,N)
 for ii= 1:N
 	xPlot[:,ii]=cSolnl.sn[collect(ii:N:length(cSolnl.sn))]
-	xPlot2[:,ii]=(evS.Snmin[ii,1]-xPlot[:,ii])./(evS.Kn[ii,1]-(1:1:length(xPlot[:,ii])))
+	xPlot2[:,ii]=(evS.Snmin[ii,1].-xPlot[:,ii])./(evS.Kn[ii,1].-(1:1:length(xPlot[:,ii])))
     uPlot[:,ii]=cSolnl.un[collect(ii:N:length(cSolnl.un))]
 end
 

@@ -10,20 +10,20 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     stepI=1
 
     #desired SOC
-    target=zeros(N*(horzLen+1),1);
+    target=zeros(N*(horzLen+1),1)
     for ii=1:N
        cur=evS.Kn[ii]-(stepI-1)
-       ind=max(0,(cur-1)*N)+ii:N:length(target)
-       target[ind]=evS.Snmin[ii,1]
+       ind=(max(0,(cur-1)*N)+ii):N:length(target)
+       target[ind].=evS.Snmin[ii,1]
     end
 
     println("setting up model")
-    cModel = Model(solver = IpoptSolver())
+    cModel=Model(with_optimizer(Ipopt.Optimizer))
     #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
     @variable(cModel,u[1:N*(horzLen+1)])
-    @variable(cModel,sn[1:(N)*(horzLen+1)])
-    @variable(cModel,xt[1:(horzLen+1)])
-    @variable(cModel,itotal[1:(horzLen+1)])
+    @variable(cModel,0<=sn[1:(N)*(horzLen+1)]<=1)
+    @variable(cModel,0<=xt[1:(horzLen+1)])
+    @variable(cModel,0<=itotal[1:(horzLen+1)])
 
     println("obj")
     @objective(cModel,Min, sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+
@@ -40,37 +40,37 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
         @NLconstraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1])^2+evS.ρP*evS.w[stepI*2+k*2,1]) #check id index???
     end
     @constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-evS.w[(k-1)*2+1]+itotal[k]) #fix for MPC
-    @constraint(cModel,sn.<=1)
+    # @constraint(cModel,sn.<=1)
     @constraint(cModel,sn.>=target)
     if noTlimit==false
     	@constraint(cModel,upperTCon,xt.<=evS.Tmax)
     end
-    @constraint(cModel,xt.>=0)
-    @constraint(cModel,upperCCon,u.<=repmat(evS.imax,horzLen+1,1))
-    @constraint(cModel,u.>=repmat(evS.imin,horzLen+1,1))
+    #@constraint(cModel,xt.>=0)
+    @constraint(cModel,upperCCon,u.<=repeat(evS.imax,horzLen+1,1))
+    @constraint(cModel,u.>=repeat(evS.imin,horzLen+1,1))
     @constraint(cModel,itotal.<=evS.ItotalMax)
-    @constraint(cModel,itotal.>=0)
+    #@constraint(cModel,itotal.>=0)
 
     println("solving....")
-    statusC = solve(cModel)
-    @assert statusC==:Optimal "Central NL optimization not solved to optimality"
+    JuMP.optimize!(cModel)
+    @assert (JuMP.termination_status(cModel)==JuMP.MOI.Success) & (JuMP.primal_status(cModel)==JuMP.MOI.FeasiblePoint) "Central NL optimization not solved to optimality"
 
-
-    uRaw=getvalue(u)
-    snRaw=getvalue(sn)
-    xtRaw=getvalue(xt)
-    itotalRaw=getvalue(itotal)
+    uRaw= [JuMP.result_value(u[i]) for i in 1:length(u)]
+    snRaw=[JuMP.result_value(sn[i]) for i in 1:length(sn)]
+    xtRaw=[JuMP.result_value(xt[i]) for i in 1:length(xt)]
+    itotalRaw=[JuMP.result_value(itotal[i]) for i in 1:length(itotal)]
 
     if noTlimit==false
-    	kappaUpperT=-getdual(upperTCon)
+    	kappaUpperT=[-JuMP.result_dual(upperTCon[i]) for i in 1:length(upperTCon)]
     else
     	kappaUpperT=zeros(horzLen+1,1)
     end
-    lambdaCurr=-getdual(currCon)
+    lambdaCurr=[-JuMP.result_dual(currCon[i]) for i in 1:length(currCon)]
     if relaxed==true
         lambdaTemp=zeros(horzLen+1,1)
     else
-        lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
+        lambdaTemp=zeros(horzLen+1,1)
+        #lambdaTemp=[-JuMP.result_dual(tempCon1);[-JuMP.result_dual(tempCon2[i]) for i in 1:length(tempCon2)]]
     end
 
     uSum=zeros(horzLen+1,1)
@@ -80,7 +80,7 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
 
     cSol=centralSolutionStruct(xt=xtRaw,un=uRaw,sn=snRaw,
                         itotal=itotalRaw,uSum=uSum,
-                        objVal=getobjectivevalue(cModel),
+                        objVal=JuMP.objective_value(cModel),
                         lamTemp=lambdaTemp,lamCoupl=lambdaCurr)
     return cSol
 end
@@ -150,8 +150,8 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
 
     		@assert statusEVM==:Optimal "EV NL optimization not solved to optimality"
 
-            dLog.Sn[ind,p+1]=getvalue(sn) #solved state goes in next time slot
-            dLog.Un[ind,p+1]=getvalue(un) #current go
+            dLog.Sn[ind,p+1]=JuMP.result_value(sn) #solved state goes in next time slot
+            dLog.Un[ind,p+1]=JuMP.result_value(un) #current go
         end
 
     	if updateMethod=="dualAscent"
@@ -181,8 +181,8 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
 
     		@assert statusC==:Optimal "XFRM NL optimization not solved to optimality"
 
-    		 dLog.Xt[:,p+1]=getvalue(xt)
-    		 dLog.Itotal[:,p+1]=getvalue(itotal)
+    		 dLog.Xt[:,p+1]=JuMP.result_value(xt)
+    		 dLog.Itotal[:,p+1]=JuMP.result_value(itotal)
 
     	    #grad of lagragian
     		gradL=zeros(horzLen+1,1)
@@ -312,8 +312,8 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         	redirect_stdout(TT)
             @assert statusEVM==:Optimal "EV NLP NL optimization not solved to optimality"
 
-    		dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p+1])),p+1]=getvalue(sn)
-    		dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p+1])),p+1]=getvalue(u)
+    		dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p+1])),p+1]=JuMP.result_value(sn)
+    		dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p+1])),p+1]=JuMP.result_value(u)
         end
 
         #N+1 decoupled problem aka transformer current
@@ -346,8 +346,8 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         redirect_stdout(TT)
         @assert statusTM==:Optimal "XFRM NLP NL optimization not solved to optimality"
 
-        dLogadmm.Xt[:,p+1]=getvalue(xt)
-        dLogadmm.Itotal[:,p+1]=getvalue(itotal)
+        dLogadmm.Xt[:,p+1]=JuMP.result_value(xt)
+        dLogadmm.Itotal[:,p+1]=JuMP.result_value(itotal)
 
         #lambda update eq 7.68
     	for k=1:horzLen+1
@@ -492,8 +492,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     		# kappaMin=-getdual(curKappaMin)
             # socMax=-getdual(socKappaMax)
             # socMin=-getdual(socKappaMin)
-            uVal=getvalue(u)
-            snVal=getvalue(sn)
+            uVal=JuMP.result_value(u)
+            snVal=JuMP.result_value(sn)
 
             cValMax=abs.(uVal-evS.imax[evInd,1]).<tolU
             cValMin=abs.(uVal-evS.imin[evInd,1]).<tolU
@@ -550,8 +550,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         # tMax=-getdual(upperTCon)
         # tMin=-getdual(lowerTCon)
         lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
-        iVal=getvalue(itotal)
-        xtVal=getvalue(xt)
+        iVal=JuMP.result_value(itotal)
+        xtVal=JuMP.result_value(xt)
 
         cValMax=abs.(iVal-evS.ItotalMax).<tolI
         cValMin=abs.(iVal-0).<tolI
@@ -653,13 +653,13 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         #Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
         dLogalad.Lam[:,p+1]=max.(dLogalad.Lam[:,p]+α3*(-getdual(currCon)-dLogalad.Lam[:,p]),0)
 
-        dLogalad.Vu[:,p+1]=dLogalad.Vu[:,p]+α1*(dLogalad.Un[:,p+1]-dLogalad.Vu[:,p])+α2*getvalue(dUn)
-        dLogalad.Vi[:,p+1]=dLogalad.Vi[:,p]+α1*(dLogalad.Itotal[:,p+1]-dLogalad.Vi[:,p])+α2*getvalue(dI)
-        dLogalad.Vs[:,p+1]=dLogalad.Vs[:,p]+α1*(dLogalad.Sn[:,p+1]-dLogalad.Vs[:,p])+α2*getvalue(dSn)
-        dLogalad.Vt[:,p+1]=dLogalad.Vt[:,p]+α1*(dLogalad.Xt[:,p+1]-dLogalad.Vt[:,p])+α2*getvalue(dXt)
+        dLogalad.Vu[:,p+1]=dLogalad.Vu[:,p]+α1*(dLogalad.Un[:,p+1]-dLogalad.Vu[:,p])+α2*JuMP.result_value(dUn)
+        dLogalad.Vi[:,p+1]=dLogalad.Vi[:,p]+α1*(dLogalad.Itotal[:,p+1]-dLogalad.Vi[:,p])+α2*JuMP.result_value(dI)
+        dLogalad.Vs[:,p+1]=dLogalad.Vs[:,p]+α1*(dLogalad.Sn[:,p+1]-dLogalad.Vs[:,p])+α2*JuMP.result_value(dSn)
+        dLogalad.Vt[:,p+1]=dLogalad.Vt[:,p]+α1*(dLogalad.Xt[:,p+1]-dLogalad.Vt[:,p])+α2*JuMP.result_value(dXt)
 
         ρALADp[1,p+1]=min(ρALADp[1,p]*ρRate,1e6) #increase ρ every iteration
-        ΔY[1,p+1]=norm(vcat(getvalue(dUn),getvalue(dI),getvalue(dSn),getvalue(dXt)),Inf)
+        ΔY[1,p+1]=norm(vcat(JuMP.result_value(dUn),JuMP.result_value(dI),JuMP.result_value(dSn),JuMP.result_value(dXt)),Inf)
     end
 
     return dLogalad,dCMalad,convIt,ΔY,convCheck
