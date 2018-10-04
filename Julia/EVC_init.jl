@@ -11,7 +11,7 @@ file="EVCscenarioN$(N)."*datafile
 
 updateMethod="dualAscent" #dualAscent #fastAscent
 drawFig=0
-saveResults=1
+saveResults=0
 loadResults=0
 noTlimit=false
 maxIt=100

@@ -12,14 +12,31 @@ function clips()
     return t[2:length(t)-1]
 end
 
-
-function compareRuns(path)
+function readRuns(path)
     files = filter(x->contains(x,"_"), readdir(path))
+    runs=Dict()
+    for file in files
+        runs[file]=JLD.load(path*file)
+    end
+end
 
+
+function compareRunsGraph(runs)
+    names=collect(keys(runs))
+    K=length(runs[names[1]]["convMetrics"].lam)
+    P=length(names)
+    lamConv = DataFrame()
+    for name in names
+        run=runs[name]
+        lamConv[:name]=run["convMetrics"].lam
+    end
+end
+
+function compareRunsTable(runs)
     compareTable = DataFrame(name=String[],time=Float64[],cLamDiff=Float64[],lamDiff=Float64[],
     cObjDiff=Float64[],objDiff=Float64[])
-    for file in files
-        loadF=JLD.load(path*file)
+    for key in keys(runs)
+        loadF=runs[key]
         timeT=loadF["time"]
         cm=loadF["convMetrics"]
         convIt=loadF["convIt"]
