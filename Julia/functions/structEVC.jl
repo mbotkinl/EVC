@@ -1,5 +1,5 @@
 using Parameters
-
+using SharedArrays
 
 
 #structures

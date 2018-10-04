@@ -6,7 +6,7 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 
 N=50
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\PWLvNL\\N$(N)\\"
-datafile="jld" #"mat" #"jld" #"n"
+datafile="n" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
 
 updateMethod="dualAscent" #dualAscent #fastAscent
@@ -58,9 +58,9 @@ if datafile=="mat"
 		Kn=convert(Array{Int,2},Kn)
 	end
 elseif datafile=="jld"
-	using JLD
+	using JLD2
 	println("Reading in Data...")
-	loadF=JLD.load(path*file)
+	loadF=@load(path*file)
 	evS=loadF["evScenario"]
 else #create scenario
 
@@ -69,22 +69,10 @@ else #create scenario
 	saveS=false
 
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
-    if saveS==true using JLD end
+    if saveS==true using JLD2 end
 	using Distributions
 	println("Creating EV Scenario...")
 	evS=setupScenario(N;Tmax=Tmax,Dload_amplitude=Dload_amplitude,saveS=saveS)
-end
-
-#temp backwards capability
-if isassigned(evS.ηP)==false
-	evS.ηP=eta
-	evS.γP=gamma
-	evS.ρP=rho
-	evS.τP=tau
-end
-
-if isassigned(evS.Snmin)==false
-	evS.Snmin=Sn
 end
 
 

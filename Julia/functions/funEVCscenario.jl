@@ -7,8 +7,8 @@
 function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
 
     #model parameters
-    a   = rand(N,1)*.1 + 0.8               # efficiency of Li-ion batts is ~80-90%
-    b   = (6*rand(N,1)+12)*3.6e6           # battery capacity (12-18 kWh = 43.3-64.8 MJ)
+    a   = rand(N,1)*.1 .+ 0.8               # efficiency of Li-ion batts is ~80-90%
+    b   = (6*rand(N,1).+12)*3.6e6           # battery capacity (12-18 kWh = 43.3-64.8 MJ)
     m   = 2000                             # transformer mass in kg
     C   = 450*m                            # heat cap. thermal mass J/K ----- spec. heat cap. of C = {carbon steel, iron, veg. oil} = {490, 450, 1670} J/(kg*K)
     Rh   = 1070e-4/(35*5*(m/7870)^(2/3))   # heat outflow resistance K/W : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
@@ -47,7 +47,7 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
     # Constraint parameters:
     #Tmax = 393                             # Short-term over-loading --> 120 C = 393 Kelvin
     imin = zeros(N,1)                      # A, q_min < 0 if V2G is allowed
-    imax = (10 + 16*rand(N,1))/1000             # kA, charging with 10-24 A
+    imax = (10 .+ 16*rand(N,1))/1000             # kA, charging with 10-24 A
     #imax = (10 + 16*rand(N,1))             # A, charging with 10-24 A
 
     # Initial conditions:
@@ -55,8 +55,8 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
     t0 = 370                 # initial temp (~65 K below Tmax) 368K
 
     #desired states
-    SOCmin = 1 - 0.20*rand(N,1)            # Required min final states of charge (~0.80-1)
-    FullChargeTime_relative = .25*rand(N,1)+.75
+    SOCmin = 1 .- 0.20*rand(N,1)            # Required min final states of charge (~0.80-1)
+    FullChargeTime_relative = .25*rand(N,1).+.75
     FullChargeTime = convert(Array{Int,2},round.(K1*FullChargeTime_relative))
     Snmin=SOCmin
     Kn=FullChargeTime
@@ -75,10 +75,10 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
     #inelasticDemand = [normpdf(0,linspace(0,8,round(K/2)),3) normpdf(0,linspace(-8,0,round(K/2)),3)]; # let demand per household be peaking at 8PM and 8 PM with nadir inbetween
 
     #dist=[linspace(0,8,round(K/2));linspace(-8,0,round(K/2))]
-    dist = [linspace(0,8,round(K1/2));linspace(-8,0,K1-round(K1/2))]
+    dist = [range(0,stop=8,length=Int(round(K1/2)));range(-8,stop=0,length=Int(K1-round(K1/2)))]
     d = Normal(0,3)
     inelasticDemand = pdf.(d,dist)
-    FullinelasticDemand = 100*(200*(inelasticDemand-minimum(inelasticDemand))/(maximum(inelasticDemand)-minimum(inelasticDemand)) + 600)/1000; # total non-EV demand (in kW) = N/PEVpenetration*inelasticDemandperHouse
+    FullinelasticDemand = 100*(200*(inelasticDemand.-minimum(inelasticDemand))/(maximum(inelasticDemand)-minimum(inelasticDemand)) .+ 600)/1000; # total non-EV demand (in kW) = N/PEVpenetration*inelasticDemandperHouse
     FullinelasticDemand = [FullinelasticDemand; FullinelasticDemand[length(FullinelasticDemand)]*ones(K2+1,1)]
     FullDload   = Dload_amplitude*FullinelasticDemand;    # peaks during mid-day
     iD = FullDload/Vtf;                                     #background demand current
@@ -96,8 +96,8 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
     Qs  = 10;               # Stage and terminal penalty on charge difference with respect to 1 (states s)
     QT  = 0;                # PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
     #QsKi  = 1;             # Stage and terminal penalty on charge difference with respect to 1 (states s), for k >= Ki
-    Ri=Ru*(5*rand(N,1)+.1);
-    Qsi=[Qs*(10*rand(N,1)+.01);QT];
+    Ri=Ru*(5*rand(N,1).+.1);
+    Qsi=[Qs*(10*rand(N,1).+.01);QT];
 
     #move this into struct???
     @assert all(ηP.*K.*FullChargeTime_relative.*imax+s0 .>= SOCmin) "Some PEVs may not be able to meet SOC min level by desired time!"
@@ -107,7 +107,7 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
                             ηP,τP,ρP,γP,s0,t0,Snmin,Kn,w,Qsi,Ri)
 
     if saveS==true
-        JLD.save("EVCscenarioN$(N).jld","evScenario",evScenario)
+        @save("EVCscenarioN$(N).jld2","evScenario",evScenario)
     end
 
     return evScenario
