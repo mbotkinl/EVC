@@ -31,41 +31,10 @@ using Parameters
 using Printf
 using Distributed
 
-if datafile=="mat"
-	using MAT #to read in scenarios from matlab
-
-	function string_as_varname(s::String,v::Any)
-		 s=Symbol(s)
-		 @eval (($s) = ($v))
-	end
-
-	#read in mat scenario
-	vars = matread(path*file)
-
-	varnames=keys(vars)
-	varNum=length(varnames)
-	varKeys=collect(varnames)
-	varValues=collect(values(vars))
-
-	for i =1:varNum
-		n=varKeys[i]
-		v=varValues[i]
-		if datafile=="mat"
-			if n in ["N" "K" "S"]
-				v=convert(Int, v)
-			end
-		end
-		string_as_varname(n,v)
-	end
-	println("done reading in")
-
-	if datafile=="mat"
-		Kn=convert(Array{Int,2},Kn)
-	end
-elseif datafile=="jld"
+if datafile=="jld"
 	using JLD2
 	println("Reading in Data...")
-	loadF=@load(path*file)
+	loadF=load(path*file)
 	evS=loadF["evScenario"]
 else #create scenario
 
