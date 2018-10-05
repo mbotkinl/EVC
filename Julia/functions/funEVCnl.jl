@@ -125,7 +125,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     #iterate at each time step until convergence
     for p=1:maxIt
         #solve subproblem for each EV
-    	@sync @parallel for evInd=1:N
+    	@sync @distributed for evInd=1:N
     		ind=[evInd]
     		for k=1:horzLen
     			append!(ind,k*N+evInd)
@@ -290,7 +290,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         #ρADMMp = ρADMM
 
         #x minimization eq 7.66 in Bertsekas
-        @sync @parallel for evInd=1:N
+        @sync @distributed for evInd=1:N
             evV=dLogadmm.Vu[collect(evInd:N:length(dLogadmm.Vu[:,p])),p]
             target=zeros((horzLen+1),1)
     		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
@@ -456,7 +456,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @printf "Starting iteration %g \n" p
 
         #solve decoupled
-        @sync @parallel for evInd=1:N
+        @sync @distributed for evInd=1:N
             ind=[evInd]
             for k=1:horzLen
                 append!(ind,k*N+evInd)
