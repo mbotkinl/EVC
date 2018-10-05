@@ -46,7 +46,7 @@ end
 
 #structures
 @with_kw struct convMetricsStruct
-    objVal::Array=zeros(maxIt,1)
+    obj::Array=zeros(maxIt,1)
     couplConst::Array=zeros(maxIt,1)
     lam::Array=zeros(maxIt,1)
     sn::Array=zeros(maxIt,1)
@@ -58,6 +58,8 @@ end
 end
 
 @with_kw struct itLogPWL
+    # objective value
+    Obj::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 
     #model variables
     Xt::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
@@ -93,6 +95,8 @@ end
 end
 
 @with_kw struct itLogNL
+    # objective value
+    Obj::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 
     #model variables
     Xt::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time

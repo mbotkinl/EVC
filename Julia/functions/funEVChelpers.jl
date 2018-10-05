@@ -37,6 +37,7 @@ function compareRunsGraph(runs)
     evS=runs[names[1]]["scenario"]
     N=evS.N
 
+    #objPerc = zeros(numIt,P)
     objConv = zeros(numIt,P)
     lamConv = zeros(numIt,P)
     T = zeros(Klen,P)
@@ -46,6 +47,8 @@ function compareRunsGraph(runs)
 
     for i in 1:length(names)
         run=runs[names[i]]
+        #objPerc=abs(cSol.objVal-run["solution"].Obj)/cSol.objVal*100
+        #objConv[:,i]=run["convMetrics"].obj
         objConv[:,i]=run["convMetrics"].objVal
         lamConv[:,i]=run["convMetrics"].lam
         T[:,i]=run["solution"].Xt[:,run["convIt"]]
@@ -74,7 +77,7 @@ function compareRunsGraph(runs)
     			minor_label_font_size=20pt,key_label_font_size=20pt,key_position=:top))
 
     objPlot=plot(objConv,x=Row.index,y=Col.value,Geom.point,Geom.line, color=Col.index,Scale.y_log10,
-    			Guide.xlabel("Iteration"), Guide.ylabel("2-norm Objective Value Gap",orientation=:vertical),
+    			Guide.xlabel("Iteration"), Guide.ylabel("Objective Value Magintude Gap",orientation=:vertical),
     			Theme(background_color=colorant"white",major_label_font_size=24pt,line_width=2pt,
     			minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
 

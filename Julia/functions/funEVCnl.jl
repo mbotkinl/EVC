@@ -227,16 +227,17 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	#check convergence
     	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
     					sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-    	fGap= objFun(dLog.Sn[:,p+1],dLog.Un[:,p+1])-cSolnl.objVal
-    	snGap=norm((dLog.Sn[:,p+1]-cSolnl.sn),2)
-    	unGap=norm((dLog.Un[:,p+1]-cSolnl.un),2)
+        dLog.Obj[1,p+1]=objFun(dLog.Sn[:,p+1],dLog.Un[:,p+1])
+    	fGap=dLog.Obj[1,p+1]-cSolnl.objVal
+    	snGap=norm((dLog.Sn[:,p+1]-cSolnl.Sn),2)
+    	unGap=norm((dLog.Un[:,p+1]-cSolnl.Un),2)
     	itGap = norm(dLog.Lam[:,p+1]-dLog.Lam[:,p],2)
     	if updateMethod=="fastAscent"
     		convGap = norm(dLog.Lam[:,p+1]-cSolnl.lamTemp,2)
     	else
     		convGap = norm(dLog.Lam[:,p+1]-cSolnl.lamCoupl,2)
     	end
-    	dCM.objVal[p,1]=abs(fGap)
+    	dCM.obj[p,1]=abs(fGap)
     	dCM.sn[p,1]=snGap
     	dCM.un[p,1]=unGap
     	dCM.lamIt[p,1]=itGap
@@ -367,14 +368,15 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     	objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
     					sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
     					sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-    	fGap= objFun(dLogadmm.Sn[:,p+1],dLogadmm.Xt[:,p+1],dLogadmm.Un[:,p+1])-cSolnl.objVal
+        dLogadmm.Obj[1,p+1]=objFun(dLogadmm.Sn[:,p+1],dLogadmm.Xt[:,p+1],dLogadmm.Un[:,p+1])
+    	fGap= dLogadmm.Obj[1,p+1]-cSolnl.objVal
     	#fGap= objFun(Sn[:,p],Xt[:,p],Un[:,p])-fStar
-    	snGap=norm((dLogadmm.Sn[:,p+1]-cSolnl.sn),2)
-        unGap=norm((dLogadmm.Un[:,p+1]-cSolnl.un),2)
+    	snGap=norm((dLogadmm.Sn[:,p+1]-cSolnl.Sn),2)
+        unGap=norm((dLogadmm.Un[:,p+1]-cSolnl.Un),2)
     	constGap=norm(dLogadmm.couplConst[:,p+1],2)
     	itGap = norm(dLogadmm.Lam[:,p+1]-dLogadmm.Lam[:,p],2)
     	convGap = norm(dLogadmm.Lam[:,p+1]-cSolnl.lamCoupl,2)
-    	dCMadmm.objVal[p,1]=abs(fGap)
+    	dCMadmm.obj[p,1]=abs(fGap)
     	dCMadmm.sn[p,1]=snGap
         dCMadmm.un[p,1]=unGap
     	dCMadmm.couplConst[p,1]=constGap
@@ -587,15 +589,16 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                         sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
                         sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-        fGap= abs(objFun(dLogalad.Sn[:,p+1],dLogalad.Xt[:,p+1],dLogalad.Un[:,p+1])-cSolnl.objVal)
-        fGap2= abs((objFun(dLogalad.Sn[:,p+1],dLogalad.Xt[:,p+1],dLogalad.Un[:,p+1])-cSolnl.objVal)/cSolnl.objVal)
-        snGap=norm((dLogalad.Sn[:,p+1]-cSolnl.sn),2)
-        unGap=norm((dLogalad.Un[:,p+1]-cSolnl.un),2)
+        dLogalad.Obj[1,p+1]=objFun(dLogalad.Sn[:,p+1],dLogalad.Xt[:,p+1],dLogalad.Un[:,p+1])
+        fGap= abs(dLogalad.Obj[1,p+1]-cSolnl.objVal)
+        fGap2= abs(dLogalad.Obj[1,p+1]-cSolnl.objVal)/cSolnl.objVal)
+        snGap=norm((dLogalad.Sn[:,p+1]-cSolnl.Sn),2)
+        unGap=norm((dLogalad.Un[:,p+1]-cSolnl.Un),2)
         itGap = norm(dLogalad.Lam[:,p]-dLogalad.Lam[:,max(p-1,1)],2)
         convGap = norm(dLogalad.Lam[:,p]-cSolnl.lamCoupl,2)
         convGap2 = norm(round.(dLogalad.Lam[:,p]-cSolnl.lamCoupl,10)./cSolnl.lamCoupl,2) #need some rounding here if both are 1e-8
 
-        dCMalad.objVal[p,1]=fGap
+        dCMalad.obj[p,1]=fGap
         dCMalad.sn[p,1]=snGap
         dCMalad.un[p,1]=unGap
         dCMalad.lamIt[p,1]=itGap

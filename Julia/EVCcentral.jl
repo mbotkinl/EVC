@@ -28,9 +28,9 @@ xPlot=zeros(horzLen+1,N)
 xPlot2=zeros(horzLen+1,N)
 uPlot=zeros(horzLen+1,N)
 for ii= 1:N
-	xPlot[:,ii]=cSol.sn[collect(ii:N:length(cSol.sn))]
+	xPlot[:,ii]=cSol.Sn[collect(ii:N:length(cSol.Sn))]
 	xPlot2[:,ii]=(evS.Snmin[ii,1]-xPlot[:,ii])./(evS.Kn[ii,1]-(1:1:length(xPlot[:,ii])))
-    uPlot[:,ii]=cSol.un[collect(ii:N:length(cSol.un))]
+    uPlot[:,ii]=cSol.Un[collect(ii:N:length(cSol.Un))]
 end
 
 p1=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
@@ -52,7 +52,7 @@ p2=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		minor_label_font_size=20pt,line_width=3pt,key_label_font_size=20pt))
 if drawFig==1 draw(PNG(path*"J_central_Curr.png", 24inch, 12inch), p2) end
 
-p3=plot(layer(x=1:horzLen+1,y=cSol.xt,Geom.line,Theme(default_color=colorant"blue")),
+p3=plot(layer(x=1:horzLen+1,y=cSol.Xt,Geom.line,Theme(default_color=colorant"blue")),
 		layer(x=1:horzLen+1,y=cSol.Tactual,Geom.line,Theme(default_color=colorant"green")),
 		yintercept=[evS.Tmax],Geom.hline(color=["red"],style=:dot),
 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
