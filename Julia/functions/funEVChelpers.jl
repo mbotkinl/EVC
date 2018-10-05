@@ -146,3 +146,25 @@ function compareRunsTable(runs)
 
     return compareTable
 end
+
+
+function checkDesiredStates(Sn,Kn,Snmin)
+    epsilon=1e-3
+    flag=true
+    N=length(Kn)
+    if size(Sn)[2]>1 #columns are for each vehicle
+        for n=1:N
+            if (Sn[Kn[n],n]-Snmin[n])<-epsilon
+                flag=false
+            end
+        end
+    else #all vehicles in one columns
+        for n=1:N
+            if (Sn[(Kn[n]-1)*N+n]-Snmin[n])<-epsilon
+                flag=false
+            end
+        end
+    end
+
+    return flag
+end
