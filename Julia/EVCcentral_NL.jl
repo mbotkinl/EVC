@@ -10,9 +10,7 @@ horzLen=evS.K1
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
-tic()
-cSolnl=nlEVcentral(N,S,horzLen,evS,relaxed)
-timeT=toc()
+timeT=@elapsed cSolnl=nlEVcentral(N,S,horzLen,evS,relaxed)
 
 relaxString= if relaxed==true "_relax"else "" end
 filename = "central_NL_N$(N)"*relaxString

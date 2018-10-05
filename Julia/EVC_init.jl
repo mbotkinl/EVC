@@ -22,10 +22,14 @@ println("Loading Packages...")
 
 using JuMP
 using Gadfly
-using Cairo #for png output
-using Fontconfig
+
+# these cause pangolayout error
+# using Cairo #for png output
+# using Fontconfig
+
 using Parameters
 using Printf
+using Distributed
 
 if datafile=="mat"
 	using MAT #to read in scenarios from matlab
