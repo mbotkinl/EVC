@@ -30,7 +30,7 @@ for k =1:horzLen
         end
         t=rand()
 		#decided by Temp and probability
-		un[k+1,n]= if R[k,n]>=1 evS.imax[n] elseif (T[k]<evS.Tmax) & (t>(1-R[k,n])) evS.imax[n] else  0  end
+		un[k+1,n]=if (T[k]<evS.Tmax) & (t>(1-R[k,n])) evS.imax[n] else  0  end
         sn[k+1,n]=sn[k,n]+evS.ηP[n]*un[k+1,n]
 	end
 

@@ -10,7 +10,7 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     stepI=1
 
     #desired SOC
-    target=zeros(N*(horzLen+1),1);
+    target=zeros(N*(horzLen+1),1)
     for ii=1:N
        cur=evS.Kn[ii]-(stepI-1)
        ind=max(0,(cur-1)*N)+ii:N:length(target)
@@ -591,7 +591,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
                         sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
         dLogalad.Obj[1,p+1]=objFun(dLogalad.Sn[:,p+1],dLogalad.Xt[:,p+1],dLogalad.Un[:,p+1])
         fGap= abs(dLogalad.Obj[1,p+1]-cSolnl.objVal)
-        fGap2= abs(dLogalad.Obj[1,p+1]-cSolnl.objVal)/cSolnl.objVal)
+        fGap2= abs((dLogalad.Obj[1,p+1]-cSolnl.objVal)/cSolnl.objVal)
         snGap=norm((dLogalad.Sn[:,p+1]-cSolnl.Sn),2)
         unGap=norm((dLogalad.Un[:,p+1]-cSolnl.Un),2)
         itGap = norm(dLogalad.Lam[:,p]-dLogalad.Lam[:,max(p-1,1)],2)
