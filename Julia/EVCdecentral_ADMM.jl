@@ -92,7 +92,7 @@ convPlotadmm=plot(x=1:convIt,y=dCMadmm.lam[1:convIt,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("central lambda gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-fPlotadmm=plot(x=1:convIt-1,y=dCMadmm.objVal[1:convIt-1,1],Geom.line,Scale.y_log10,
+fPlotadmm=plot(x=1:convIt-1,y=dCMadmm.obj[1:convIt-1,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("obj function gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))

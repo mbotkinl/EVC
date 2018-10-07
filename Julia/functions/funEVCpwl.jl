@@ -99,8 +99,8 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	minAlpha=1e-6
     else
     	#alpha = 3e-3 #for A
-    	alpha = 5e3 #for kA
-    	alphaDivRate=4
+    	alpha = 2e3 #for kA
+    	alphaDivRate=8
     	minAlpha=1e-6
     end
 
@@ -208,8 +208,9 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	alphaP[p+1,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
     	#alphaP[p+1,1] = alphaP[p,1]*alphaRate
 
-    	#lambda_new=lambda+alpha_p*gradL
         dLog.Lam[:,p+1]=max.(dLog.Lam[:,p]+alphaP[p+1,1]*gradL,0)
+        #dLog.Lam[:,p+1]=dLog.Lam[:,p]+alphaP[p+1,1]*gradL
+
 
     	#check convergence
     	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
@@ -265,6 +266,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     #ρADMM=1    #for A
     ρADMM=1e6 #for kA
     ρDivRate=10
+
 
     #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+η*u[k+1]
     dCMadmm=convMetricsStruct()
@@ -358,8 +360,11 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 
         #v upate eq 7.67
         for k=1:horzLen+1
-            dLogadmm.Vu[(k-1)*N+collect(1:N),p+1]=min.(max.(dLogadmm.Un[(k-1)*N+collect(1:N),p+1]+(dLogadmm.Lam[k,p]-dLogadmm.Lam[k,p+1])/ρI,evS.imin),evS.imax)
-            dLogadmm.Vz[(k-1)*(S)+collect(1:S),p+1]=max.(min.(-dLogadmm.Z[(k-1)*(S)+collect(1:S),p+1]+(dLogadmm.Lam[k,p]-dLogadmm.Lam[k,p+1])/ρI,0),-evS.deltaI)
+            dLogadmm.Vu[(k-1)*N+collect(1:N),p+1]=dLogadmm.Un[(k-1)*N+collect(1:N),p+1]+(dLogadmm.Lam[k,p]-dLogadmm.Lam[k,p+1])/ρI
+            dLogadmm.Vz[(k-1)*(S)+collect(1:S),p+1]=-dLogadmm.Z[(k-1)*(S)+collect(1:S),p+1]+(dLogadmm.Lam[k,p]-dLogadmm.Lam[k,p+1])/ρI
+            #
+            # dLogadmm.Vu[(k-1)*N+collect(1:N),p+1]=min.(max.(dLogadmm.Un[(k-1)*N+collect(1:N),p+1]+(dLogadmm.Lam[k,p]-dLogadmm.Lam[k,p+1])/ρI,evS.imin),evS.imax)
+            # dLogadmm.Vz[(k-1)*(S)+collect(1:S),p+1]=max.(min.(-dLogadmm.Z[(k-1)*(S)+collect(1:S),p+1]+(dLogadmm.Lam[k,p]-dLogadmm.Lam[k,p+1])/ρI,0),-evS.deltaI)
         end
 
         #check convergence

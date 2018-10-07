@@ -26,8 +26,6 @@ maxIt=100
 relaxed=false
 verbose=false
 
-
-
 if datafile=="mat"
 	using MAT #to read in scenarios from matlab
 

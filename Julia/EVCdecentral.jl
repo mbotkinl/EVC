@@ -92,7 +92,7 @@ lamPlot=plot(dLog.Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.l
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_LamConv.png", 36inch, 12inch), lamPlot) end
 
-fPlot=plot(x=1:convIt-1,y=dCM.objVal[1:convIt-1,1],Geom.line,Scale.y_log10,
+fPlot=plot(x=1:convIt-1,y=dCM.obj[1:convIt-1,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("obj function gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))

@@ -116,7 +116,7 @@ constPlotalad=plot(x=1:convIt,y=dCMalad.couplConst[1:convIt,1],Geom.line,Scale.y
 			Guide.xlabel("Iteration"), Guide.ylabel("const gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-fPlotalad=plot(x=1:convIt-1,y=dCMalad.objVal[1:convIt-1,1],Geom.line,Scale.y_log10,
+fPlotalad=plot(x=1:convIt-1,y=dCMalad.obj[1:convIt-1,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("obj function gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
