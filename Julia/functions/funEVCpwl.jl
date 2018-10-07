@@ -215,8 +215,8 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	#check convergence
     	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
     					sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-        dLog.Obj[1,p+1]=objFun(dLog.Sn[:,p+1],dLog.Un[:,p+1])
-    	fGap=dLog.Obj[1,p+1] -cSol.objVal
+        dLog.objVal[1,p+1]=objFun(dLog.Sn[:,p+1],dLog.Un[:,p+1])
+    	fGap=dLog.objVal[1,p+1] -cSol.objVal
     	snGap=norm((dLog.Sn[:,p+1]-cSol.Sn),2)
     	unGap=norm((dLog.Un[:,p+1]-cSol.Un),2)
     	itGap = norm(dLog.Lam[:,p+1]-dLog.Lam[:,p],2)
@@ -371,8 +371,8 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     	objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
     					sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
     					sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-        dLogadmm.Obj[1,p+1]=objFun(dLogadmm.Sn[:,p+1],dLogadmm.Xt[:,p+1],dLogadmm.Un[:,p+1])
-    	fGap= abs(dLogadmm.Obj[1,p+1]-cSol.objVal)
+        dLogadmm.objVal[1,p+1]=objFun(dLogadmm.Sn[:,p+1],dLogadmm.Xt[:,p+1],dLogadmm.Un[:,p+1])
+    	fGap= abs(dLogadmm.objVal[1,p+1]-cSol.objVal)
     	snGap=norm((dLogadmm.Sn[:,p+1]-cSol.Sn),2)
     	unGap=norm((dLogadmm.Un[:,p+1]-cSol.Un),2)
     	constGap=norm(dLogadmm.couplConst[:,p+1],2)
@@ -594,8 +594,8 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                         sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
                         sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-        dLogalad.Obj[1,p+1]=objFun(dLogalad.Sn[:,p+1],dLogalad.Xt[:,p+1],dLogalad.Un[:,p+1])
-        fGap= abs(dLogalad.Obj[1,p+1]-cSol.objVal)
+        dLogalad.objVal[1,p+1]=objFun(dLogalad.Sn[:,p+1],dLogalad.Xt[:,p+1],dLogalad.Un[:,p+1])
+        fGap= abs(dLogalad.objVal[1,p+1]-cSol.objVal)
         snGap=norm((dLogalad.Sn[:,p+1]-cSol.Sn),2)
         unGap=norm((dLogalad.Un[:,p+1]-cSol.Un),2)
         itGap = norm(dLogalad.Lam[:,p]-dLogalad.Lam[:,max(p-1,1)],2)

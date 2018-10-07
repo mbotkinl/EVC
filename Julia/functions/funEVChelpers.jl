@@ -22,24 +22,30 @@ end
 
 function readRuns(path)
     files = filter(x->contains(x,"_"), readdir(path))
+    cFile = filter(x->contains(x,"central"), files)
+    cRun=JLD.load(path*cFile[1])
+
+    dFiles= setdiff(files,cFile)
     runs=Dict()
-    for file in files
+    for file in dFiles
         runs[file]=JLD.load(path*file)
     end
 end
 
 
-function compareRunsGraph(runs)
+function compareRunsGraph(runs, cRun)
     names=collect(keys(runs))
+    cSol=cRun["solution"]
     numIt=size(runs[names[1]]["convMetrics"].lam)[1]
-    Klen=size(runs[names[1]]["solution"].Xt)[1]
+    Klen=size(cSol.Xt)[1]
     P=length(names)
-    evS=runs[names[1]]["scenario"]
+    evS=cRun["scenario"]
     N=evS.N
 
-    #objPerc = zeros(numIt,P)
+    objPerc = zeros(numIt+1,P)
     objConv = zeros(numIt,P)
     lamConv = zeros(numIt,P)
+    lamRMSE = zeros(numIt,P)
     T = zeros(Klen,P)
     Sn = zeros(Klen*N,P)
     uSum = zeros(Klen,P)
@@ -47,14 +53,19 @@ function compareRunsGraph(runs)
 
     for i in 1:length(names)
         run=runs[names[i]]
-        #objPerc=abs(cSol.objVal-run["solution"].Obj)/cSol.objVal*100
-        #objConv[:,i]=run["convMetrics"].obj
-        objConv[:,i]=run["convMetrics"].objVal
+        objPerc[:,i]=abs.(cSol.objVal-run["solution"].objVal')/cSol.objVal*100
+        objConv[:,i]=run["convMetrics"].obj
         lamConv[:,i]=run["convMetrics"].lam
+        lamRMSE[:,i]=run["solution"].Lam # do this***
         T[:,i]=run["solution"].Xt[:,run["convIt"]]
         uSum[:,i]=run["solution"].uSum[:,run["convIt"]]
-        Sn[:,i]=run["solution"].Sn[:,run["convIt"]]
-        snSum[:,i]=[sum(Sn[N*(k-1)+n,i] for n=1:N) for k in 1:Klen]# sum up across N
+        if size(run["solution"].Sn)[1]>Klen+1
+            Sn[:,i]=run["solution"].Sn[:,run["convIt"]]
+            snSum[:,i]=[sum(Sn[N*(k-1)+n,i] for n=1:N) for k in 1:Klen]# sum up across N
+        else
+            Sn[:,i]=run["solution"].Sn'[:]
+            snSum[:,i]=[sum(run["solution"].Sn[k,:]) for k in 1:Klen]# sum up across N
+        end
     end
 
     # ty=[match(r"central|d",names[i]).match for i in 1:length(names)]
@@ -64,6 +75,8 @@ function compareRunsGraph(runs)
     names!(lamConv.colindex, map(Symbol, names))
     objConv=DataFrame(objConv)
     names!(objConv.colindex, map(Symbol, names))
+    objPerc=DataFrame(objPerc)
+    names!(objPerc.colindex, map(Symbol, names))
     T=DataFrame(T)
     names!(T.colindex, map(Symbol, names))
     uSum=DataFrame(uSum)
@@ -80,6 +93,10 @@ function compareRunsGraph(runs)
     			Guide.xlabel("Iteration"), Guide.ylabel("Objective Value Magintude Gap",orientation=:vertical),
     			Theme(background_color=colorant"white",major_label_font_size=24pt,line_width=2pt,
     			minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
+    objPlot=plot(objPerc,x=Row.index,y=Col.value,Geom.point,Geom.line, color=Col.index,Scale.y_log10,Coord.Cartesian(xmin=0,xmax=numIt+1),
+                Guide.xlabel("Iteration"), Guide.ylabel("Objective Value Percentage Gap",orientation=:vertical),
+                Theme(background_color=colorant"white",major_label_font_size=24pt,line_width=2pt,
+                minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:top))
 
     tempPlot=plot(layer(T,x=Row.index,y=Col.value,Geom.point,Geom.line,color=Col.index),
     		layer(yintercept=[evS.Tmax],Geom.hline(color=["red"],style=:dot),Theme(line_width=3pt)),
@@ -120,7 +137,7 @@ function compareRunsGraph(runs)
 
     Rmax=DataFrame(Rmax)
     Ravg=DataFrame(Ravg)
-    Rplot=plot(layer(Rmax,x=Row.index,y=Col.value,Geom.point,Geom.line,color=Col.index),
+    Rplot=plot(layer(Ravg,x=Row.index,y=Col.value,Geom.point,Geom.line,color=Col.index),
             Guide.xlabel("Time"), Guide.ylabel("R Max",orientation=:vertical),
             Guide.colorkey(title="",labels=names),
             Coord.Cartesian(xmin=0,xmax=Klen),Theme(background_color=colorant"white",major_label_font_size=24pt,

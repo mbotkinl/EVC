@@ -59,7 +59,7 @@ end
 
 @with_kw struct itLogPWL
     # objective value
-    Obj::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
+    objVal::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 
     #model variables
     Xt::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
@@ -96,7 +96,7 @@ end
 
 @with_kw struct itLogNL
     # objective value
-    Obj::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
+    objVal::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 
     #model variables
     Xt::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
