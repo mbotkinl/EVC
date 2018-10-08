@@ -83,7 +83,7 @@ convPlotNLadmm=plot(x=1:convIt,y=dCMnladmm.lam[1:convIt,1],Geom.line,Scale.y_log
 			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-fPlotadmm=plot(x=1:convIt-1,y=dCMnladmm.objVal[1:convIt-1,1],Geom.line,#Scale.y_log10,
+fPlotadmm=plot(x=1:convIt-1,y=dCMnladmm.obj[1:convIt-1,1],Geom.line,#Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap",orientation=:vertical),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))

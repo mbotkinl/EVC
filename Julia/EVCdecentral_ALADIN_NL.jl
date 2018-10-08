@@ -77,12 +77,12 @@ uSumPlotaladNL=plot(dLognlalad.uSum[:,2:convIt],x=Row.index,y=Col.value,color=Co
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 iPlotaladNL=plot(dLognlalad.Itotal[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-			layer(x=1:horzLen+1,y=cSolnl.itotal,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
+			layer(x=1:horzLen+1,y=cSolnl.Itotal,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 xtPlotaladNL=plot(dLognlalad.Xt[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-			layer(x=1:horzLen+1,y=cSolnl.xt,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
+			layer(x=1:horzLen+1,y=cSolnl.Xt,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
@@ -123,7 +123,7 @@ constPlotaladNL=plot(x=1:convIt,y=dCMnlalad.couplConst[1:convIt,1],Geom.line,Sca
 			Guide.xlabel("Iteration"), Guide.ylabel("consensus gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
-fPlotaladNL=plot(x=1:convIt-1,y=dCMnlalad.objVal[1:convIt-1,1],Geom.line,Scale.y_log10,
+fPlotaladNL=plot(x=1:convIt-1,y=dCMnlalad.obj[1:convIt-1,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("obj function gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))

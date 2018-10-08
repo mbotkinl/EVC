@@ -78,7 +78,7 @@ uSumPlotNL=plot(dLognl.uSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 iPlotNL=plot(dLognl.Itotal[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-			layer(x=1:horzLen+1,y=cSolnl.itotal,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
+			layer(x=1:horzLen+1,y=cSolnl.Itotal,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
@@ -89,7 +89,7 @@ lamPlotNL=plot(dLognl.Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Ge
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_LamConv.png", 36inch, 12inch), lamPlot) end
 
-fPlotNL=plot(x=1:convIt-1,y=dCMnl.objVal[1:convIt-1,1],Geom.line,Scale.y_log10,
+fPlotNL=plot(x=1:convIt-1,y=dCMnl.obj[1:convIt-1,1],Geom.line,Scale.y_log10,
 			Guide.xlabel("Iteration"), Guide.ylabel("obj function gap"),
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
