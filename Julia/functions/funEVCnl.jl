@@ -18,7 +18,13 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     end
 
     println("setting up model")
-    cModel = Model(solver = IpoptSolver())
+    if relaxed==true
+        cModel = Model(solver = GurobiSolver(QCPDual=1))
+
+    else
+        cModel = Model(solver = IpoptSolver())
+    end
+
     #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
     @variable(cModel,u[1:N*(horzLen+1)])
     @variable(cModel,sn[1:(N)*(horzLen+1)])
@@ -32,7 +38,7 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     println("constraints")
     @constraint(cModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+evS.ηP[:,1].*u[1:N,1])
     @constraint(cModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+evS.ηP[n,1]*u[n+(k)*(N),1])
-    if relaxed==true
+    if relaxed
         @constraint(cModel,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.w[stepI*2,1])
         @constraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1])^2+evS.ρP*evS.w[stepI*2+k*2,1]) #check id index???
     else
@@ -67,8 +73,8 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     	kappaUpperT=zeros(horzLen+1,1)
     end
     lambdaCurr=-getdual(currCon)
-    if relaxed==true
-        lambdaTemp=zeros(horzLen+1,1)
+    if relaxed
+        lambdaTemp=-Gurobi.get_dblattrarray(getrawsolver(cModel),"QCPi",1,horzLen+1)
     else
         lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
     end
@@ -132,7 +138,12 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     		end
             target=zeros((horzLen+1),1)
     		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
-            evM=Model(solver = IpoptSolver())
+            if relaxed
+                evM = Model(solver = GurobiSolver())
+
+            else
+                evM = Model(solver = IpoptSolver())
+            end
             @variable(evM,un[1:horzLen+1])
             @variable(evM,sn[1:horzLen+1])
     		@objective(evM,Min,sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(un[k,1])^2*evS.Ri[evInd,1]+dLog.Lam[k,p]*un[k,1] for k=1:horzLen+1))
@@ -157,11 +168,16 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	if updateMethod=="dualAscent"
     	    #solve coordinator problem
 
-            coorM = Model(solver = IpoptSolver())
-    	    @variable(coorM,itotal[1:(horzLen+1)])
+            if relaxed
+                coorM = Model(solver = GurobiSolver(QCPDual=1))
+
+            else
+                coorM = Model(solver = IpoptSolver())
+            end
+	        @variable(coorM,itotal[1:(horzLen+1)])
     	    @variable(coorM,xt[1:(horzLen+1)])
     	    @objective(coorM,Min,-sum(dLog.Lam[k,p]*itotal[k,1] for k=1:(horzLen+1)))
-            if relaxed==true
+            if relaxed
                 @constraint(coorM,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.w[2,1]) #fix for MPC loop
         		@constraint(coorM,[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.w[k*2+2,1])
             else
@@ -227,8 +243,8 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	#check convergence
     	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
     					sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-        dLog.Obj[1,p+1]=objFun(dLog.Sn[:,p+1],dLog.Un[:,p+1])
-    	fGap=dLog.Obj[1,p+1]-cSolnl.objVal
+        dLog.objVal[1,p+1]=objFun(dLog.Sn[:,p+1],dLog.Un[:,p+1])
+    	fGap=dLog.objVal[1,p+1]-cSolnl.objVal
     	snGap=norm((dLog.Sn[:,p+1]-cSolnl.Sn),2)
     	unGap=norm((dLog.Un[:,p+1]-cSolnl.Un),2)
     	itGap = norm(dLog.Lam[:,p+1]-dLog.Lam[:,p],2)
@@ -295,7 +311,12 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             evV=dLogadmm.Vu[collect(evInd:N:length(dLogadmm.Vu[:,p])),p]
             target=zeros((horzLen+1),1)
     		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
-            evM = Model(solver = IpoptSolver())
+			if relaxed
+                evM = Model(solver = GurobiSolver())
+
+            else
+                evM = Model(solver = IpoptSolver())
+            end
         	@variable(evM,sn[1:(horzLen+1)])
         	@variable(evM,u[1:(horzLen+1)])
     		@objective(evM,Min, sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
@@ -318,7 +339,11 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         end
 
         #N+1 decoupled problem aka transformer current
-        tM = Model(solver = IpoptSolver())
+		if relaxed
+			tM = Model(solver = GurobiSolver(QCPDual=1, BarQCPConvTol=1e-2))
+		else
+			tM = Model(solver = IpoptSolver())
+		end
         #@variable(tM,z[1:(S)*(horzLen+1)])
         @variable(tM,xt[1:(horzLen+1)])
         @variable(tM,itotal[1:(horzLen+1)])
@@ -327,7 +352,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         # @objective(tM,Min, constFun1(-itotal,Vi[:,p])+constFun2(-itotal,Vi[:,p]))
         @objective(tM,Min,sum(dLogadmm.Lam[k,p]*(-itotal[k,1]-dLogadmm.Vi[k,p])+
                               ρADMM/2*(-itotal[k,1]-dLogadmm.Vi[k,p])^2  for k=1:(horzLen+1)))
-        if relaxed==true
+        if relaxed
             @constraint(tM,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1,1])^2+evS.ρP*evS.w[stepI*2,1])
             @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.w[stepI*2+k*2,1])
         else
@@ -368,8 +393,8 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     	objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
     					sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
     					sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-        dLogadmm.Obj[1,p+1]=objFun(dLogadmm.Sn[:,p+1],dLogadmm.Xt[:,p+1],dLogadmm.Un[:,p+1])
-    	fGap= dLogadmm.Obj[1,p+1]-cSolnl.objVal
+        dLogadmm.objVal[1,p+1]=objFun(dLogadmm.Sn[:,p+1],dLogadmm.Xt[:,p+1],dLogadmm.Un[:,p+1])
+    	fGap= dLogadmm.objVal[1,p+1]-cSolnl.objVal
     	#fGap= objFun(Sn[:,p],Xt[:,p],Un[:,p])-fStar
     	snGap=norm((dLogadmm.Sn[:,p+1]-cSolnl.Sn),2)
         unGap=norm((dLogadmm.Un[:,p+1]-cSolnl.Un),2)
@@ -469,7 +494,12 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             target=zeros((horzLen+1),1)
             target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
             #evM = Model(solver = GurobiSolver(NumericFocus=3))
-            evM = Model(solver = IpoptSolver())
+			if relaxed
+                evM = Model(solver = GurobiSolver())
+
+            else
+                evM = Model(solver = IpoptSolver())
+            end
             @variable(evM,sn[1:(horzLen+1)])
             @variable(evM,u[1:(horzLen+1)])
             @objective(evM,Min,sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
@@ -522,7 +552,12 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         end
 
         #N+1 decoupled problem aka transformer current
-        tM = Model(solver = IpoptSolver())
+		if relaxed
+			#tM = Model(solver = GurobiSolver(QCPDual=1)) #, NumericFocus=3
+			tM = Model(solver = GurobiSolver(QCPDual=1,BarQCPConvTol=1e-8,NumericFocus=3)) #,
+		else
+			tM = Model(solver = IpoptSolver())
+		end
         @variable(tM,itotal[1:(horzLen+1)])
         @variable(tM,xt[1:(horzLen+1)])
         @objective(tM,Min, sum(-dLogalad.Lam[k,p]*itotal[k]+
@@ -551,7 +586,11 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         # kappaMin=-getdual(KappaMax)
         # tMax=-getdual(upperTCon)
         # tMin=-getdual(lowerTCon)
-        lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
+		if relaxed
+			lambdaTemp=-Gurobi.get_dblattrarray(getrawsolver(tM),"QCPi",1,horzLen+1)
+		else
+        	lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
+		end
         iVal=getvalue(itotal)
         xtVal=getvalue(xt)
 
@@ -589,9 +628,9 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                         sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
                         sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-        dLogalad.Obj[1,p+1]=objFun(dLogalad.Sn[:,p+1],dLogalad.Xt[:,p+1],dLogalad.Un[:,p+1])
-        fGap= abs(dLogalad.Obj[1,p+1]-cSolnl.objVal)
-        fGap2= abs((dLogalad.Obj[1,p+1]-cSolnl.objVal)/cSolnl.objVal)
+        dLogalad.objVal[1,p+1]=objFun(dLogalad.Sn[:,p+1],dLogalad.Xt[:,p+1],dLogalad.Un[:,p+1])
+        fGap= abs(dLogalad.objVal[1,p+1]-cSolnl.objVal)
+        fGap2= abs((dLogalad.objVal[1,p+1]-cSolnl.objVal)/cSolnl.objVal)
         snGap=norm((dLogalad.Sn[:,p+1]-cSolnl.Sn),2)
         unGap=norm((dLogalad.Un[:,p+1]-cSolnl.Un),2)
         itGap = norm(dLogalad.Lam[:,p]-dLogalad.Lam[:,max(p-1,1)],2)
@@ -619,7 +658,12 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         end
 
         #coupled QP
-        cM = Model(solver = IpoptSolver())
+		if relaxed
+			cM = Model(solver = GurobiSolver())
+
+		else
+			cM = Model(solver = IpoptSolver())
+		end
         @variable(cM,dUn[1:(N)*(horzLen+1)])
         @variable(cM,dSn[1:(N)*(horzLen+1)])
         @variable(cM,dI[1:(horzLen+1)])

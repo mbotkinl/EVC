@@ -1,7 +1,10 @@
 #Micah Botkin-Levy
 #4/8/18
-
-using Ipopt
+if relaxed
+	using Gurobi
+else
+	using Ipopt
+end
 
 #pull out a few key variables
 N=evS.N
