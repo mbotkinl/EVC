@@ -15,28 +15,33 @@ T=zeros(horzLen+1,1)
 sn[1:N]=evS.s0
 T[1]=evS.t0
 epsilon=1e-3
+packLen=3 #number of time steps
 
 tic()
 for k =1:horzLen
 
     for n =1:N
-		desiredSOC=1 # for now
-		# desiredSOC=evS.Snmin[n]
-        if (sn[k,n]-desiredSOC)>=-epsilon #desiredSOC satisfied
-			R[k,n]=0 # not sure if this is what we want***
-		elseif k>=evS.Kn[n] # opt out (not satisified)
-			R[k,n]=1
-        else
-			R[k,n]=(desiredSOC-sn[k,n])/(evS.ηP[n]*evS.imax[n]*(evS.Kn[n]-k))
-        end
-        t=rand()
-		#decided by Temp and probability
-		un[k+1,n]=if (T[k]<evS.Tmax) & (t>(1-R[k,n])) evS.imax[n] else  0  end
+		if (un[k,n]>0 & un[k-(packLen-1)]==0) # still using a packet
+			un[k+1,n]=evS.imax[n]
+		else
+			desiredSOC=1 # for now
+			# desiredSOC=evS.Snmin[n]
+	        if (sn[k,n]-desiredSOC)>=-epsilon #desiredSOC satisfied
+				R[k,n]=0 # not sure if this is what we want***
+			elseif k>=evS.Kn[n] # opt out (not satisified)
+				R[k,n]=1
+	        else
+				R[k,n]=(desiredSOC-sn[k,n])/(evS.ηP[n]*evS.imax[n]*(evS.Kn[n]-k))
+	        end
+	        t=rand()
+			#decided by Temp and probability
+			un[k+1,n]=if (T[k]<evS.Tmax) & (t>(1-R[k,n])) evS.imax[n] else  0  end
+		end
         sn[k+1,n]=sn[k,n]+evS.ηP[n]*un[k+1,n]
 	end
 
 	uSum[k+1] = sum(un[k+1,n] for n=1:N)
-	Itotal[k+1] = uSum[k+1] + evS.w[(k-1)*2+1] 	#add background current***
+	Itotal[k+1] = uSum[k+1] + evS.w[(k-1)*2+1]
 	T[k+1] = evS.τP*T[k]+evS.γP*Itotal[k+1]^2+evS.ρP*evS.w[k*2+2,1]
 end
 timeT=toc()
