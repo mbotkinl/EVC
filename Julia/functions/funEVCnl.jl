@@ -20,7 +20,6 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     println("setting up model")
     if relaxed==true
         cModel = Model(solver = GurobiSolver(QCPDual=1))
-
     else
         cModel = Model(solver = IpoptSolver())
     end
@@ -32,8 +31,12 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     @variable(cModel,itotal[1:(horzLen+1)])
 
     println("obj")
-    @objective(cModel,Min, sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+
-                                   (u[(k-1)*N+n,1])^2*evS.Ri[n,1] for n=1:N) for k=1:(horzLen+1)))
+	objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,1]+(u[n,1])^2*evS.Ri[n,1] for n=1:N)
+	for k=2:horzLen+1
+		append!(objExp,sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1]  for n=1:N))
+	end
+	#objExp=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1] for n=1:N) for k=1:(horzLen+1))
+    @objective(cModel,Min, objExp)
 
     println("constraints")
     @constraint(cModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+evS.ηP[:,1].*u[1:N,1])
