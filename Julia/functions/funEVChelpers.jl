@@ -171,15 +171,18 @@ function compareRunsGraph(runs, cRun)
 end
 
 function compareRunsTable(runs)
-    compareTable = DataFrame(name=String[],time=Float64[],cLamDiff=Float64[],lamDiff=Float64[],
-    cObjDiff=Float64[],objDiff=Float64[])
+    # compareTable = DataFrame(name=String[],time=Float64[],cLamDiff=Float64[],lamDiff=Float64[],
+    # cObjDiff=Float64[],objDiff=Float64[])
+    compareTable = DataFrame(name=String[],timeTotal=Float64[],timePerIt=Float64[],convIt=Int64[])
     for key in keys(runs)
+        println(key)
         loadF=runs[key]
         timeT=loadF["time"]
-        cm=loadF["convMetrics"]
+        #cm=loadF["convMetrics"]
         convIt=loadF["convIt"]
-        ind= if convIt>0 convIt-1 else length(cm.lam) end
-        stats = [key timeT minimum(cm.lam[1:ind]) cm.lam[ind-1]-cm.lam[ind-2] minimum(cm.objVal[1:ind]) cm.objVal[ind-1]-cm.objVal[ind-2]]
+        #ind= if convIt>0 convIt-1 else length(cm.lam) end
+        #stats = [key timeT minimum(cm.lam[1:ind]) cm.lam[ind-1]-cm.lam[ind-2] minimum(cm.obj[1:ind]) cm.obj[ind-1]-cm.obj[ind-2]]
+        stats = [key timeT timeT/convIt convIt]
         push!(compareTable,stats)
     end
 

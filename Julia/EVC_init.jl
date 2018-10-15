@@ -12,7 +12,7 @@ using Parameters
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
-N=50
+N=100
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\PWLvNL\\N$(N)\\"
 datafile="jld" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
@@ -64,8 +64,8 @@ elseif datafile=="jld"
 	evS=loadF["evScenario"]
 else #create scenario
 
-	Tmax=400
-	Dload_amplitude=0
+	Tmax=393
+	Dload_amplitude=10
 	saveS=false
 
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
