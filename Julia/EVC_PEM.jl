@@ -1,4 +1,6 @@
 using Distributions
+using Gurobi
+
 #pull out a few key variables
 N=evS.N
 S=evS.S
@@ -43,7 +45,8 @@ for k =1:horzLen+1
 			existPack=false
 		end
 		if existPack==true # still using a packet
-			Req[k,n]=-1 # check if this should by pass the estimation step??***
+			ratio[k,n]=1
+			Req[k,n]=-1
 			# un[k,n]=evS.imax[n]
 		else
 			desiredSOC=1 # for now
@@ -55,9 +58,10 @@ for k =1:horzLen+1
 				Req[k,n]=0
 			elseif k>=evS.Kn[n] # opt out (not satisified)
 				ratio[k,n]=1
-				Req[k,n]=-1 # check if this should by pass the estimation step??***
+				Req[k,n]=-1
 	        else
 				ratio[k,n]=(desiredSOC-prevSOC)/(evS.ηP[n]*evS.imax[n]*(evS.Kn[n]-(k-1)))
+				#what to do when (desiredSOC-ratio[k,n])<0 ??***
 				mu[k,n] = 1/mttr*((desiredSOC-ratio[k,n])/(ratio[k,n]-0))*((setSOC-0)/(desiredSOC-setSOC))
 				P[k,n] = min(max(1-exp(-mu[k,n]*evS.Ts),0),1)
 				t=rand()
@@ -71,20 +75,49 @@ for k =1:horzLen+1
 	end
 
 	prevT = if k>1 T[k-1] else evS.t0 end
+    requiredCh=Int.(Req[k,:].<0)
 
 	#receive requests and forecast for the next packLen intervals
-	Test=zeros(packLen,1)
-	Iest=sum(abs(Req[k,n])*evS.imax[n] for n=1:N)
-	Test[1] = evS.τP*prevT+evS.γP*(Iest+evS.iD[k])^2+evS.ρP*evS.Tamb[k]
-	for kk=2:packLen
-		Test[kk] = evS.τP*Test[kk-1]+evS.γP*(Iest+evS.iD[kk])^2+evS.ρP*evS.Tamb[k+kk]
-	end
+	# how to treat packets ending during this forecast horizon???****
 
+	# Test=zeros(packLen,1)
+	# Iest=sum(abs(Req[k,n])*evS.imax[n] for n=1:N)
+	# Test[1] = evS.τP*prevT+evS.γP*(Iest+evS.iD[k])^2+evS.ρP*evS.Tamb[k]
+	# for kk=2:packLen
+	# 	Test[kk] = evS.τP*Test[kk-1]+evS.γP*(Iest+evS.iD[kk])^2+evS.ρP*evS.Tamb[k+kk]
+	# end
 	#for now
-	if all(Test.<=evS.Tmax)
-		Rec[k,:]=abs.(Req[k,:])
-	else # accept the only the opt outs aka -1
-		Rec[k,:]=Int.(Req[k,:].<0)
+	# if all(Test.<=evS.Tmax)
+	# 	Rec[k,:]=abs.(Req[k,:])
+	# else # accept the only the opt outs aka -1
+	# 	Rec[k,:]=Int.(Req[k,:].<0)
+	# end
+
+	requiredInd=find(x->x==1,requiredCh)
+	optOff=find(x->x==0,Req[k,:])
+	m = Model(solver = GurobiSolver())
+	@variable(m,u[1:N],Bin)
+	@variable(m,Test[1:packLen])
+	@objective(m,Min,-sum(u))
+	@constraint(m,tempCon1,Test[1]>=evS.τP*prevT+evS.γP*(sum(u[n]*evS.imax[n] for n=1:N)+evS.iD[k])^2+evS.ρP*evS.Tamb[k])
+	@constraint(m,tempCon2[kk=2:packLen],Test[kk]>=evS.τP*Test[kk-1]+evS.γP*(sum(u[n]*evS.imax[n] for n=1:N)+evS.iD[kk])^2+evS.ρP*evS.Tamb[k+kk])
+	@constraint(m,Test.<=evS.Tmax)
+	for n in requiredInd
+		@constraint(m,u[n]==1)
+	end
+	for n in optOff
+		@constraint(m,u[n]==0)
+	end
+	TT = STDOUT # save original STDOUT strea
+	redirect_stdout()
+	statusC = solve(m)
+	redirect_stdout(TT)
+
+
+	if statusC==:Optimal
+		Rec[k,:]=getvalue(u)
+	else
+		Rec[k,:]=requiredCh
 	end
 
 	#R>=1 and packRec get charged
@@ -116,25 +149,25 @@ if loadResults==1
 	pemSol=loadF["solution"]
 end
 
-p1=plot(pemSol.Sn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+p1pem=plot(pemSol.Sn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1,ymax=1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=3pt,
 		minor_label_font_size=20pt,key_label_font_size=20pt))
 
-p2=plot(pemSol.Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+p2pem=plot(pemSol.Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,
 		minor_label_font_size=20pt,line_width=3pt,key_label_font_size=20pt))
 
-p3=plot(x=1:horzLen+1,y=pemSol.Xt,Geom.line,Theme(default_color=colorant"green"),
+p3pem=plot(x=1:horzLen+1,y=pemSol.Xt,Geom.line,Theme(default_color=colorant"green"),
 		yintercept=[evS.Tmax],Geom.hline(color=["red"],style=:dot),
 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
 
-pR=plot(ratio,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+pRpem=plot(ratio,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("R"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,
