@@ -105,12 +105,8 @@ for k =1:horzLen+1
 	@constraint(m,tempCon1,Test[1]>=evS.τP*prevT+evS.γP*(sum(u[n]*evS.imax[n] for n=1:N)+evS.iD[k])^2+evS.ρP*evS.Tamb[k])
 	@constraint(m,tempCon2[kk=2:packLen],Test[kk]>=evS.τP*Test[kk-1]+evS.γP*(sum(u[n]*evS.imax[n] for n=1:N)+evS.iD[k+kk])^2+evS.ρP*evS.Tamb[k+kk])
 	@constraint(m,Test.<=evS.Tmax)
-	for n in requiredInd
-		@constraint(m,u[n]==1)
-	end
-	for n in optOff
-		@constraint(m,u[n]==0)
-	end
+	@constraint(m,sum(u[n] for n in requiredInd)==length(requiredInd))
+	@constraint(m,sum(u[n] for n in optOff)==0)
 	TT = STDOUT
 	redirect_stdout()
 	statusC = solve(m)
