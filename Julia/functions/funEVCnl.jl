@@ -24,7 +24,7 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
         cModel = Model(solver = IpoptSolver())
     end
 
-    #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
+    #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
     @variable(cModel,u[1:N*(horzLen+1)])
     @variable(cModel,sn[1:(N)*(horzLen+1)])
     @variable(cModel,xt[1:(horzLen+1)])
@@ -42,13 +42,13 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     @constraint(cModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+evS.ηP[:,1].*u[1:N,1])
     @constraint(cModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+evS.ηP[n,1]*u[n+(k)*(N),1])
     if relaxed
-        @constraint(cModel,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.w[stepI*2,1])
-        @constraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1])^2+evS.ρP*evS.w[stepI*2+k*2,1]) #check id index???
+        @constraint(cModel,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.Tamb[stepI,1])
+        @constraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1])^2+evS.ρP*evS.Tamb[stepI+k,1])
     else
-        @NLconstraint(cModel,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.w[stepI*2,1])
-        @NLconstraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1])^2+evS.ρP*evS.w[stepI*2+k*2,1]) #check id index???
+        @NLconstraint(cModel,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.Tamb[stepI,1])
+        @NLconstraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1])^2+evS.ρP*evS.Tamb[stepI+k,1])
     end
-    @constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-evS.w[(k-1)*2+1]+itotal[k]) #fix for MPC
+    @constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-evS.iD[stepI+(k-1)]+itotal[k])
     @constraint(cModel,sn.<=1)
     @constraint(cModel,sn.>=target)
     if noTlimit==false
@@ -125,7 +125,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     dCM=convMetricsStruct()
     dLog=itLogNL()
 
-    #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
+    #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
     lambda0=1000*ones(horzLen+1,1)
     #lambda0=lamCurrStarNL
     #lambda0=max.(lamCurrStarNL,0)
@@ -181,11 +181,11 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	    @variable(coorM,xt[1:(horzLen+1)])
     	    @objective(coorM,Min,-sum(dLog.Lam[k,p]*itotal[k,1] for k=1:(horzLen+1)))
             if relaxed
-                @constraint(coorM,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.w[2,1]) #fix for MPC loop
-        		@constraint(coorM,[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.w[k*2+2,1])
+                @constraint(coorM,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.Tamb[stepI,1]) #fix for MPC loop
+        		@constraint(coorM,[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.Tamb[stepI+k,1])
             else
-                @NLconstraint(coorM,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.w[2,1]) #fix for MPC loop
-        		@NLconstraint(coorM,[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.w[k*2+2,1])
+                @NLconstraint(coorM,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.Tamb[stepI,1]) #fix for MPC loop
+        		@NLconstraint(coorM,[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.Tamb[stepI+k,1])
             end
     		if noTlimit==false
     			@constraint(coorM,upperTCon,xt.<=evS.Tmax)
@@ -207,7 +207,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     		gradL=zeros(horzLen+1,1)
     		for k=1:horzLen+1
     			dLog.uSum[k,p+1]=sum(dLog.Un[(k-1)*N+n,p+1] for n=1:N)
-    			gradL[k,1]=dLog.uSum[k,p+1] + evS.w[(k-1)*2+(stepI*2-1),1] - dLog.Itotal[k,p+1]
+    			gradL[k,1]=dLog.uSum[k,p+1] + evS.iD[stepI+(k-1),1] - dLog.Itotal[k,p+1]
     		end
     		dLog.couplConst[p,1]=norm(gradL,2)
     	end
@@ -215,11 +215,11 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	if updateMethod=="fastAscent"
             ztotal=zeros(horzLen+1,1)
             for k=1:horzLen+1
-                ztotal[k,1]=sum(dLog.Un[(k-1)*N+n,p+1]    for n=1:N) + evS.w[(k-1)*2+(stepI*2-1),1]
+                ztotal[k,1]=sum(dLog.Un[(k-1)*N+n,p+1] for n=1:N) + evS.iD[stepI+(k-1),1]
             end
-            dLog.Xt[1,p+1]=evS.τP*xt0+evS.γP*ztotal[1,1]^2+evS.ρP*evS.w[2,1] #fix for mpc
+            dLog.Xt[1,p+1]=evS.τP*xt0+evS.γP*ztotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
             for k=1:horzLen
-                dLog.Xt[k+1,p+1]=evS.τP*dLog.Xt[k,p+1]+evS.γP*ztotal[k+1,1]^2+evS.ρP*evS.w[k*2+2,1]  #fix for mpc
+                dLog.Xt[k+1,p+1]=evS.τP*dLog.Xt[k,p+1]+evS.γP*ztotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]
             end
 
     		#fast ascent
@@ -291,7 +291,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     ρADMM=5e5
     ρDivRate=10
 
-    #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
+    #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
     dCMadmm=convMetricsStruct()
     dLogadmm=itLogNL()
 
@@ -356,11 +356,11 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @objective(tM,Min,sum(dLogadmm.Lam[k,p]*(-itotal[k,1]-dLogadmm.Vi[k,p])+
                               ρADMM/2*(-itotal[k,1]-dLogadmm.Vi[k,p])^2  for k=1:(horzLen+1)))
         if relaxed
-            @constraint(tM,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1,1])^2+evS.ρP*evS.w[stepI*2,1])
-            @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.w[stepI*2+k*2,1])
+            @constraint(tM,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1,1])^2+evS.ρP*evS.Tamb[stepI,1])
+            @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.Tamb[stepI+k,1])
         else
-            @NLconstraint(tM,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1,1])^2+evS.ρP*evS.w[stepI*2,1])
-            @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.w[stepI*2+k*2,1])
+            @NLconstraint(tM,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1,1])^2+evS.ρP*evS.Tamb[stepI,1])
+            @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.Tamb[stepI+k,1])
         end
         if noTlimit==false
         	@constraint(tM,upperTCon,xt.<=evS.Tmax)
@@ -381,7 +381,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         #lambda update eq 7.68
     	for k=1:horzLen+1
     		dLogadmm.uSum[k,p+1]=sum(dLogadmm.Un[(k-1)*N+n,p+1] for n=1:N)
-    		dLogadmm.couplConst[k,p+1]=dLogadmm.uSum[k,p+1] + evS.w[(k-1)*2+(stepI*2-1),1] - dLogadmm.Itotal[k,p+1]
+    		dLogadmm.couplConst[k,p+1]=dLogadmm.uSum[k,p+1] + evS.iD[stepI+(k-1),1] - dLogadmm.Itotal[k,p+1]
             dLogadmm.Lam[k,p+1]=max.(dLogadmm.Lam[k,p]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p+1]),0)
     		# dLogadmm.Lam[k,p+1]=dLogadmm.Lam[k,p]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p+1])
     	end
@@ -567,11 +567,11 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
                   ρALADp[1,p]/2*σI*(itotal[k]-dLogalad.Vi[k,p])^2+
                   ρALADp[1,p]/2*σT*(xt[k]-dLogalad.Vt[k,p])^2  for k=1:(horzLen+1)))
         if relaxed
-            @constraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*(itotal[1])^2-evS.ρP*evS.w[stepI*2,1]>=0)
-            @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*(itotal[k+1])^2-evS.ρP*evS.w[stepI*2+k*2,1]>=0)
+            @constraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*(itotal[1])^2-evS.ρP*evS.Tamb[stepI,1]>=0)
+            @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*(itotal[k+1])^2-evS.ρP*evS.Tamb[stepI+k,1]>=0)
         else
-            @NLconstraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*(itotal[1])^2-evS.ρP*evS.w[stepI*2,1]==0)
-            @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*(itotal[k+1])^2-evS.ρP*evS.w[stepI*2+k*2,1]==0)
+            @NLconstraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*(itotal[1])^2-evS.ρP*evS.Tamb[stepI,1]==0)
+            @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*(itotal[k+1])^2-evS.ρP*evS.Tamb[stepI+k,1]==0)
         end
         if noTlimit==false
         	@constraint(tM,upperTCon,xt.<=evS.Tmax)
@@ -621,7 +621,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
         for k=1:horzLen+1
             dLogalad.uSum[k,p+1]=sum(dLogalad.Un[(k-1)*N+n,p+1] for n=1:N)
-            dLogalad.couplConst[k,p+1]=dLogalad.uSum[k,p+1] + evS.w[(k-1)*2+(stepI*2-1),1] - dLogalad.Itotal[k,p+1]
+            dLogalad.couplConst[k,p+1]=dLogalad.uSum[k,p+1] + evS.iD[stepI+(k-1),1] - dLogalad.Itotal[k,p+1]
         end
 
         #check for convergence
@@ -678,7 +678,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
                                0.5*dI[k,1]^2*(Hi-lambdaTemp[k,1]*2*evS.γP)+
                                0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1)))
         @constraint(cM,currCon[k=1:horzLen+1],sum(dLogalad.Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
-                                                    (dLogalad.Itotal[k,p+1]+dI[k])==-evS.w[(k-1)*2+1])#+relaxS[k,1])
+                                                    (dLogalad.Itotal[k,p+1]+dI[k])==-evS.iD[stepI+(k-1)])#+relaxS[k,1])
         @constraint(cM,stateCon1[n=1:N],dSn[n,1]==evS.ηP[n,1]*dUn[n,1])
         @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+evS.ηP[n,1]*dUn[n+(k)*(N),1])
         @constraint(cM,tempCon1,dXt[1,1]==2*evS.γP*dLogalad.Itotal[1,p+1]*dI[1])

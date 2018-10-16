@@ -18,7 +18,7 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
     println("setting up model")
     centralModel = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1,NumericFocus=3))
 
-    #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
+    #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
     @variable(centralModel,u[1:N*(horzLen+1)])
     @variable(centralModel,sn[1:(N)*(horzLen+1)])
     @variable(centralModel,xt[1:(horzLen+1)])
@@ -35,9 +35,9 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
     println("constraints")
     @constraint(centralModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+evS.ηP[:,1].*u[1:N,1])
     @constraint(centralModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+evS.ηP[n,1]*u[n+(k)*(N),1])
-    @constraint(centralModel,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*evS.deltaI*sum((2*s-1)*z[s,1] for s=1:S)+evS.ρP*evS.w[stepI*2,1])
-    @constraint(centralModel,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+evS.ρP*evS.w[stepI*2+k*2,1])
-    @constraint(centralModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-evS.w[(k-1)*2+1]+sum(z[(k-1)*(S)+s] for s=1:S))
+    @constraint(centralModel,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*evS.deltaI*sum((2*s-1)*z[s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI,1])
+    @constraint(centralModel,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI+k,1])
+    @constraint(centralModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-evS.iD[stepI+(k-1)]+sum(z[(k-1)*(S)+s] for s=1:S))
     @constraint(centralModel,sn.<=1)
     @constraint(centralModel,sn.>=target)
     if noTlimit==false
@@ -62,11 +62,11 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
     Tactual=zeros(horzLen+1,1)
     itotal=zeros(horzLen+1,1)
     for k=1:horzLen+1
-        itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + evS.w[(k-1)*2+1,1]
+        itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + evS.iD[stepI+(k-1),1]
     end
-    Tactual[1,1]=evS.τP*xt0+evS.γP*itotal[1,1]^2+evS.ρP*evS.w[2,1]
+    Tactual[1,1]=evS.τP*xt0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
     for k=1:horzLen
-        Tactual[k+1,1]=evS.τP*Tactual[k,1]+evS.γP*itotal[k+1,1]^2+evS.ρP*evS.w[k*2+2,1]
+        Tactual[k+1,1]=evS.τP*Tactual[k,1]+evS.γP*itotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+(k-1),1]
     end
     lambdaCurr=-getdual(currCon)
     if noTlimit==false
@@ -96,6 +96,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     #initialize
     sn0=evS.s0
     xt0=evS.t0
+
     dCM=convMetricsStruct()
     dLog=itLogPWL()
 
@@ -111,11 +112,11 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	minAlpha=1e-6
     end
 
-    stepI = 1;
+    stepI = 1
     convChk = 1e-16
     convIt=maxIt
 
-    #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+eta*u[k+1]
+    #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
     alphaP=alpha*ones(maxIt+1,1)
 
     #initialize with guess
@@ -159,8 +160,8 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	    @variable(coorM,z[1:S*(horzLen+1)])
     	    @variable(coorM,xt[1:horzLen+1])
     	    @objective(coorM,Min,sum(dLog.Lam[k,p]*sum(-z[(k-1)*S+s,1] for s=1:S) for k=1:(horzLen+1)))
-    		@constraint(coorM,xt[1,1]==evS.τP*xt0+evS.γP*evS.deltaI*sum((2*s-1)*z[s,1] for s=1:S)+evS.ρP*evS.w[2,1]) #fix for MPC loop
-    		@constraint(coorM,[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+evS.ρP*evS.w[k*2+2,1])
+    		@constraint(coorM,xt[1,1]==evS.τP*xt0+evS.γP*evS.deltaI*sum((2*s-1)*z[s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI,1]) #fix for MPC loop
+    		@constraint(coorM,[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI+k,1])
     		if noTlimit==false
     			@constraint(coorM,upperTCon,xt.<=evS.Tmax)
     		end
@@ -182,7 +183,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     		for k=1:horzLen+1
     			dLog.zSum[k,p+1]=sum(dLog.Z[(k-1)*(S)+s,p+1] for s=1:S)
     			dLog.uSum[k,p+1]=sum(dLog.Un[(k-1)*N+n,p+1] for n=1:N)
-    			gradL[k,1]=dLog.uSum[k,p+1] + evS.w[(k-1)*2+(stepI*2-1),1] - dLog.zSum[k,p+1]
+    			gradL[k,1]=dLog.uSum[k,p+1] + evS.iD[stepI+(k-1),1] - dLog.zSum[k,p+1]
     		end
     		dCM.couplConst[p,1]=norm(gradL,2)
     	end
@@ -190,11 +191,11 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	#calculate actual temperature from nonlinear model of XFRM
     	ztotal=zeros(horzLen+1,1)
     	for k=1:horzLen+1
-    		ztotal[k,1]=sum(dLog.Un[(k-1)*N+n,p+1]    for n=1:N) + evS.w[(k-1)*2+(stepI*2-1),1]
+    		ztotal[k,1]=sum(dLog.Un[(k-1)*N+n,p+1]    for n=1:N) + evS.iD[stepI+(k-1),1]
     	end
-    	dLog.Tactual[1,p+1]=evS.τP*xt0+evS.γP*ztotal[1,1]^2+evS.ρP*evS.w[2,1] #fix for mpc
+    	dLog.Tactual[1,p+1]=evS.τP*xt0+evS.γP*ztotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
     	for k=1:horzLen
-    		dLog.Tactual[k+1,p+1]=evS.τP*dLog.Tactual[k,p+1]+evS.γP*ztotal[k+1,1]^2+evS.ρP*evS.w[k*2+2,1]  #fix for mpc
+    		dLog.Tactual[k+1,p+1]=evS.τP*dLog.Tactual[k,p+1]+evS.γP*ztotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
     	end
 
     	if updateMethod=="fastAscent"
@@ -265,7 +266,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     sn0=evS.s0
     xt0=evS.t0
 
-    stepI = 1;
+    stepI = 1
     convChk = 1e-16
     convIt=maxIt
 
@@ -275,7 +276,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     ρDivRate=10
 
 
-    #u w and z are one index ahead of x. i.e the x[k+1]=x[k]+η*u[k+1]
+    #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+η*u[k+1]
     dCMadmm=convMetricsStruct()
     dLogadmm=itLogPWL()
 
@@ -331,8 +332,8 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         # @objective(tM,Min, constFun1(-z,Vz[:,p])+constFun2(-z,Vz[:,p]))
     	@objective(tM,Min,sum(dLogadmm.Lam[k,p]*(sum(-z[(k-1)*(S)+s,1] for s=1:S)-sum(dLogadmm.Vz[(k-1)*(S)+s,p] for s=1:S)) +
     						ρI/2*(sum(-z[(k-1)*(S)+s,1] for s=1:S)-sum(dLogadmm.Vz[(k-1)*(S)+s,p] for s=1:S))^2  for k=1:(horzLen+1)))
-        @constraint(tM,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*evS.deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+evS.ρP*evS.w[stepI*2,1])
-        @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+evS.ρP*evS.w[stepI*2+k*2,1])
+        @constraint(tM,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*evS.deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+evS.ρP*evS.Tamb[stepI,1])
+        @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+evS.ρP*evS.Tamb[stepI+k,1])
         if noTlimit==false
         	@constraint(tM,upperTCon,xt.<=evS.Tmax)
         end
@@ -354,15 +355,15 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     	for k=1:horzLen+1
     		dLogadmm.uSum[k,p+1]=sum(dLogadmm.Un[(k-1)*N+n,p+1] for n=1:N)
     		dLogadmm.zSum[k,p+1]=sum(dLogadmm.Z[(k-1)*(S)+s,p+1] for s=1:S)
-    		dLogadmm.couplConst[k,p+1]= dLogadmm.uSum[k,p+1] + evS.w[(k-1)*2+(stepI*2-1),1] - dLogadmm.zSum[k,p+1]
+    		dLogadmm.couplConst[k,p+1]= dLogadmm.uSum[k,p+1] + evS.iD[stepI+(k-1),1] - dLogadmm.zSum[k,p+1]
             dLogadmm.Lam[k,p+1]=max.(dLogadmm.Lam[k,p]+ρI/(S*(N))*(dLogadmm.couplConst[k,p+1]),0)
     		#dLogadmm.Lam[k,p+1]=dLogadmm.Lam[k,p]+ρI/(S*(N))*(dLogadmm.couplConst[k,p+1])
     	end
 
     	#calculate actual temperature from nonlinear model of XFRM
-    	dLogadmm.Tactual[1,p+1]=evS.τP*xt0+evS.γP*dLogadmm.zSum[1,p+1]^2+evS.ρP*evS.w[2,1] #fix for mpc
+    	dLogadmm.Tactual[1,p+1]=evS.τP*xt0+evS.γP*dLogadmm.zSum[1,p+1]^2+evS.ρP*evS.Tamb[stepI,1] #fix for mpc
     	for k=1:horzLen
-    		dLogadmm.Tactual[k+1,p+1]=evS.τP*dLogadmm.Tactual[k,p+1]+evS.γP*dLogadmm.zSum[k+1,p+1]^2+evS.ρP*evS.w[k*2+2,1]  #fix for mpc
+    		dLogadmm.Tactual[k+1,p+1]=evS.τP*dLogadmm.Tactual[k,p+1]+evS.γP*dLogadmm.zSum[k+1,p+1]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
     	end
 
         #v upate eq 7.67
@@ -545,8 +546,8 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         @objective(tM,Min, sum(-dLogalad.Lam[k,p]*sum(z[(k-1)*(S)+s] for s=1:S)+
                   ρALADp[1,p]/2*σZ*(sum(z[(k-1)*(S)+s] for s=1:S)-sum(dLogalad.Vz[(k-1)*(S)+s,p] for s=1:S))^2+
                   ρALADp[1,p]/2*σT*(xt[k]-dLogalad.Vt[k,p])^2  for k=1:(horzLen+1)))
-        @constraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*evS.deltaI*sum((2*s-1)*z[s] for s=1:S)-evS.ρP*evS.w[stepI*2,1]==0)
-        @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*evS.deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)-evS.ρP*evS.w[stepI*2+k*2,1]==0)
+        @constraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*evS.deltaI*sum((2*s-1)*z[s] for s=1:S)-evS.ρP*evS.Tamb[stepI,1]==0)
+        @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*evS.deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)-evS.ρP*evS.Tamb[step+k,1]==0)
         if noTlimit==false
         	@constraint(tM,upperTCon,xt.<=evS.Tmax)
         end
@@ -591,7 +592,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         for k=1:horzLen+1
             dLogalad.uSum[k,p+1]=sum(dLogalad.Un[(k-1)*N+n,p+1] for n=1:N)
             dLogalad.zSum[k,p+1]=sum(dLogalad.Z[(k-1)*(S)+s,p+1] for s=1:S)
-            dLogalad.couplConst[k,p+1]=dLogalad.uSum[k,p+1] + evS.w[(k-1)*2+(stepI*2-1),1] - dLogalad.zSum[k,p+1]
+            dLogalad.couplConst[k,p+1]=dLogalad.uSum[k,p+1] + evS.iD[stepI+(k-1),1] - dLogalad.zSum[k,p+1]
         end
 
         #check for convergence
@@ -649,10 +650,10 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
                                    0.5*dSn[(k-1)*N+i,1]^2*Hs[i,1]+dLogalad.Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N) +
                                    0.5*dZ[k,1]^2*Hz+
                                    0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1)))
-        # @constraint(cM,currCon[k=1:horzLen+1],w[(k-1)*2+1]+relaxS[k,1]==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)+
+        # @constraint(cM,currCon[k=1:horzLen+1],iD[stepI+(k-1)]+relaxS[k,1]==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)+
         #                                          sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
         @constraint(cM,currCon[k=1:horzLen+1],sum(dLogalad.Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
-                                                 sum(dLogalad.Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S)==-evS.w[(k-1)*2+1])#+relaxS[k,1])
+                                                 sum(dLogalad.Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S)==-evS.iD[stepI+(k-1)])#+relaxS[k,1])
         #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
         @constraint(cM,stateCon1[n=1:N],dSn[n,1]==evS.ηP[n,1]*dUn[n,1])
         @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+evS.ηP[n,1]*dUn[n+(k)*(N),1])

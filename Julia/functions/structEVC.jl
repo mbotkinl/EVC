@@ -36,7 +36,8 @@ struct scenarioStruct
     Kn::Array{Int,2}
 
     #disturbances
-    w::Array{Float64,2}
+    iD::Array{Float64,2}
+    Tamb::Array{Float64,2}
 
     #User def penalty matrix
     Qsi::Array{Float64,2}

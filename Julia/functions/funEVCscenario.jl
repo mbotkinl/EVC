@@ -34,7 +34,6 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
     #ItotalMax = 4000  #A
     deltaI = ItotalMax/S
 
-
     ## MPC Paramters
     T1=12
     T2=2
@@ -82,12 +81,12 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
     FullinelasticDemand = [FullinelasticDemand; FullinelasticDemand[length(FullinelasticDemand)]*ones(K2+1,1)]
     FullDload   = Dload_amplitude*FullinelasticDemand;    # peaks during mid-day
     iD = FullDload/Vtf;                                     #background demand current
-    FullTamb    = Tamb_amplitude*ones(K+1,1);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
-    ndisturbs = 2;
-    w = zeros((K+1)*ndisturbs,1);
-    for i=1:K+1
-        w[(i-1)*ndisturbs+1:i*ndisturbs,1]  = [iD[i,1]; FullTamb[i,1]];
-    end
+    Tamb    = Tamb_amplitude*ones(K+1,1);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
+    #ndisturbs = 2;
+    # w = zeros((K+1)*ndisturbs,1);
+    # for i=1:K+1
+    #     w[(i-1)*ndisturbs+1:i*ndisturbs,1]  = [iD[i,1]; FullTamb[i,1]];
+    # end
 
     # penalty matrix new (need to fix for k>Ki)
     Ru   = 0.1*1000^2;              # Stage and terminal penalty on local power flow (inputs u)
@@ -104,7 +103,7 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
 
 
     evScenario=scenarioStruct(N,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,
-                            ηP,τP,ρP,γP,s0,t0,Snmin,Kn,w,Qsi,Ri)
+                            ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD,Tamb,Qsi,Ri)
 
     if saveS==true
         JLD.save("EVCscenarioN$(N).jld","evScenario",evScenario)
