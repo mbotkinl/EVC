@@ -62,7 +62,8 @@ for k =1:horzLen+1
 	        else
 				ratio[k,n]=(desiredSOC-prevSOC)/(evS.ηP[n]*evS.imax[n]*(evS.Kn[n]-(k-1)))
 				#what to do when (desiredSOC-ratio[k,n])<0 ??***
-				mu[k,n] = 1/mttr*((desiredSOC-ratio[k,n])/(ratio[k,n]-0))*((setSOC-0)/(desiredSOC-setSOC))
+				# mu[k,n] = 1/mttr*((desiredSOC-ratio[k,n])/(ratio[k,n]-0))*((setSOC-0)/(desiredSOC-setSOC))
+				mu[k,n] = ratio[k,n]
 				P[k,n] = min(max(1-exp(-mu[k,n]*evS.Ts),0),1)
 				t=rand()
 			  	Req[k,n]=if (t>(1-P[k,n])) 1 else  0  end
@@ -75,7 +76,9 @@ for k =1:horzLen+1
 	end
 
 	prevT = if k>1 T[k-1] else evS.t0 end
-    requiredCh=Int.(Req[k,:].<0)
+    #requiredCh=Int.(Req[k,:].<0)
+	requiredCh=Int.(ratio[k,:].>=1)
+
 
 	#receive requests and forecast for the next packLen intervals
 	# how to treat packets ending during this forecast horizon???****
@@ -100,7 +103,7 @@ for k =1:horzLen+1
 	@variable(m,Test[1:packLen])
 	@objective(m,Min,-sum(u))
 	@constraint(m,tempCon1,Test[1]>=evS.τP*prevT+evS.γP*(sum(u[n]*evS.imax[n] for n=1:N)+evS.iD[k])^2+evS.ρP*evS.Tamb[k])
-	@constraint(m,tempCon2[kk=2:packLen],Test[kk]>=evS.τP*Test[kk-1]+evS.γP*(sum(u[n]*evS.imax[n] for n=1:N)+evS.iD[kk])^2+evS.ρP*evS.Tamb[k+kk])
+	@constraint(m,tempCon2[kk=2:packLen],Test[kk]>=evS.τP*Test[kk-1]+evS.γP*(sum(u[n]*evS.imax[n] for n=1:N)+evS.iD[k+kk])^2+evS.ρP*evS.Tamb[k+kk])
 	@constraint(m,Test.<=evS.Tmax)
 	for n in requiredInd
 		@constraint(m,u[n]==1)
@@ -108,7 +111,7 @@ for k =1:horzLen+1
 	for n in optOff
 		@constraint(m,u[n]==0)
 	end
-	TT = STDOUT # save original STDOUT strea
+	TT = STDOUT
 	redirect_stdout()
 	statusC = solve(m)
 	redirect_stdout(TT)
