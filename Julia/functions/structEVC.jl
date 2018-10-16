@@ -5,6 +5,7 @@ using Parameters
 #structures
 struct scenarioStruct
     N::Int
+    Ts::Float64
 
     #horizon
     K1::Int

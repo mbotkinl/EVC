@@ -102,8 +102,8 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
     @assert all(ηP.*K.*FullChargeTime_relative.*imax+s0 .>= SOCmin) "Some PEVs may not be able to meet SOC min level by desired time!"
 
 
-    evScenario=scenarioStruct(N,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,
-                            ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD,Tamb,Qsi,Ri)
+    evScenario=scenarioStruct(N,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,
+                              ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD,Tamb,Qsi,Ri)
 
     if saveS==true
         JLD.save("EVCscenarioN$(N).jld","evScenario",evScenario)
