@@ -194,7 +194,9 @@ function checkDesiredStates(Sn,Kn,Snmin)
     epsilon=1e-3
     flag=true
     N=length(Kn)
-    if size(Sn)[2]>1 #columns are for each vehicle
+
+    #if size(Sn)[2]>1 #columns are for each vehicle
+    if length(size(Sn))>1
         for n=1:N
             if (Sn[Kn[n],n]-Snmin[n])<-epsilon
                 flag=false
