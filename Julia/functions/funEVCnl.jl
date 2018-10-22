@@ -129,7 +129,9 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     lambda0=1000*ones(horzLen+1,1)
     #lambda0=lamCurrStarNL
     #lambda0=max.(lamCurrStarNL,0)
-    dLog.Lam[:,1]=lambda0
+
+    #dLog.Lam[:,1]=lambda0
+	prevLam=lambda0
 
     #iterate at each time step until convergence
     for p=1:maxIt
@@ -143,13 +145,12 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
             if relaxed
                 evM = Model(solver = GurobiSolver())
-
             else
                 evM = Model(solver = IpoptSolver())
             end
             @variable(evM,un[1:horzLen+1])
             @variable(evM,sn[1:horzLen+1])
-    		@objective(evM,Min,sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(un[k,1])^2*evS.Ri[evInd,1]+dLog.Lam[k,p]*un[k,1] for k=1:horzLen+1))
+    		@objective(evM,Min,sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(un[k,1])^2*evS.Ri[evInd,1]+prevLam[k,1]*un[k,1] for k=1:horzLen+1))
     		@constraint(evM,sn[1,1]==sn0[evInd,1]+evS.ηP[evInd,1]*un[1,1]) #fix for MPC loop
     		@constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*un[k+1,1]) #check K+1
             @constraint(evM,sn.<=1)
@@ -164,8 +165,8 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
 
     		@assert statusEVM==:Optimal "EV NL optimization not solved to optimality"
 
-            dLog.Sn[ind,p+1]=getvalue(sn) #solved state goes in next time slot
-            dLog.Un[ind,p+1]=getvalue(un) #current go
+            dLog.Sn[ind,p]=getvalue(sn) #solved state goes in next time slot
+            dLog.Un[ind,p]=getvalue(un) #current go
         end
 
     	if updateMethod=="dualAscent"
@@ -179,7 +180,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
             end
 	        @variable(coorM,itotal[1:(horzLen+1)])
     	    @variable(coorM,xt[1:(horzLen+1)])
-    	    @objective(coorM,Min,-sum(dLog.Lam[k,p]*itotal[k,1] for k=1:(horzLen+1)))
+    	    @objective(coorM,Min,-sum(prevLam[k,1]*itotal[k,1] for k=1:(horzLen+1)))
             if relaxed
                 @constraint(coorM,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.Tamb[stepI,1]) #fix for MPC loop
         		@constraint(coorM,[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.Tamb[stepI+k,1])
@@ -200,14 +201,14 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
 
     		@assert statusC==:Optimal "XFRM NL optimization not solved to optimality"
 
-    		 dLog.Xt[:,p+1]=getvalue(xt)
-    		 dLog.Itotal[:,p+1]=getvalue(itotal)
+    		 dLog.Xt[:,p]=getvalue(xt)
+    		 dLog.Itotal[:,p]=getvalue(itotal)
 
     	    #grad of lagragian
     		gradL=zeros(horzLen+1,1)
     		for k=1:horzLen+1
-    			dLog.uSum[k,p+1]=sum(dLog.Un[(k-1)*N+n,p+1] for n=1:N)
-    			gradL[k,1]=dLog.uSum[k,p+1] + evS.iD[stepI+(k-1),1] - dLog.Itotal[k,p+1]
+    			dLog.uSum[k,p]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N)
+    			gradL[k,1]=dLog.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLog.Itotal[k,p]
     		end
     		dLog.couplConst[p,1]=norm(gradL,2)
     	end
@@ -215,16 +216,16 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	if updateMethod=="fastAscent"
             ztotal=zeros(horzLen+1,1)
             for k=1:horzLen+1
-                ztotal[k,1]=sum(dLog.Un[(k-1)*N+n,p+1] for n=1:N) + evS.iD[stepI+(k-1),1]
+                ztotal[k,1]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N) + evS.iD[stepI+(k-1),1]
             end
-            dLog.Xt[1,p+1]=evS.τP*xt0+evS.γP*ztotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
+            dLog.Xt[1,p]=evS.τP*xt0+evS.γP*ztotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
             for k=1:horzLen
-                dLog.Xt[k+1,p+1]=evS.τP*dLog.Xt[k,p+1]+evS.γP*ztotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]
+                dLog.Xt[k+1,p]=evS.τP*dLog.Xt[k,p]+evS.γP*ztotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]
             end
 
     		#fast ascent
     		if noTlimit==false
-    			gradL=dLog.Xt[:,p+1]-evS.Tmax*ones(horzLen+1,1)
+    			gradL=dLog.Xt[:,p]-evS.Tmax*ones(horzLen+1,1)
     		else
     			gradL=zeros(horzLen+1,1)
     		end
@@ -237,24 +238,24 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	end
 
         #update lambda
-    	alphaP[p+1,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
-    	#alphaP[p+1,1] = alphaP[p,1]*alphaRate
+    	alphaP[p,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
+    	#alphaP[p,1] = alphaP[p,1]*alphaRate
 
-    	#Lam[:,p+1]=Lam[:,p]+alpha_p*gradL
-        dLog.Lam[:,p+1]=max.(dLog.Lam[:,p]+alphaP[p+1,1]*gradL,0)
+    	#Lam[:,p]=Lam[:,p]+alpha_p*gradL
+        dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP[p,1]*gradL,0)
 
     	#check convergence
     	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
     					sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-        dLog.objVal[1,p+1]=objFun(dLog.Sn[:,p+1],dLog.Un[:,p+1])
-    	fGap=dLog.objVal[1,p+1]-cSolnl.objVal
-    	snGap=norm((dLog.Sn[:,p+1]-cSolnl.Sn),2)
-    	unGap=norm((dLog.Un[:,p+1]-cSolnl.Un),2)
-    	itGap = norm(dLog.Lam[:,p+1]-dLog.Lam[:,p],2)
+        dLog.objVal[1,p]=objFun(dLog.Sn[:,p],dLog.Un[:,p])
+    	fGap=dLog.objVal[1,p]-cSolnl.objVal
+    	snGap=norm((dLog.Sn[:,p]-cSolnl.Sn),2)
+    	unGap=norm((dLog.Un[:,p]-cSolnl.Un),2)
+    	itGap = norm(dLog.Lam[:,p]-prevLam[:,1],2)
     	if updateMethod=="fastAscent"
-    		convGap = norm(dLog.Lam[:,p+1]-cSolnl.lamTemp,2)
+    		convGap = norm(dLog.Lam[:,p]-cSolnl.lamTemp,2)
     	else
-    		convGap = norm(dLog.Lam[:,p+1]-cSolnl.lamCoupl,2)
+    		convGap = norm(dLog.Lam[:,p]-cSolnl.lamCoupl,2)
     	end
     	dCM.obj[p,1]=abs(fGap)
     	dCM.sn[p,1]=snGap
@@ -271,6 +272,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
             @printf "snGap   %e after %g iterations\n" snGap p
     		@printf "unGap   %e after %g iterations\n" unGap p
     		@printf("fGap    %e after %g iterations\n\n",fGap,p)
+			prevLam=dLog.Lam[:,p]
     	end
     end
     return (dLog,dCM,convIt)
@@ -301,9 +303,13 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     lambda0=1000*ones(horzLen+1,1)
     vi0=-ones(horzLen+1,1)
     vu0=.01*ones(N*(horzLen+1),1)
-    dLogadmm.Vi[:,1]=vi0
-    dLogadmm.Vu[:,1]=vu0
-    dLogadmm.Lam[:,1]=lambda0
+
+    # dLogadmm.Vi[:,1]=vi0
+    # dLogadmm.Vu[:,1]=vu0
+    # dLogadmm.Lam[:,1]=lambda0
+	prevLam=lambda0
+	prevVu=vu0
+	prevVi=vi0
 
     for p in 1:maxIt
         ρADMMp = ρADMM/ceil(p/ρDivRate)
@@ -311,7 +317,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
         #x minimization eq 7.66 in Bertsekas
         @sync @parallel for evInd=1:N
-            evV=dLogadmm.Vu[collect(evInd:N:length(dLogadmm.Vu[:,p])),p]
+            evV=prevVu[collect(evInd:N:length(prevVu[:,1])),1]
             target=zeros((horzLen+1),1)
     		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
 			if relaxed
@@ -323,7 +329,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         	@variable(evM,sn[1:(horzLen+1)])
         	@variable(evM,u[1:(horzLen+1)])
     		@objective(evM,Min, sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
-                                    dLogadmm.Lam[k,p]*(u[k,1]-evV[k,1])+
+                                    prevLam[k,1]*(u[k,1]-evV[k,1])+
                                     ρADMMp/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1))
             @constraint(evM,sn[1,1]==sn0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
             @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
@@ -337,8 +343,8 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         	redirect_stdout(TT)
             @assert statusEVM==:Optimal "EV NLP NL optimization not solved to optimality"
 
-    		dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p+1])),p+1]=getvalue(sn)
-    		dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p+1])),p+1]=getvalue(u)
+    		dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=getvalue(sn)
+    		dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=getvalue(u)
         end
 
         #N+1 decoupled problem aka transformer current
@@ -353,8 +359,8 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     	# constFun1(u,v)=sum(Lam[k,p]*(u[k,1]-v[k,1])  for k=1:(horzLen+1))
     	# constFun2(u,v)=ρADMM/2*sum((u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
         # @objective(tM,Min, constFun1(-itotal,Vi[:,p])+constFun2(-itotal,Vi[:,p]))
-        @objective(tM,Min,sum(dLogadmm.Lam[k,p]*(-itotal[k,1]-dLogadmm.Vi[k,p])+
-                              ρADMM/2*(-itotal[k,1]-dLogadmm.Vi[k,p])^2  for k=1:(horzLen+1)))
+        @objective(tM,Min,sum(prevLam[k,1]*(-itotal[k,1]-prevVi[k,1])+
+                              ρADMM/2*(-itotal[k,1]-prevVi[k,1])^2  for k=1:(horzLen+1)))
         if relaxed
             @constraint(tM,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1,1])^2+evS.ρP*evS.Tamb[stepI,1])
             @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.Tamb[stepI+k,1])
@@ -375,35 +381,35 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         redirect_stdout(TT)
         @assert statusTM==:Optimal "XFRM NLP NL optimization not solved to optimality"
 
-        dLogadmm.Xt[:,p+1]=getvalue(xt)
-        dLogadmm.Itotal[:,p+1]=getvalue(itotal)
+        dLogadmm.Xt[:,p]=getvalue(xt)
+        dLogadmm.Itotal[:,p]=getvalue(itotal)
 
         #lambda update eq 7.68
     	for k=1:horzLen+1
-    		dLogadmm.uSum[k,p+1]=sum(dLogadmm.Un[(k-1)*N+n,p+1] for n=1:N)
-    		dLogadmm.couplConst[k,p+1]=dLogadmm.uSum[k,p+1] + evS.iD[stepI+(k-1),1] - dLogadmm.Itotal[k,p+1]
-            dLogadmm.Lam[k,p+1]=max.(dLogadmm.Lam[k,p]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p+1]),0)
-    		# dLogadmm.Lam[k,p+1]=dLogadmm.Lam[k,p]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p+1])
+    		dLogadmm.uSum[k,p]=sum(dLogadmm.Un[(k-1)*N+n,p] for n=1:N)
+    		dLogadmm.couplConst[k,p]=dLogadmm.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLogadmm.Itotal[k,p]
+            dLogadmm.Lam[k,p]=max.(prevLam[k,1]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p]),0)
+    		# dLogadmm.Lam[k,p]=prevLam[k,1]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p])
     	end
 
         #v upate eq 7.67
         for k=1:horzLen+1
-            dLogadmm.Vu[(k-1)*N+collect(1:N),p+1]=min.(max.(dLogadmm.Un[(k-1)*N+collect(1:N),p+1]+(dLogadmm.Lam[k,p]-dLogadmm.Lam[k,p+1])/ρADMMp,evS.imin),evS.imax)
-    		dLogadmm.Vi[k,p+1]=max.(min.(-dLogadmm.Itotal[k,p+1]+(dLogadmm.Lam[k,p]-dLogadmm.Lam[k,p+1])/ρADMMp,0),-evS.ItotalMax)
+            dLogadmm.Vu[(k-1)*N+collect(1:N),p]=min.(max.(dLogadmm.Un[(k-1)*N+collect(1:N),p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp,evS.imin),evS.imax)
+    		dLogadmm.Vi[k,p]=max.(min.(-dLogadmm.Itotal[k,p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp,0),-evS.ItotalMax)
         end
 
         #check convergence
     	objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
     					sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
     					sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-        dLogadmm.objVal[1,p+1]=objFun(dLogadmm.Sn[:,p+1],dLogadmm.Xt[:,p+1],dLogadmm.Un[:,p+1])
-    	fGap= dLogadmm.objVal[1,p+1]-cSolnl.objVal
+        dLogadmm.objVal[1,p]=objFun(dLogadmm.Sn[:,p],dLogadmm.Xt[:,p],dLogadmm.Un[:,p])
+    	fGap= dLogadmm.objVal[1,p]-cSolnl.objVal
     	#fGap= objFun(Sn[:,p],Xt[:,p],Un[:,p])-fStar
-    	snGap=norm((dLogadmm.Sn[:,p+1]-cSolnl.Sn),2)
-        unGap=norm((dLogadmm.Un[:,p+1]-cSolnl.Un),2)
-    	constGap=norm(dLogadmm.couplConst[:,p+1],2)
-    	itGap = norm(dLogadmm.Lam[:,p+1]-dLogadmm.Lam[:,p],2)
-    	convGap = norm(dLogadmm.Lam[:,p+1]-cSolnl.lamCoupl,2)
+    	snGap=norm((dLogadmm.Sn[:,p]-cSolnl.Sn),2)
+        unGap=norm((dLogadmm.Un[:,p]-cSolnl.Un),2)
+    	constGap=norm(dLogadmm.couplConst[:,p],2)
+    	itGap = norm(dLogadmm.Lam[:,p]-prevLam[:,1],2)
+    	convGap = norm(dLogadmm.Lam[:,p]-cSolnl.lamCoupl,2)
     	dCMadmm.obj[p,1]=abs(fGap)
     	dCMadmm.sn[p,1]=snGap
         dCMadmm.un[p,1]=unGap
@@ -412,7 +418,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     	dCMadmm.lam[p,1]=convGap
     	if(itGap <= convChk )
     		@printf "Converged after %g iterations\n" p
-    		convIt=p+1
+    		convIt=p
     		break
     	else
     		@printf "lastGap  %e after %g iterations\n" itGap p
@@ -420,7 +426,9 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     		@printf "constGap %e after %g iterations\n" constGap p
             @printf "snGap    %e after %g iterations\n" snGap p
     		@printf("fGap     %e after %g iterations\n\n",fGap,p)
-
+			prevLam=dLogadmm.Lam[:,p]
+			prevVu=dLogadmm.Vu[:,p]
+			prevVi=dLogadmm.Vi[:,p]
     	end
     end
 
@@ -473,11 +481,17 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     # vi0=itotalStarNL
     # vu0=uStarNL
     # vs0=snStarNL
-    dLogalad.Vu[:,1]=vu0 #initial guess goes in column 1
-    dLogalad.Vs[:,1]=vs0 #initial guess goes in column 1
-    dLogalad.Vi[:,1]=vi0
-    dLogalad.Vt[:,1]=vt0
-    dLogalad.Lam[:,1]=lambda0
+
+    # dLogalad.Vu[:,1]=vu0 #initial guess goes in column 1
+    # dLogalad.Vs[:,1]=vs0 #initial guess goes in column 1
+    # dLogalad.Vi[:,1]=vi0
+    # dLogalad.Vt[:,1]=vt0
+    # dLogalad.Lam[:,1]=lambda0
+	prevVu=vu0
+    prevVs=vs0
+    prevVi=vi0
+    prevVt=vt0
+    prevLam=lambda0
 
     ρALADp=ρALAD*ones(1,maxIt+1)
     ΔY=zeros(1,maxIt+1)
@@ -491,9 +505,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             for k=1:horzLen
                 append!(ind,k*N+evInd)
             end
-            lambda=dLogalad.Lam[:,p]
-            evVu=dLogalad.Vu[ind,p]
-            evVs=dLogalad.Vs[ind,p]
+            evVu=prevVu[ind,1]
+            evVs=prevVs[ind,1]
             target=zeros((horzLen+1),1)
             target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
             #evM = Model(solver = GurobiSolver(NumericFocus=3))
@@ -506,7 +519,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             @variable(evM,sn[1:(horzLen+1)])
             @variable(evM,u[1:(horzLen+1)])
             @objective(evM,Min,sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
-                                    lambda[k,1]*(u[k,1])+
+                                    prevLam[k,1]*(u[k,1])+
                                     ρALADp[1,p]/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
                                     ρALADp[1,p]/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1))
             @constraint(evM,sn[1,1]==sn0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
@@ -532,7 +545,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
             cValMax=abs.(uVal-evS.imax[evInd,1]).<tolU
             cValMin=abs.(uVal-evS.imin[evInd,1]).<tolU
-            dLogalad.Cu[ind,p+1]=1cValMax-1cValMin
+            dLogalad.Cu[ind,p]=1cValMax-1cValMin
             # cVal=zeros(length(ind),1)
             # cVal[kappaMax.>0]=1
             # cVal[kappaMin.<0]=-1
@@ -546,10 +559,10 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             # cVal[socMin.<0]=-1
             # Cs[ind,p+1]=cVal
 
-            dLogalad.Sn[ind,p+1]=snVal
-    		dLogalad.Un[ind,p+1]=uVal
-            dLogalad.Gu[ind,p+1]=2*evS.Ri[evInd,1]*uVal
-            dLogalad.Gs[ind,p+1]=2*evS.Qsi[evInd,1]*snVal-2*evS.Qsi[evInd,1]
+            dLogalad.Sn[ind,p]=snVal
+    		dLogalad.Un[ind,p]=uVal
+            dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
+            dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal-2*evS.Qsi[evInd,1]
             #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=σU[evInd,1]*(evVu-uVal)+lambda
             #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=σN[evInd,1]*(evVs-snVal)-lambda
         end
@@ -563,9 +576,9 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 		end
         @variable(tM,itotal[1:(horzLen+1)])
         @variable(tM,xt[1:(horzLen+1)])
-        @objective(tM,Min, sum(-dLogalad.Lam[k,p]*itotal[k]+
-                  ρALADp[1,p]/2*σI*(itotal[k]-dLogalad.Vi[k,p])^2+
-                  ρALADp[1,p]/2*σT*(xt[k]-dLogalad.Vt[k,p])^2  for k=1:(horzLen+1)))
+        @objective(tM,Min, sum(-prevLam[k,1]*itotal[k]+
+                  ρALADp[1,p]/2*σI*(itotal[k]-prevVi[k,1])^2+
+                  ρALADp[1,p]/2*σT*(xt[k]-prevVt[k,1])^2  for k=1:(horzLen+1)))
         if relaxed
             @constraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*(itotal[1])^2-evS.ρP*evS.Tamb[stepI,1]>=0)
             @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*(itotal[k+1])^2-evS.ρP*evS.Tamb[stepI+k,1]>=0)
@@ -599,7 +612,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
         cValMax=abs.(iVal-evS.ItotalMax).<tolI
         cValMin=abs.(iVal-0).<tolI
-        dLogalad.Ci[:,p+1]=1cValMax-1cValMin
+        dLogalad.Ci[:,p]=1cValMax-1cValMin
         # cVal=zeros(length(ind),1)
         # cVal[kappaMax.>0]=1
         # cVal[kappaMin.<0]=-1
@@ -608,36 +621,36 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
         cValMax=abs.(xtVal-evS.Tmax).<tolT
         cValMin=abs.(xtVal-0).<tolT
-        dLogalad.Ct[:,p+1]=1cValMax-1cValMin
+        dLogalad.Ct[:,p]=1cValMax-1cValMin
         # cVal=zeros(length(ind),1)
         # cVal[tMax.>0]=1
         # cVal[tMin.<0]=-1
         # Ct[:,p+1]=cVal
 
-        dLogalad.Xt[:,p+1]=xtVal
-        dLogalad.Itotal[:,p+1]=iVal
-        dLogalad.Gi[:,p+1]=0
+        dLogalad.Xt[:,p]=xtVal
+        dLogalad.Itotal[:,p]=iVal
+        dLogalad.Gi[:,p]=0
         #Gz[:,p+1]=σZ*(Vz[:,p]-zVal)-repeat(-Lam[:,p],inner=S)
 
         for k=1:horzLen+1
-            dLogalad.uSum[k,p+1]=sum(dLogalad.Un[(k-1)*N+n,p+1] for n=1:N)
-            dLogalad.couplConst[k,p+1]=dLogalad.uSum[k,p+1] + evS.iD[stepI+(k-1),1] - dLogalad.Itotal[k,p+1]
+            dLogalad.uSum[k,p]=sum(dLogalad.Un[(k-1)*N+n,p] for n=1:N)
+            dLogalad.couplConst[k,p]=dLogalad.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLogalad.Itotal[k,p]
         end
 
         #check for convergence
-        constGap=norm(dLogalad.couplConst[:,p+1],1)
-        cc=norm(vcat((dLogalad.Vu[:,p]-dLogalad.Un[:,p+1]),(dLogalad.Vi[:,p]-dLogalad.Itotal[:,p+1])),1)
+        constGap=norm(dLogalad.couplConst[:,p],1)
+        cc=norm(vcat((prevVu[:,1]-dLogalad.Un[:,p]),(prevVi[:,1]-dLogalad.Itotal[:,p])),1)
         #convCheck=ρALADp*norm(vcat(repmat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
         objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                         sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
                         sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-        dLogalad.objVal[1,p+1]=objFun(dLogalad.Sn[:,p+1],dLogalad.Xt[:,p+1],dLogalad.Un[:,p+1])
-        fGap= abs(dLogalad.objVal[1,p+1]-cSolnl.objVal)
-        fGap2= abs((dLogalad.objVal[1,p+1]-cSolnl.objVal)/cSolnl.objVal)
-        snGap=norm((dLogalad.Sn[:,p+1]-cSolnl.Sn),2)
-        unGap=norm((dLogalad.Un[:,p+1]-cSolnl.Un),2)
-        itGap = norm(dLogalad.Lam[:,p]-dLogalad.Lam[:,max(p-1,1)],2)
-        convGap = norm(dLogalad.Lam[:,p]-cSolnl.lamCoupl,2)
+        dLogalad.objVal[1,p]=objFun(dLogalad.Sn[:,p],dLogalad.Xt[:,p],dLogalad.Un[:,p])
+        fGap= abs(dLogalad.objVal[1,p]-cSolnl.objVal)
+        fGap2= abs((dLogalad.objVal[1,p]-cSolnl.objVal)/cSolnl.objVal)
+        snGap=norm((dLogalad.Sn[:,p]-cSolnl.Sn),2)
+        unGap=norm((dLogalad.Un[:,p]-cSolnl.Un),2)
+		itGap = norm(dLogalad.Lam[:,p]-prevLam[:,1],2)
+		convGap = norm(dLogalad.Lam[:,p]-cSolnl.lamCoupl,2)
         convGap2 = norm(round.(dLogalad.Lam[:,p]-cSolnl.lamCoupl,10)./cSolnl.lamCoupl,2) #need some rounding here if both are 1e-8
 
         dCMalad.obj[p,1]=fGap
@@ -649,7 +662,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         convCheck[p,1]=cc
         if  constGap<=epsilon && convCheck<=epsilon
             @printf "Converged after %g iterations\n" p
-            convIt=p+1
+            convIt=p
             break
         else
             @printf "lastGap    %e after %g iterations\n" itGap p
@@ -663,7 +676,6 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         #coupled QP
 		if relaxed
 			cM = Model(solver = GurobiSolver())
-
 		else
 			cM = Model(solver = IpoptSolver())
 		end
@@ -673,20 +685,20 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @variable(cM,dXt[1:(horzLen+1)])
         #@variable(cM,relaxS[1:(horzLen+1)])
         #objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
-    	@objective(cM,Min, sum(sum(0.5*dUn[(k-1)*N+i,1]^2*Hu[i,1]+dLogalad.Gu[(k-1)*N+i,p+1]*dUn[(k-1)*N+i,1]+
-                                   0.5*dSn[(k-1)*N+i,1]^2*Hs[i,1]+dLogalad.Gs[(k-1)*N+i,p+1]*dSn[(k-1)*N+i,1] for i=1:N)+
+    	@objective(cM,Min, sum(sum(0.5*dUn[(k-1)*N+i,1]^2*Hu[i,1]+dLogalad.Gu[(k-1)*N+i,p]*dUn[(k-1)*N+i,1]+
+                                   0.5*dSn[(k-1)*N+i,1]^2*Hs[i,1]+dLogalad.Gs[(k-1)*N+i,p]*dSn[(k-1)*N+i,1] for i=1:N)+
                                0.5*dI[k,1]^2*(Hi-lambdaTemp[k,1]*2*evS.γP)+
                                0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1)))
-        @constraint(cM,currCon[k=1:horzLen+1],sum(dLogalad.Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
-                                                    (dLogalad.Itotal[k,p+1]+dI[k])==-evS.iD[stepI+(k-1)])#+relaxS[k,1])
+        @constraint(cM,currCon[k=1:horzLen+1],sum(dLogalad.Un[(k-1)*(N)+n,p]+dUn[(k-1)*(N)+n,1] for n=1:N)-
+                                                    (dLogalad.Itotal[k,p]+dI[k])==-evS.iD[stepI+(k-1)])#+relaxS[k,1])
         @constraint(cM,stateCon1[n=1:N],dSn[n,1]==evS.ηP[n,1]*dUn[n,1])
         @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+evS.ηP[n,1]*dUn[n+(k)*(N),1])
-        @constraint(cM,tempCon1,dXt[1,1]==2*evS.γP*dLogalad.Itotal[1,p+1]*dI[1])
-        @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==evS.τP*dXt[k,1]+2*evS.γP*dLogalad.Itotal[k+1,p+1]*dI[k+1,1])
-        @constraint(cM,dLogalad.Ci[:,p+1].*dI.<=0)
-        @constraint(cM,dLogalad.Cu[:,p+1].*dUn.<=0)
-        @constraint(cM,dLogalad.Cs[:,p+1].*dSn.<=0)
-        @constraint(cM,dLogalad.Ct[:,p+1].*dXt.<=0)
+        @constraint(cM,tempCon1,dXt[1,1]==2*evS.γP*dLogalad.Itotal[1,p]*dI[1])
+        @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==evS.τP*dXt[k,1]+2*evS.γP*dLogalad.Itotal[k+1,p]*dI[k+1,1])
+        @constraint(cM,dLogalad.Ci[:,p].*dI.<=0)
+        @constraint(cM,dLogalad.Cu[:,p].*dUn.<=0)
+        @constraint(cM,dLogalad.Cs[:,p].*dSn.<=0)
+        @constraint(cM,dLogalad.Ct[:,p].*dXt.<=0)
 
     	TT = STDOUT # save original STDOUT stream
         redirect_stdout()
@@ -695,21 +707,26 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @assert statusM==:Optimal "ALAD Central optimization not solved to optimality"
 
         #update step
-        # Lam[:,p+1]=-getdual(currCon)
+        # Lam[:,p]=-getdual(currCon)
         α1=1
         α2=1
         α3=1
         #α1=α1/ceil(p/2)
-        #Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
-        dLogalad.Lam[:,p+1]=max.(dLogalad.Lam[:,p]+α3*(-getdual(currCon)-dLogalad.Lam[:,p]),0)
+        #Lam[:,p]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
+        dLogalad.Lam[:,p]=max.(prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1]),0)
+        dLogalad.Vu[:,p]=prevVu[:,1]+α1*(dLogalad.Un[:,p]-prevVu[:,1])+α2*getvalue(dUn)
+        dLogalad.Vi[:,p]=prevVi[:,1]+α1*(dLogalad.Itotal[:,p]-prevVi[:,1])+α2*getvalue(dI)
+        dLogalad.Vs[:,p]=prevVs[:,1]+α1*(dLogalad.Sn[:,p]-prevVs[:,1])+α2*getvalue(dSn)
+        dLogalad.Vt[:,p]=prevVt[:,1]+α1*(dLogalad.Xt[:,p]-prevVt[:,1])+α2*getvalue(dXt)
 
-        dLogalad.Vu[:,p+1]=dLogalad.Vu[:,p]+α1*(dLogalad.Un[:,p+1]-dLogalad.Vu[:,p])+α2*getvalue(dUn)
-        dLogalad.Vi[:,p+1]=dLogalad.Vi[:,p]+α1*(dLogalad.Itotal[:,p+1]-dLogalad.Vi[:,p])+α2*getvalue(dI)
-        dLogalad.Vs[:,p+1]=dLogalad.Vs[:,p]+α1*(dLogalad.Sn[:,p+1]-dLogalad.Vs[:,p])+α2*getvalue(dSn)
-        dLogalad.Vt[:,p+1]=dLogalad.Vt[:,p]+α1*(dLogalad.Xt[:,p+1]-dLogalad.Vt[:,p])+α2*getvalue(dXt)
+		prevVu=dLogalad.Vu[:,p]
+	    prevVs=dLogalad.Vs[:,p]
+	    prevVi=dLogalad.Vi[:,p]
+	    prevVt=dLogalad.Vt[:,p]
+	    prevLam=dLogalad.Lam[:,p]
 
         ρALADp[1,p+1]=min(ρALADp[1,p]*ρRate,1e6) #increase ρ every iteration
-        ΔY[1,p+1]=norm(vcat(getvalue(dUn),getvalue(dI),getvalue(dSn),getvalue(dXt)),Inf)
+        ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dI),getvalue(dSn),getvalue(dXt)),Inf)
     end
 
     return dLogalad,dCMalad,convIt,ΔY,convCheck
