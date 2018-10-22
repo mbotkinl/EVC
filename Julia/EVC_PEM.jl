@@ -26,17 +26,19 @@ mttr=300
 
 tic()
 for k =1:horzLen+1
-
+	#println(k)
 	#send requests
-    for n=1:N
 
+    for n=1:N
 		# clean up this logic***
 		if k==1
 			existPack=false
 		elseif (un[k-1,n]>0)
 			if k<=packLen
+				prevChar=k-1
 				existPack=true
 			elseif (un[k-(packLen),n]==0)
+				prevChar=sum(un[(k-1):(k-(packLen)),n])
 				existPack=true
 			else
 				existPack=false
@@ -44,44 +46,39 @@ for k =1:horzLen+1
 		else
 			existPack=false
 		end
+
 		if existPack==true # still using a packet
 			ratio[k,n]=1
-			Req[k,n]=-1
-			# un[k,n]=evS.imax[n]
+			Req[k,n]=-packLen+prevChar
 		else
 			desiredSOC=1 # for now
 			setSOC=0.5 # for now
-			# desiredSOC=evS.Snmin[n]
+			# desiredSOC=evS.Snmin[n] #this should be a ratio?
 			prevSOC= if k>1 sn[k-1,n] else evS.s0[n] end
 	        if (prevSOC-desiredSOC)>=-epsilon #desiredSOC satisfied
 				ratio[k,n]=0
 				Req[k,n]=0
-			elseif k>=evS.Kn[n] # opt out (not satisified)
-				ratio[k,n]=1
-				Req[k,n]=-1
+				#elseif k>=evS.Kn[n] # opt out (not satisified)
+			elseif ratio[k,n]>=1 # opt out (need to charge for rest of time)
+				Req[k,n]=-packLen
 	        else
 				ratio[k,n]=(desiredSOC-prevSOC)/(evS.ηP[n]*evS.imax[n]*(evS.Kn[n]-(k-1)))
-				#what to do when (desiredSOC-ratio[k,n])<0 ??***
-				# mu[k,n] = 1/mttr*((desiredSOC-ratio[k,n])/(ratio[k,n]-0))*((setSOC-0)/(desiredSOC-setSOC))
-				mu[k,n] = ratio[k,n]
+				#mu[k,n] = 1/mttr*((desiredSOC-ratio[k,n])/(ratio[k,n]-0))*((setSOC-0)/(desiredSOC-setSOC))
+				mu[k,n] = 1/mttr*((ratio[k,n]-0)/(desiredSOC-ratio[k,n]))*((desiredSOC-setSOC)/(setSOC-0))
+				#mu[k,n] = ratio[k,n]
 				P[k,n] = min(max(1-exp(-mu[k,n]*evS.Ts),0),1)
 				t=rand()
 			  	Req[k,n]=if (t>(1-P[k,n])) 1 else  0  end
 	        end
-
-			#decided by Temp and probability
-			#un[k,n]=if (T[k]<evS.Tmax) & (t>(1-R[k,n])) evS.imax[n] else  0  end
 		end
-        #sn[k,n]=sn[k-1,n]+evS.ηP[n]*un[k,n]
 	end
 
 	prevT = if k>1 T[k-1] else evS.t0 end
-    #requiredCh=Int.(Req[k,:].<0)
-	requiredCh=Int.(ratio[k,:].>=1)
+    requiredCh=Int.(Req[k,:].<0)
+	#requiredCh=Int.(ratio[k,:].>=1)
 
 
 	#receive requests and forecast for the next packLen intervals
-	# how to treat packets ending during this forecast horizon???****
 
 	# Test=zeros(packLen,1)
 	# Iest=sum(abs(Req[k,n])*evS.imax[n] for n=1:N)
@@ -98,30 +95,42 @@ for k =1:horzLen+1
 
 	requiredInd=find(x->x==1,requiredCh)
 	optOff=find(x->x==0,Req[k,:])
+
 	m = Model(solver = GurobiSolver())
-	@variable(m,u[1:N],Bin)
+	@variable(m,u[1:packLen,1:N],Bin)
 	@variable(m,Test[1:packLen])
 	@objective(m,Min,-sum(u))
-	@constraint(m,tempCon1,Test[1]>=evS.τP*prevT+evS.γP*(sum(u[n]*evS.imax[n] for n=1:N)+evS.iD[k])^2+evS.ρP*evS.Tamb[k])
-	@constraint(m,tempCon2[kk=2:packLen],Test[kk]>=evS.τP*Test[kk-1]+evS.γP*(sum(u[n]*evS.imax[n] for n=1:N)+evS.iD[k+kk])^2+evS.ρP*evS.Tamb[k+kk])
+	@constraint(m,tempCon1,Test[1]>=evS.τP*prevT+evS.γP*(sum(u[1,n]*evS.imax[n] for n=1:N)+evS.iD[k])^2+evS.ρP*evS.Tamb[k])
+	@constraint(m,tempCon2[kk=2:packLen],Test[kk]>=evS.τP*Test[kk-1]+evS.γP*(sum(u[kk,n]*evS.imax[n] for n=1:N)+evS.iD[k+kk])^2+evS.ρP*evS.Tamb[k+kk])
 	@constraint(m,Test.<=evS.Tmax)
-	@constraint(m,sum(u[n] for n in requiredInd)==length(requiredInd))
-	@constraint(m,sum(u[n] for n in optOff)==0)
+	# @constraint(m,optOn[kk=1:packLen],sum(u[n,kk] for n in requiredInd[kk])==length(requiredInd[kk]))
+	@constraint(m,optOn[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(abs(Req[k,requiredInd[nn]])))==abs(Req[k,requiredInd[nn]]))
+	@constraint(m,optOff[kk=1:packLen],sum(u[kk,n] for n in optOff)==0)
+
 	TT = STDOUT
 	redirect_stdout()
 	statusC = solve(m)
 	redirect_stdout(TT)
 
+	# m = Model(solver = GurobiSolver())
+	# @variable(m,u[1:5],Bin)
+	# @objective(m,Min,-sum(u))
+	# @constraint(m,sum(u)==3)
+	# statusC = solve(m)
+    # getvalue(u)
+	#
+
 
 	if statusC==:Optimal
-		Rec[k,:]=getvalue(u)
+		Rec[k,:]=getvalue(u)[1,:]
 	else
+		#return
 		Rec[k,:]=requiredCh
 	end
 
 	#R>=1 and packRec get charged
 	for n=1:N
-		un[k,n]=if Rec[k,n]==1 evS.imax[n] else  0  end
+		un[k,n]= if Rec[k,n]==1 evS.imax[n] else  0  end
 		prevSOC= if k>1 sn[k-1,n] else evS.s0[n] end
 		sn[k,n]=prevSOC+evS.ηP[n]*un[k,n]
 	end
@@ -155,7 +164,7 @@ p1pem=plot(pemSol.Sn,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		minor_label_font_size=20pt,key_label_font_size=20pt))
 
 p2pem=plot(pemSol.Un,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
+		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)",orientation=:vertical),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,
 		minor_label_font_size=20pt,line_width=3pt,key_label_font_size=20pt))
