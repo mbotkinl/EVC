@@ -548,7 +548,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
             if slack
                 append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
             end
-            @objective(evM,Min,)
+            @objective(evM,Min,objExp)
             @constraint(evM,sn[1,1]==sn0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
             @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
             @constraint(evM,socKappaMax,sn.<=1)

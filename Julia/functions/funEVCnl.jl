@@ -2,7 +2,7 @@
 
 
 #central
-function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=false,slack::Bool)
+function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=false, slack=false)
 
     #initialize with current states
     sn0=evS.s0
@@ -111,7 +111,7 @@ end
 
 #dual
 function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
-    evS::scenarioStruct,cSolnl::centralSolutionStruct, relaxed=false,slack::Bool)
+    evS::scenarioStruct,cSolnl::centralSolutionStruct, relaxed=false, slack=false)
 
     #initialize with current states
     sn0=evS.s0
@@ -306,7 +306,7 @@ end
 
 #admm
 function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct,
-	relaxed=false,slack::Bool)
+	relaxed=false, slack=false)
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
@@ -474,7 +474,7 @@ end
 
 #aladin
 function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct,
-	relaxed=false,slack::Bool)
+	relaxed=false, slack=false)
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
