@@ -9,7 +9,7 @@ horzLen=evS.K1
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 tic()
-cSol=pwlEVcentral(N,S,horzLen,evS)
+cSol=pwlEVcentral(N,S,horzLen,evS,slack)
 timeT=toc()
 
 filename = "central_N$(N)"

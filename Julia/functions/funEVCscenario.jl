@@ -98,12 +98,15 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
     Ri=Ru*(5*rand(N,1)+.1);
     Qsi=[Qs*(10*rand(N,1)+.01);QT];
 
+    β=1e9*rand(N,1)
+
+
     #move this into struct???
     @assert all(ηP.*K.*FullChargeTime_relative.*imax+s0 .>= SOCmin) "Some PEVs may not be able to meet SOC min level by desired time!"
 
 
     evScenario=scenarioStruct(N,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,
-                              ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD,Tamb,Qsi,Ri)
+                              ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD,Tamb,Qsi,Ri,β)
 
     if saveS==true
         JLD.save("EVCscenarioN$(N).jld","evScenario",evScenario)

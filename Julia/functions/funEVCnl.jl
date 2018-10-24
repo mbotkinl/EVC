@@ -2,7 +2,7 @@
 
 
 #central
-function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=false)
+function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=false,slack::Bool)
 
     #initialize with current states
     sn0=evS.s0
@@ -29,12 +29,17 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     @variable(cModel,sn[1:(N)*(horzLen+1)])
     @variable(cModel,xt[1:(horzLen+1)])
     @variable(cModel,itotal[1:(horzLen+1)])
+	if slack
+        @variable(cModel,slackSn[1:N])
+    end
 
     println("obj")
 	objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,1]+(u[n,1])^2*evS.Ri[n,1] for n=1:N)
 	for k=2:horzLen+1
 		append!(objExp,sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1]  for n=1:N))
 	end
+	if slack append!(objExp,sum(evS.β[n]*slackSn[n]^2 for n=1:N)) end
+
 	#objExp=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1] for n=1:N) for k=1:(horzLen+1))
     @objective(cModel,Min, objExp)
 
@@ -50,7 +55,12 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     end
     @constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-evS.iD[stepI+(k-1)]+itotal[k])
     @constraint(cModel,sn.<=1)
-    @constraint(cModel,sn.>=target)
+	if slack
+		@constraint(cModel,sn.>=target.*(1-repmat(slackSn,horzLen+1,1)))
+		@constraint(cModel,slackSn.>=0)
+	else
+		@constraint(cModel,sn.>=target)
+	end
     if noTlimit==false
     	@constraint(cModel,upperTCon,xt.<=evS.Tmax)
     end
@@ -69,6 +79,11 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     snRaw=getvalue(sn)
     xtRaw=getvalue(xt)
     itotalRaw=getvalue(itotal)
+	if slack
+        slackSnRaw=getvalue(slackSn)
+    else
+        slackSnRaw=zeros(N)
+    end
 
     if noTlimit==false
     	kappaUpperT=-getdual(upperTCon)
@@ -90,13 +105,13 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     cSol=centralSolutionStruct(Xt=xtRaw,Un=uRaw,Sn=snRaw,
                         Itotal=itotalRaw,uSum=uSum,
                         objVal=getobjectivevalue(cModel),
-                        lamTemp=lambdaTemp,lamCoupl=lambdaCurr)
+                        lamTemp=lambdaTemp,lamCoupl=lambdaCurr,slackSn=slackSnRaw)
     return cSol
 end
 
 #dual
 function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
-    evS::scenarioStruct,cSolnl::centralSolutionStruct, relaxed=false)
+    evS::scenarioStruct,cSolnl::centralSolutionStruct, relaxed=false,slack::Bool)
 
     #initialize with current states
     sn0=evS.s0
@@ -150,11 +165,21 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
             end
             @variable(evM,un[1:horzLen+1])
             @variable(evM,sn[1:horzLen+1])
-    		@objective(evM,Min,sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(un[k,1])^2*evS.Ri[evInd,1]+prevLam[k,1]*un[k,1] for k=1:horzLen+1))
+			if slack @variable(evM,slackSn) end
+			objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(un[k,1])^2*evS.Ri[evInd,1]+prevLam[k,1]*un[k,1] for k=1:horzLen+1)
+			if slack
+				append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
+			end
+    		@objective(evM,Min,objExp)
     		@constraint(evM,sn[1,1]==sn0[evInd,1]+evS.ηP[evInd,1]*un[1,1]) #fix for MPC loop
     		@constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*un[k+1,1]) #check K+1
             @constraint(evM,sn.<=1)
-            @constraint(evM,sn.>=target)
+			if slack
+                @constraint(evM,sn.>=target.*(1-slackSn))
+                @constraint(evM,slackSn>=0)
+            else
+                @constraint(evM,sn.>=target)
+            end
             @constraint(evM,un.<=evS.imax[evInd,1])
             @constraint(evM,un.>=evS.imin[evInd,1])
 
@@ -165,8 +190,9 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
 
     		@assert statusEVM==:Optimal "EV NL optimization not solved to optimality"
 
-            dLog.Sn[ind,p]=getvalue(sn) #solved state goes in next time slot
-            dLog.Un[ind,p]=getvalue(un) #current go
+            dLog.Sn[ind,p]=getvalue(sn)
+            dLog.Un[ind,p]=getvalue(un)
+			dLog.slackSn[evInd]=getvalue(slackSn)
         end
 
     	if updateMethod=="dualAscent"
@@ -279,7 +305,8 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
 end
 
 #admm
-function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct, relaxed=false)
+function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct,
+	relaxed=false,slack::Bool)
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
@@ -322,19 +349,28 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
 			if relaxed
                 evM = Model(solver = GurobiSolver())
-
             else
                 evM = Model(solver = IpoptSolver())
             end
         	@variable(evM,sn[1:(horzLen+1)])
         	@variable(evM,u[1:(horzLen+1)])
-    		@objective(evM,Min, sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
+			if slack @variable(evM,slackSn) end
+			objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
                                     prevLam[k,1]*(u[k,1]-evV[k,1])+
-                                    ρADMMp/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1))
+                                    ρADMMp/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1)
+			if slack
+                append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
+            end
+			@objective(evM,Min, objExp)
             @constraint(evM,sn[1,1]==sn0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
             @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
         	@constraint(evM,sn.<=1)
-        	@constraint(evM,sn.>=target)
+			if slack
+                @constraint(evM,sn.>=target.*(1-slackSn))
+                @constraint(evM,slackSn>=0)
+            else
+                @constraint(evM,sn.>=target)
+            end
             @constraint(evM,u.<=evS.imax[evInd,1])
             @constraint(evM,u.>=evS.imin[evInd,1])
         	TT = STDOUT # save original STDOUT stream
@@ -345,7 +381,8 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
     		dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=getvalue(sn)
     		dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=getvalue(u)
-        end
+			dLogadmm.slackSn[evInd]=getvalue(slackSn)
+		end
 
         #N+1 decoupled problem aka transformer current
 		if relaxed
@@ -436,7 +473,8 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 end
 
 #aladin
-function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct, relaxed=false)
+function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct,
+	relaxed=false,slack::Bool)
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
@@ -512,20 +550,29 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             #evM = Model(solver = GurobiSolver(NumericFocus=3))
 			if relaxed
                 evM = Model(solver = GurobiSolver())
-
             else
                 evM = Model(solver = IpoptSolver())
             end
             @variable(evM,sn[1:(horzLen+1)])
             @variable(evM,u[1:(horzLen+1)])
-            @objective(evM,Min,sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
+			if slack @variable(evM,slackSn) end
+			objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
                                     prevLam[k,1]*(u[k,1])+
                                     ρALADp[1,p]/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
-                                    ρALADp[1,p]/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1))
+                                    ρALADp[1,p]/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)
+			if slack
+                append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
+            end
+			@objective(evM,Min,objExp)
             @constraint(evM,sn[1,1]==sn0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
             @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
             @constraint(evM,socKappaMax,sn.<=1)
-            @constraint(evM,socKappaMin,sn.>=target)
+			if slack
+				@constraint(evM,sn.>=target.*(1-slackSn))
+				@constraint(evM,slackSn>=0)
+			else
+				@constraint(evM,socKappaMin,sn.>=target)
+			end
             @constraint(evM,curKappaMax,u.<=evS.imax[evInd,1])
             @constraint(evM,curKappaMin,u.>=evS.imin[evInd,1])
 
@@ -552,13 +599,18 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             # Cu[ind,p+1]=cVal
 
             cValMax=abs.(snVal-1).<tolS
-            cValMin=abs.(snVal-target).<tolS
+			if slack
+				cValMin=abs.(snVal-target*(1-getvalue(slackSn))).<tolS
+			else
+				cValMin=abs.(snVal-target).<tolS
+			end
             dLogalad.Cs[ind,p+1]=1cValMax-1cValMin
             # cVal=zeros(length(ind),1)
             # cVal[socMax.>0]=1
             # cVal[socMin.<0]=-1
             # Cs[ind,p+1]=cVal
 
+			dLogalad.slackSn[evInd]=getvalue(slackSn)
             dLogalad.Sn[ind,p]=snVal
     		dLogalad.Un[ind,p]=uVal
             dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal

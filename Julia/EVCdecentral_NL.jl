@@ -2,7 +2,7 @@
 #4/10/18
 
 tic()
-dLognl,dCMnl,convIt=nlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSolnl,relaxed)
+dLognl,dCMnl,convIt=nlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSolnl,relaxed,slack)
 timeT=toc()
 
 s=Symbol(@sprintf("dCMnl_%s",updateMethod))

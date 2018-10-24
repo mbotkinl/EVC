@@ -24,6 +24,7 @@ loadResults=0
 noTlimit=false
 maxIt=100
 relaxed=false
+slack=true
 verbose=false
 
 if datafile=="mat"

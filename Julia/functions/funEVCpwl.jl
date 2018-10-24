@@ -2,7 +2,7 @@
 
 
 #central
-function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
+function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,slack::Bool)
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
@@ -16,19 +16,24 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
     end
 
     println("setting up model")
-    centralModel = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1,NumericFocus=3))
+    #centralModel = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1,NumericFocus=3))
+    centralModel = Model(solver = GurobiSolver())
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
     @variable(centralModel,u[1:N*(horzLen+1)])
     @variable(centralModel,sn[1:(N)*(horzLen+1)])
     @variable(centralModel,xt[1:(horzLen+1)])
     @variable(centralModel,z[1:evS.S*(horzLen+1)])
+    if slack
+        @variable(centralModel,slackSn[1:N])
+    end
     println("obj")
 
     objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,1]+(u[n,1])^2*evS.Ri[n,1] for n=1:N)
     for k=2:horzLen+1
         append!(objExp,sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1]  for n=1:N))
     end
+    if slack append!(objExp,sum(evS.β[n]*slackSn[n]^2 for n=1:N)) end
     #objExp=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1]  for n=1:N) for k=1:horzLen+1)
 
     @objective(centralModel,Min,objExp)
@@ -39,7 +44,12 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
     @constraint(centralModel,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI+k,1])
     @constraint(centralModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-evS.iD[stepI+(k-1)]+sum(z[(k-1)*(S)+s] for s=1:S))
     @constraint(centralModel,sn.<=1)
-    @constraint(centralModel,sn.>=target)
+    if slack
+        @constraint(centralModel,sn.>=target.*(1-repmat(slackSn,horzLen+1,1)))
+        @constraint(centralModel,slackSn.>=0)
+    else
+        @constraint(centralModel,sn.>=target)
+    end
     if noTlimit==false
     	@constraint(centralModel,upperTCon,xt.<=evS.Tmax)
     end
@@ -57,6 +67,11 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
     snRaw=getvalue(sn)
     xtRaw=getvalue(xt)
     zRaw=getvalue(z)
+    if slack
+        slackSnRaw=getvalue(slackSn)
+    else
+        slackSnRaw=zeros(N)
+    end
 
     #calculate actual temp
     Tactual=zeros(horzLen+1,1)
@@ -86,12 +101,13 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct)
                         Itotal=itotal,uSum=uSum,zSum=zSum,
                         objVal=getobjectivevalue(centralModel),
                         lamTemp=lambdaUpperT,lamCoupl=lambdaCurr,
-                        Tactual=Tactual)
+                        Tactual=Tactual,slackSn=slackSnRaw)
     return cSol
 end
 
 #dual
-function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS::scenarioStruct,cSol::centralSolutionStruct)
+function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS::scenarioStruct,
+    cSol::centralSolutionStruct,slack::Bool)
 
     #initialize
     sn0=evS.s0
@@ -135,11 +151,21 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
             evM=Model(solver = GurobiSolver(NumericFocus=1))
             @variable(evM,un[1:horzLen+1])
             @variable(evM,sn[1:horzLen+1])
-            @objective(evM,Min,sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(un[k,1])^2*evS.Ri[evInd,1]+prevLam[k,1]*un[k,1] for k=1:horzLen+1))
+            if slack @variable(evM,slackSn) end
+            objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(un[k,1])^2*evS.Ri[evInd,1]+prevLam[k,1]*un[k,1] for k=1:horzLen+1)
+            if slack
+                append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
+            end
+            @objective(evM,Min,objExp)
     		@constraint(evM,sn[1,1]==sn0[evInd,1]+evS.ηP[evInd,1]*un[1,1]) #fix for MPC loop
     		@constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*un[k+1,1]) #check K+1
             @constraint(evM,sn.<=1)
-            @constraint(evM,sn.>=target)
+            if slack
+                @constraint(evM,sn.>=target.*(1-slackSn))
+                @constraint(evM,slackSn>=0)
+            else
+                @constraint(evM,sn.>=target)
+            end
             @constraint(evM,un.<=evS.imax[evInd,1])
             @constraint(evM,un.>=evS.imin[evInd,1])
 
@@ -152,6 +178,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
 
             dLog.Sn[collect(evInd:N:N*(horzLen+1)),p]=getvalue(sn) #solved state goes in next time slot
             dLog.Un[collect(evInd:N:N*(horzLen+1)),p]=getvalue(un) #current go
+            dLog.slackSn[evInd]=getvalue(slackSn)
         end
 
     	if updateMethod=="dualAscent"
@@ -262,7 +289,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
 end
 
 #ADMM
-function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolutionStruct)
+function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolutionStruct,slack::Bool)
     #initialize
     sn0=evS.s0
     xt0=evS.t0
@@ -308,13 +335,23 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         	evM = Model(solver = GurobiSolver())
         	@variable(evM,sn[1:(horzLen+1)])
         	@variable(evM,u[1:(horzLen+1)])
-    		@objective(evM,Min, sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
+            if slack @variable(evM,slackSn) end
+            objExp= sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
     								prevLam[k,1]*(u[k,1]-evV[k,1])+
-    								ρI/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1))
+    								ρI/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1)
+            if slack
+                append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
+            end
+    		@objective(evM,Min,objExp)
             @constraint(evM,sn[1,1]==sn0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
             @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
         	@constraint(evM,sn.<=1)
-        	@constraint(evM,sn.>=target)
+            if slack
+                @constraint(evM,sn.>=target.*(1-slackSn))
+                @constraint(evM,slackSn>=0)
+            else
+                @constraint(evM,sn.>=target)
+            end
             @constraint(evM,u.<=evS.imax[evInd,1])
             @constraint(evM,u.>=evS.imin[evInd,1])
         	TT = STDOUT # save original STDOUT stream
@@ -325,6 +362,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 
     		dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=getvalue(sn)
     		dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=getvalue(u)
+            dLogadmm.slackSn[evInd]=getvalue(slackSn)
         end
 
         #N+1 decoupled problem aka transformer current
@@ -417,7 +455,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 end
 
 #ALADIN
-function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolutionStruct)
+function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolutionStruct,slack::Bool)
     #initialize
     sn0=evS.s0
     xt0=evS.t0
@@ -502,14 +540,24 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
             evM = Model(solver = GurobiSolver())
             @variable(evM,sn[1:(horzLen+1)])
             @variable(evM,u[1:(horzLen+1)])
-            @objective(evM,Min,sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
+            if slack @variable(evM,slackSn) end
+            objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
                                     prevLam[k,1]*(u[k,1])+
                                     ρALADp[1,p]/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
-                                    ρALADp[1,p]/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1))
+                                    ρALADp[1,p]/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)
+            if slack
+                append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
+            end
+            @objective(evM,Min,)
             @constraint(evM,sn[1,1]==sn0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
             @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
             @constraint(evM,socKappaMax,sn.<=1)
-            @constraint(evM,socKappaMin,sn.>=target)
+            if slack
+                @constraint(evM,sn.>=target.*(1-slackSn))
+                @constraint(evM,slackSn>=0)
+            else
+                @constraint(evM,socKappaMin,sn.>=target)
+            end
             @constraint(evM,curKappaMax,u.<=evS.imax[evInd,1])
             @constraint(evM,curKappaMin,u.>=evS.imin[evInd,1])
 
@@ -537,13 +585,18 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 
 
             cValMax=abs.(snVal-1).<tolS
-            cValMin=abs.(snVal-target).<tolS
+            if slack
+                cValMin=abs.(snVal-target*(1-getvalue(slackSn))).<tolS
+            else
+                cValMin=abs.(snVal-target).<tolS
+            end
             # cVal=socMax
             # cVal[cVal.>0]=1
             # cVal=socMin
             # cVal[cVal.<0]=-1
             dLogalad.Cs[ind,p]=1cValMax-1cValMin
 
+            dLogalad.slackSn[evInd]=getvalue(slackSn)
             dLogalad.Sn[ind,p]=snVal
     		dLogalad.Un[ind,p]=uVal
             dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal

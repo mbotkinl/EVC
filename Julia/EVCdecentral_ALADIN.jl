@@ -7,7 +7,7 @@
 #current constraint is coupling
 
 tic()
-dLogalad,dCMalad,convIt,ΔY,convCheck=pwlEValad(N,S,horzLen,maxIt,evS,cSol)
+dLogalad,dCMalad,convIt,ΔY,convCheck=pwlEValad(N,S,horzLen,maxIt,evS,cSol,slack)
 timeT=toc()
 
 

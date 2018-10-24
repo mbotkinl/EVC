@@ -7,7 +7,7 @@
 #current constraint is coupling
 
 tic()
-dLogadmm,dCMadmm,convIt=pwlEVadmm(N,S,horzLen,maxIt,evS,cSol)
+dLogadmm,dCMadmm,convIt=pwlEVadmm(N,S,horzLen,maxIt,evS,cSol,slack)
 timeT=toc()
 
 

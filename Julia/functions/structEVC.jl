@@ -43,6 +43,8 @@ struct scenarioStruct
     #User def penalty matrix
     Qsi::Array{Float64,2}
     Ri::Array{Float64,2}
+    β::Array{Float64,2}
+
 end
 
 
@@ -68,6 +70,7 @@ end
     Sn::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
     Un::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
     Z::Array{Float64}=zeros(S*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    slackSn::Array=zeros(N,1)
 
     #extra model variables
     Tactual::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
@@ -105,6 +108,7 @@ end
     Sn::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
     Un::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
     Itotal::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    slackSn::Array=zeros(N,1)
 
     #extra model variables
     uSum::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
@@ -144,4 +148,5 @@ end
     uSum::Array=zeros(N*(horzLen+1),1)
     zSum::Array=zeros(S*(horzLen+1),1)
     Tactual::Array=zeros((horzLen+1),1)
+    slackSn::Array=zeros(N,1)
 end
