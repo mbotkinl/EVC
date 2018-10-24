@@ -23,12 +23,12 @@ T=zeros(horzLen+1,1)
 epsilon=1e-3
 packLen=3 #number of time steps
 mttr=300
+poolSol=Int(min(round(N*packLen),10))
 
 tic()
 for k =1:horzLen+1
-	#println(k)
+	println(k)
 	#send requests
-
     for n=1:N
 		# clean up this logic***
 		if k==1
@@ -76,13 +76,14 @@ for k =1:horzLen+1
 		end
 	end
 
+
+
+	#receive requests and forecast for the next packLen intervals
 	prevT = if k>1 T[k-1] else evS.t0 end
     requiredCh=Int.(Req[k,:].<0)
 	#requiredCh=Int.(ratio[k,:].>=1)
 	requiredInd=find(x->x==1,requiredCh)
 	optOff=find(x->x==0,Req[k,:])
-
-	#receive requests and forecast for the next packLen intervals
 
 	# Test=zeros(packLen,1)
 	# Iest=sum(abs(Req[k,n])*evS.imax[n] for n=1:N)
@@ -97,7 +98,7 @@ for k =1:horzLen+1
 	# 	Rec[k,:]=Int.(Req[k,:].<0)
 	# end
 
-	m = Model(solver = GurobiSolver())
+	m = Model(solver = GurobiSolver(PoolSearchMode=1,PoolSolutions=poolSol,PoolGap=0))
 	@variable(m,u[1:packLen,1:N],Bin)
 	@variable(m,Test[1:packLen])
 	@objective(m,Min,-sum(u))
@@ -105,13 +106,14 @@ for k =1:horzLen+1
 	@constraint(m,tempCon2[kk=2:packLen],Test[kk]>=evS.τP*Test[kk-1]+evS.γP*(sum(u[kk,n]*evS.imax[n] for n=1:N)+evS.iD[k+kk])^2+evS.ρP*evS.Tamb[k+kk])
 	@constraint(m,Test.<=evS.Tmax)
 	# @constraint(m,optOn[kk=1:packLen],sum(u[n,kk] for n in requiredInd[kk])==length(requiredInd[kk]))
-	@constraint(m,optOn[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(abs(Req[k,requiredInd[nn]])))==abs(Req[k,requiredInd[nn]]))
-	@constraint(m,optOff[kk=1:packLen],sum(u[kk,n] for n in optOff)==0)
+	@constraint(m,optOnC[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(abs(Req[k,requiredInd[nn]])))==abs(Req[k,requiredInd[nn]]))
+	@constraint(m,optOffC[kk=1:packLen],sum(u[kk,n] for n in optOff)==0)
 
 	TT = STDOUT
 	redirect_stdout()
 	statusC = solve(m)
 	redirect_stdout(TT)
+
 
 	# m = Model(solver = GurobiSolver())
 	# @variable(m,u[1:5],Bin)
@@ -123,7 +125,18 @@ for k =1:horzLen+1
 
 
 	if statusC==:Optimal
-		Rec[k,:]=getvalue(u)[1,:]
+		#take random solution if multiple
+		solCount=Gurobi.get_sol_count(getrawsolver(m))
+		if solCount>1
+			println(solCount," multiple solutions found")
+			solNum=rand(1:solCount-1)
+			setparam!(getrawsolver(m),"SolutionNumber",solNum)
+			getparam(getrawsolver(m),"SolutionNumber")
+			sol=Gurobi.get_dblattrarray(getrawsolver(m),"Xn",1,N)
+		else
+			sol=getvalue(u)[1,:]
+		end
+		Rec[k,:]=sol
 	else
 		#return
 		Rec[k,:]=requiredCh
@@ -187,6 +200,16 @@ pRpem=plot(ratio,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,
 		minor_label_font_size=20pt,line_width=3pt,key_label_font_size=20pt))
 if drawFig==1 draw(PNG(path*"J_PEM_Ratio.png", 24inch, 12inch), pRpem) end
+
+
+aggUpem=plot(layer(x=1:horzLen+1,y=sum(uPlot[:,i] for i=1:N),Geom.line,Theme(default_color=colorant"blue")),
+		layer(x=1:horzLen+1,y=uSum,Geom.line,Theme(default_color=colorant"green")),
+		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
+		Coord.Cartesian(xmin=0,xmax=horzLen+1),
+		Theme(background_color=colorant"white"),
+		Guide.manual_color_key("", ["Central", "PEM"], ["blue", "green"]))
+if drawFig==1 draw(PNG(path*"J_PEM_uSum.png", 24inch, 12inch), aggUpem) end
+
 
 checkDesiredStates(pemSol.Sn,evS.Kn,evS.Snmin)
 checkDesiredStates(pemSol.Sn,evS.Kn,ones(N))
