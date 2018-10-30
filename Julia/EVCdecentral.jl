@@ -106,6 +106,7 @@ convPlot=plot(x=1:convIt,y=dCM.lam[1:convIt,1],Geom.line,Scale.y_log10,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_Conv.png", 36inch, 12inch), convPlot) end
 
+#checkDesiredStates(dLog.Sn,evS.Kn,evS.Snmin)
 
 
 #compare central and decentral current agg

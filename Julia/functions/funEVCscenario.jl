@@ -98,7 +98,7 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
     Ri=Ru*(5*rand(N,1)+.1);
     Qsi=[Qs*(10*rand(N,1)+.01);QT];
 
-    β=1e9*rand(N,1)
+    β=1e3*rand(N,1)
 
 
     #move this into struct???

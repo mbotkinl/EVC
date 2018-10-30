@@ -29,25 +29,25 @@ if loadResults==1
 end
 
 println("plotting....")
-xPlot=zeros(horzLen+1,N)
-xPlot2=zeros(horzLen+1,N)
+snPlot=zeros(horzLen+1,N)
+#xPlot2=zeros(horzLen+1,N)
 uPlot=zeros(horzLen+1,N)
 for ii= 1:N
-	xPlot[:,ii]=cSolnl.Sn[collect(ii:N:length(cSolnl.Sn))]
-	xPlot2[:,ii]=(evS.Snmin[ii,1]-xPlot[:,ii])./(evS.Kn[ii,1]-(1:1:length(xPlot[:,ii])))
+	snPlot[:,ii]=cSolnl.Sn[collect(ii:N:length(cSolnl.Sn))]
+	#xPlot2[:,ii]=(evS.Snmin[ii,1]-xPlot[:,ii])./(evS.Kn[ii,1]-(1:1:length(xPlot[:,ii])))
     uPlot[:,ii]=cSolnl.Un[collect(ii:N:length(cSolnl.Un))]
 end
 
-p1nl=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+p1nl=plot(snPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
 		Coord.Cartesian(xmin=0,xmax=horzLen+1,ymax=1),
 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
 		minor_label_font_size=16pt,key_label_font_size=16pt))
-p1bnl=plot(xPlot2,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
-		Coord.Cartesian(xmin=0,xmax=horzLen+1),
-		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
-		minor_label_font_size=16pt,key_label_font_size=16pt))
+# p1bnl=plot(xPlot2,x=Row.index,y=Col.value,color=Col.index,Geom.line,
+# 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
+# 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
+# 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
+# 		minor_label_font_size=16pt,key_label_font_size=16pt))
 if drawFig==1 draw(PNG(path*"J_centralNL_SOC.png", 24inch, 12inch), p1nl) end
 
 p2nl=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
@@ -78,6 +78,7 @@ fName="J_Central.png"
 
 #draw(PNG(path*fName, 13inch, 14inch), vstack(p1,p2,p3,p4))
 
+checkDesiredStates(cSolnl.Sn,evS.Kn,evS.Snmin)
 
 
 #uPlotNoLim=uPlot

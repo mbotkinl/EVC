@@ -9,7 +9,7 @@
 
 
 tic()
-dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl,relaxed)
+dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl,relaxed,slack)
 timeT=toc()
 
 relaxString= if relaxed==true "_relax"else "" end

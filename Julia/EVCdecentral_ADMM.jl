@@ -101,3 +101,5 @@ constPlotadmm=plot(x=1:convIt,y=dCMadmm.couplConst[1:convIt,1],Geom.line,Scale.y
 			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 			minor_label_font_size=26pt,key_label_font_size=26pt))
 if drawFig==1 draw(PNG(path*"J_ADMM_Conv.png", 36inch, 12inch), vstack(convItPlotadmm,convPlotadmm,fPlotadmm,constPlotadmm)) end
+
+#checkDesiredStates(dLogadmm.Sn,evS.Kn,evS.Snmin)
