@@ -14,8 +14,7 @@ horzLen=evS.K1
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
 tic()
-cSolnl=nlEVcentral(N,S,horzLen,evS,relaxed,slack)
-timeT=toc()
+timeT=@elapsed cSolnl=nlEVcentral(N,S,horzLen,evS,relaxed,slack)
 
 relaxString= if relaxed==true "_relax"else "" end
 filename = "central_NL_N$(N)"*relaxString
@@ -23,7 +22,7 @@ filename = "central_NL_N$(N)"*relaxString
 if saveResults==1 saveRun(path,filename,timeT, evS,cSolnl) end
 # load
 if loadResults==1
-	loadF=JLD.load(path*filename*".jld")
+	loadF=load(path*filename*".jld2")
 	evS=loadF["scenario"]
 	cSolnl=loadF["solution"]
 end

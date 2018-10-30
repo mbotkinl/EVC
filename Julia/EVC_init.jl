@@ -3,18 +3,16 @@
 
 println("Loading Packages...")
 using JuMP
-using Gadfly
-using Cairo #for png output
-using Fontconfig
 using Parameters
+using Printf
 
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
-N=100
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\PWLvNL\\N$(N)\\"
-datafile="jld" #"mat" #"jld" #"n"
+N=10
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\"
+datafile="n" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
 
 updateMethod="dualAscent" #dualAscent #fastAscent
@@ -24,44 +22,13 @@ loadResults=0
 noTlimit=false
 maxIt=100
 relaxed=false
-slack=true
+slack=false
 verbose=false
 
-if datafile=="mat"
-	using MAT #to read in scenarios from matlab
-
-	function string_as_varname(s::String,v::Any)
-		 s=Symbol(s)
-		 @eval (($s) = ($v))
-	end
-
-	#read in mat scenario
-	vars = matread(path*file)
-
-	varnames=keys(vars)
-	varNum=length(varnames)
-	varKeys=collect(varnames)
-	varValues=collect(values(vars))
-
-	for i =1:varNum
-		n=varKeys[i]
-		v=varValues[i]
-		if datafile=="mat"
-			if n in ["N" "K" "S"]
-				v=convert(Int, v)
-			end
-		end
-		string_as_varname(n,v)
-	end
-	println("done reading in")
-
-	if datafile=="mat"
-		Kn=convert(Array{Int,2},Kn)
-	end
-elseif datafile=="jld"
-	using JLD
+if datafile=="jld"
+	using JLD2
 	println("Reading in Data...")
-	loadF=JLD.load(path*file)
+	loadF=load(path*file)
 	evS=loadF["evScenario"]
 else #create scenario
 
@@ -70,24 +37,11 @@ else #create scenario
 	saveS=false
 
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
-    if saveS==true using JLD end
+    if saveS==true using JLD2 end
 	using Distributions
 	println("Creating EV Scenario...")
 	evS=setupScenario(N;Tmax=Tmax,Dload_amplitude=Dload_amplitude,saveS=saveS)
 end
-
-#temp backwards capability
-if isassigned(evS.ηP)==false
-	evS.ηP=eta
-	evS.γP=gamma
-	evS.ρP=rho
-	evS.τP=tau
-end
-
-if isassigned(evS.Snmin)==false
-	evS.Snmin=Sn
-end
-
 
 # @time runALADit(1)
 #@time testALAD(1)

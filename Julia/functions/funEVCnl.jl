@@ -13,8 +13,8 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     target=zeros(N*(horzLen+1),1)
     for ii=1:N
        cur=evS.Kn[ii]-(stepI-1)
-       ind=max(0,(cur-1)*N)+ii:N:length(target)
-       target[ind]=evS.Snmin[ii,1]
+       ind=(max(0,(cur-1)*N)+ii):N:length(target)
+       target[ind].=evS.Snmin[ii,1]
     end
 
     println("setting up model")
@@ -56,7 +56,7 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     @constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-evS.iD[stepI+(k-1)]+itotal[k])
     @constraint(cModel,sn.<=1)
 	if slack
-		@constraint(cModel,sn.>=target.*(1-repmat(slackSn,horzLen+1,1)))
+		@constraint(cModel,sn.>=target.*(1-repeat(slackSn,horzLen+1,1)))
 		@constraint(cModel,slackSn.>=0)
 	else
 		@constraint(cModel,sn.>=target)
@@ -65,8 +65,8 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct, relaxed=fal
     	@constraint(cModel,upperTCon,xt.<=evS.Tmax)
     end
     @constraint(cModel,xt.>=0)
-    @constraint(cModel,upperCCon,u.<=repmat(evS.imax,horzLen+1,1))
-    @constraint(cModel,u.>=repmat(evS.imin,horzLen+1,1))
+    @constraint(cModel,upperCCon,u.<=repeat(evS.imax,horzLen+1,1))
+    @constraint(cModel,u.>=repeat(evS.imin,horzLen+1,1))
     @constraint(cModel,itotal.<=evS.ItotalMax)
     @constraint(cModel,itotal.>=0)
 
@@ -692,7 +692,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         #check for convergence
         constGap=norm(dLogalad.couplConst[:,p],1)
         cc=norm(vcat((prevVu[:,1]-dLogalad.Un[:,p]),(prevVi[:,1]-dLogalad.Itotal[:,p])),1)
-        #convCheck=ρALADp*norm(vcat(repmat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
+        #convCheck=ρALADp*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
         objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                         sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
                         sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)

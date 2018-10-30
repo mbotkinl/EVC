@@ -1,12 +1,13 @@
 # helper functions for EVC code
-using JLD
+using JLD2
 using DataFrames
-using Gadfly
-using Cairo #for png output
-using Fontconfig
+using FileIO
+# using Gadfly
+# using Cairo #for png output
+# using Fontconfig
 
 function saveRun(path::String, filename::String, time::Float64, scenario::scenarioStruct, solution, convMetrics=convMetricsStruct(), convIt=1)
-    JLD.save(path*filename*".jld","time", time, "scenario", scenario, "solution", solution,
+    save(path*filename*".jld2","runTime", time, "scenario", scenario, "solution", solution,
     "convMetrics", convMetrics, "convIt", convIt)
 end
 
@@ -33,142 +34,142 @@ function readRuns(path)
     end
 end
 
-
-function compareRunsGraph(runs, cRun)
-    names=collect(keys(runs))
-    cSol=cRun["solution"]
-    numIt=size(runs[names[1]]["convMetrics"].lam)[1]
-    Klen=size(cSol.Xt)[1]
-    P=length(names)
-    evS=cRun["scenario"]
-    N=evS.N
-
-    objPerc = zeros(numIt+1,P)
-    objConv = zeros(numIt,P)
-    lamConv = zeros(numIt,P)
-    lamRMSE = zeros(numIt,P)
-    lamInfNorm = zeros(numIt,P)
-    T = zeros(Klen,P)
-    Sn = zeros(Klen*N,P)
-    uSum = zeros(Klen,P)
-    snSum = zeros(Klen,P)
-
-    for i in 1:length(names)
-        println(names[i])
-        run=runs[names[i]]
-        cIt=run["convIt"]
-        objPerc[:,i]=abs.(cSol.objVal-run["solution"].objVal')/cSol.objVal*100
-        objConv[:,i]=run["convMetrics"].obj
-        lamConv[:,i]=run["convMetrics"].lam
-        if typeof(run["solution"]) == centralSolutionStruct #PEM
-            lamRMSE[:,i]=zeros(numIt)
-            lamInfNorm[:,i]=zeros(numIt)
-        else
-            lamRMSE[:,i]=[sqrt(1/Klen*sum((run["solution"].Lam[k,it]-cSol.lamCoupl[k])^2/abs(cSol.lamCoupl[k]) for k=1:Klen)) for it=1:numIt]
-            lamInfNorm[:,i]=[maximum(abs.(run["solution"].Lam[:,it]-cSol.lamCoupl)) for it=1:numIt]
-        end
-        T[:,i]=run["solution"].Xt[:,cIt]
-        uSum[:,i]=run["solution"].uSum[:,cIt]
-        if size(run["solution"].Sn)[1]>Klen+1
-            Sn[:,i]=run["solution"].Sn[:,cIt]
-            snSum[:,i]=[sum(Sn[N*(k-1)+n,i] for n=1:N) for k in 1:Klen]# sum up across N
-        else
-            Sn[:,i]=run["solution"].Sn'[:]
-            snSum[:,i]=[sum(run["solution"].Sn[k,:]) for k in 1:Klen]# sum up across N
-        end
-    end
-
-    # ty=[match(r"central|d",names[i]).match for i in 1:length(names)]
-    # form = [match(r"NL|N|relax",names[i]).match for i in 1:length(names)]
-    #lamConv=DataFrame(hcat(names,transpose(lamConv)))
-    lamConv=DataFrame(lamConv)
-    names!(lamConv.colindex, map(Symbol, names))
-    lamRMSE=DataFrame(lamRMSE)
-    names!(lamRMSE.colindex, map(Symbol, names))
-    lamInfNorm=DataFrame(lamInfNorm)
-    names!(lamInfNorm.colindex, map(Symbol, names))
-    objConv=DataFrame(objConv)
-    names!(objConv.colindex, map(Symbol, names))
-    objPerc=DataFrame(objPerc)
-    names!(objPerc.colindex, map(Symbol, names))
-    T=DataFrame(T)
-    names!(T.colindex, map(Symbol, names))
-    uSum=DataFrame(uSum)
-    names!(uSum.colindex, map(Symbol, names))
-    snSum=DataFrame(snSum)
-    names!(snSum.colindex, map(Symbol, names))
-
-    lamPlot=plot(lamConv,x=Row.index,y=Col.value,Geom.point,Geom.line, color=Col.index,Scale.y_log10,
-    			Guide.xlabel("Iteration"), Guide.ylabel("2-norm Lambda gap",orientation=:vertical),
-    			Theme(background_color=colorant"white",major_label_font_size=15pt,line_width=2pt,
-    			minor_label_font_size=20pt,key_label_font_size=20pt,key_position=:top))
-    lamRMSEPlot=plot(lamRMSE,x=Row.index,y=Col.value,Geom.point,Geom.line, color=Col.index,Scale.y_log10,
-    			Guide.xlabel("Iteration"), Guide.ylabel("Relative RMSE Lambda Gap",orientation=:vertical),
-    			Theme(background_color=colorant"white",major_label_font_size=15pt,line_width=2pt,
-    			minor_label_font_size=20pt,key_label_font_size=20pt,key_position=:top))
-    lamInfNormPlot=plot(lamInfNorm,x=Row.index,y=Col.value,Geom.point,Geom.line, color=Col.index,Scale.y_log10,
-    			Guide.xlabel("Iteration"), Guide.ylabel("Max Lambda Gap",orientation=:vertical),
-    			Theme(background_color=colorant"white",major_label_font_size=15pt,line_width=2pt,
-    			minor_label_font_size=20pt,key_label_font_size=20pt,key_position=:top))
-
-    objNormPlot=plot(objConv,x=Row.index,y=Col.value,Geom.point,Geom.line, color=Col.index,Scale.y_log10,
-    			Guide.xlabel("Iteration"), Guide.ylabel("Objective Value Magintude Gap",orientation=:vertical),
-    			Theme(background_color=colorant"white",major_label_font_size=15pt,line_width=2pt,
-    			minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
-    objPercPlot=plot(objPerc,x=Row.index,y=Col.value,Geom.point,Geom.line, color=Col.index,Scale.y_log10,Coord.Cartesian(xmin=0,xmax=numIt+1),
-                Guide.xlabel("Iteration"), Guide.ylabel("Objective Value Percentage Gap",orientation=:vertical),
-                Theme(background_color=colorant"white",major_label_font_size=15pt,line_width=2pt,
-                minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
-
-    tempPlot=plot(layer(T,x=Row.index,y=Col.value,Geom.point,Geom.line,color=Col.index),
-    		layer(yintercept=[evS.Tmax],Geom.hline(color=["red"],style=:dot),Theme(line_width=3pt)),
-    		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
-    		Coord.Cartesian(xmin=0,xmax=Klen),Theme(background_color=colorant"white",major_label_font_size=24pt,
-    		minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
-
-    uSumPlot=plot(layer(uSum,x=Row.index,y=Col.value,Geom.point,Geom.line,color=Col.index),
-    		# layer(yintercept=[evS.Tmax],Geom.hline(color=["red"],style=:dot),Theme(line_width=3pt)),
-    		Guide.xlabel("Time"), Guide.ylabel("Current Sum (kA)",orientation=:vertical),
-            Guide.colorkey(title="",labels=names),
-    		Coord.Cartesian(xmin=0,xmax=Klen),Theme(background_color=colorant"white",major_label_font_size=24pt,
-    		minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
-
-    target=zeros(Klen)
-    for k in 1:Klen
-        ind = evS.Kn.<=k
-        target[k]=sum(evS.Snmin[ind])
-    end
-
-    snSumPlot=plot(layer(snSum,x=Row.index,y=Col.value,Geom.point,Geom.line,color=Col.index),
-    		layer(x=1:Klen,y=target,Geom.line,Theme(line_width=3pt,default_color=colorant"red",line_style=:dot)),
-    		Guide.xlabel("Time"), Guide.ylabel("SOC Sum",orientation=:vertical),
-            Guide.colorkey(title="",labels=names),
-    		Coord.Cartesian(xmin=0,xmax=Klen),Theme(background_color=colorant"white",major_label_font_size=24pt,
-    		minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
-
-    # R plot***
-    Rmax=zeros(Klen,P)
-    Ravg=zeros(Klen,P)
-    for p=1:P
-        for k=1:Klen
-            R=[max((evS.Snmin[n,1]-Sn[N*(k-1)+n,p]),0)./(evS.Kn[n,1]-k) for n=1:N]
-            Rmax[k,p]=maximum(R)
-            Ravg[k,p]=mean(R)
-        end
-    end
-
-    Rmax=DataFrame(Rmax)
-    Ravg=DataFrame(Ravg)
-    Rplot=plot(layer(Ravg,x=Row.index,y=Col.value,Geom.point,Geom.line,color=Col.index),
-            Guide.xlabel("Time"), Guide.ylabel("R Max",orientation=:vertical),
-            Guide.colorkey(title="",labels=names),
-            Coord.Cartesian(xmin=0,xmax=Klen),Theme(background_color=colorant"white",major_label_font_size=24pt,
-            minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
-
-    p=vstack(lamRMSEPlot, objPercPlot, tempPlot, uSumPlot,snSumPlot)
-    fName="compPlot.png"
-    draw(PNG(path*fName, 28inch, 20inch),p)
-end
+# until converted to Gadfly***
+# function compareRunsGraph(runs, cRun)
+#     names=collect(keys(runs))
+#     cSol=cRun["solution"]
+#     numIt=size(runs[names[1]]["convMetrics"].lam)[1]
+#     Klen=size(cSol.Xt)[1]
+#     P=length(names)
+#     evS=cRun["scenario"]
+#     N=evS.N
+#
+#     objPerc = zeros(numIt+1,P)
+#     objConv = zeros(numIt,P)
+#     lamConv = zeros(numIt,P)
+#     lamRMSE = zeros(numIt,P)
+#     lamInfNorm = zeros(numIt,P)
+#     T = zeros(Klen,P)
+#     Sn = zeros(Klen*N,P)
+#     uSum = zeros(Klen,P)
+#     snSum = zeros(Klen,P)
+#
+#     for i in 1:length(names)
+#         println(names[i])
+#         run=runs[names[i]]
+#         cIt=run["convIt"]
+#         objPerc[:,i]=abs.(cSol.objVal-run["solution"].objVal')/cSol.objVal*100
+#         objConv[:,i]=run["convMetrics"].obj
+#         lamConv[:,i]=run["convMetrics"].lam
+#         if typeof(run["solution"]) == centralSolutionStruct #PEM
+#             lamRMSE[:,i]=zeros(numIt)
+#             lamInfNorm[:,i]=zeros(numIt)
+#         else
+#             lamRMSE[:,i]=[sqrt(1/Klen*sum((run["solution"].Lam[k,it]-cSol.lamCoupl[k])^2/abs(cSol.lamCoupl[k]) for k=1:Klen)) for it=1:numIt]
+#             lamInfNorm[:,i]=[maximum(abs.(run["solution"].Lam[:,it]-cSol.lamCoupl)) for it=1:numIt]
+#         end
+#         T[:,i]=run["solution"].Xt[:,cIt]
+#         uSum[:,i]=run["solution"].uSum[:,cIt]
+#         if size(run["solution"].Sn)[1]>Klen+1
+#             Sn[:,i]=run["solution"].Sn[:,cIt]
+#             snSum[:,i]=[sum(Sn[N*(k-1)+n,i] for n=1:N) for k in 1:Klen]# sum up across N
+#         else
+#             Sn[:,i]=run["solution"].Sn'[:]
+#             snSum[:,i]=[sum(run["solution"].Sn[k,:]) for k in 1:Klen]# sum up across N
+#         end
+#     end
+#
+#     # ty=[match(r"central|d",names[i]).match for i in 1:length(names)]
+#     # form = [match(r"NL|N|relax",names[i]).match for i in 1:length(names)]
+#     #lamConv=DataFrame(hcat(names,transpose(lamConv)))
+#     lamConv=DataFrame(lamConv)
+#     names!(lamConv.colindex, map(Symbol, names))
+#     lamRMSE=DataFrame(lamRMSE)
+#     names!(lamRMSE.colindex, map(Symbol, names))
+#     lamInfNorm=DataFrame(lamInfNorm)
+#     names!(lamInfNorm.colindex, map(Symbol, names))
+#     objConv=DataFrame(objConv)
+#     names!(objConv.colindex, map(Symbol, names))
+#     objPerc=DataFrame(objPerc)
+#     names!(objPerc.colindex, map(Symbol, names))
+#     T=DataFrame(T)
+#     names!(T.colindex, map(Symbol, names))
+#     uSum=DataFrame(uSum)
+#     names!(uSum.colindex, map(Symbol, names))
+#     snSum=DataFrame(snSum)
+#     names!(snSum.colindex, map(Symbol, names))
+#
+#     lamPlot=plot(lamConv,x=Row.index,y=Col.value,Geom.point,Geom.line, color=Col.index,Scale.y_log10,
+#     			Guide.xlabel("Iteration"), Guide.ylabel("2-norm Lambda gap",orientation=:vertical),
+#     			Theme(background_color=colorant"white",major_label_font_size=15pt,line_width=2pt,
+#     			minor_label_font_size=20pt,key_label_font_size=20pt,key_position=:top))
+#     lamRMSEPlot=plot(lamRMSE,x=Row.index,y=Col.value,Geom.point,Geom.line, color=Col.index,Scale.y_log10,
+#     			Guide.xlabel("Iteration"), Guide.ylabel("Relative RMSE Lambda Gap",orientation=:vertical),
+#     			Theme(background_color=colorant"white",major_label_font_size=15pt,line_width=2pt,
+#     			minor_label_font_size=20pt,key_label_font_size=20pt,key_position=:top))
+#     lamInfNormPlot=plot(lamInfNorm,x=Row.index,y=Col.value,Geom.point,Geom.line, color=Col.index,Scale.y_log10,
+#     			Guide.xlabel("Iteration"), Guide.ylabel("Max Lambda Gap",orientation=:vertical),
+#     			Theme(background_color=colorant"white",major_label_font_size=15pt,line_width=2pt,
+#     			minor_label_font_size=20pt,key_label_font_size=20pt,key_position=:top))
+#
+#     objNormPlot=plot(objConv,x=Row.index,y=Col.value,Geom.point,Geom.line, color=Col.index,Scale.y_log10,
+#     			Guide.xlabel("Iteration"), Guide.ylabel("Objective Value Magintude Gap",orientation=:vertical),
+#     			Theme(background_color=colorant"white",major_label_font_size=15pt,line_width=2pt,
+#     			minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
+#     objPercPlot=plot(objPerc,x=Row.index,y=Col.value,Geom.point,Geom.line, color=Col.index,Scale.y_log10,Coord.Cartesian(xmin=0,xmax=numIt+1),
+#                 Guide.xlabel("Iteration"), Guide.ylabel("Objective Value Percentage Gap",orientation=:vertical),
+#                 Theme(background_color=colorant"white",major_label_font_size=15pt,line_width=2pt,
+#                 minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
+#
+#     tempPlot=plot(layer(T,x=Row.index,y=Col.value,Geom.point,Geom.line,color=Col.index),
+#     		layer(yintercept=[evS.Tmax],Geom.hline(color=["red"],style=:dot),Theme(line_width=3pt)),
+#     		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
+#     		Coord.Cartesian(xmin=0,xmax=Klen),Theme(background_color=colorant"white",major_label_font_size=24pt,
+#     		minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
+#
+#     uSumPlot=plot(layer(uSum,x=Row.index,y=Col.value,Geom.point,Geom.line,color=Col.index),
+#     		# layer(yintercept=[evS.Tmax],Geom.hline(color=["red"],style=:dot),Theme(line_width=3pt)),
+#     		Guide.xlabel("Time"), Guide.ylabel("Current Sum (kA)",orientation=:vertical),
+#             Guide.colorkey(title="",labels=names),
+#     		Coord.Cartesian(xmin=0,xmax=Klen),Theme(background_color=colorant"white",major_label_font_size=24pt,
+#     		minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
+#
+#     target=zeros(Klen)
+#     for k in 1:Klen
+#         ind = evS.Kn.<=k
+#         target[k]=sum(evS.Snmin[ind])
+#     end
+#
+#     snSumPlot=plot(layer(snSum,x=Row.index,y=Col.value,Geom.point,Geom.line,color=Col.index),
+#     		layer(x=1:Klen,y=target,Geom.line,Theme(line_width=3pt,default_color=colorant"red",line_style=:dot)),
+#     		Guide.xlabel("Time"), Guide.ylabel("SOC Sum",orientation=:vertical),
+#             Guide.colorkey(title="",labels=names),
+#     		Coord.Cartesian(xmin=0,xmax=Klen),Theme(background_color=colorant"white",major_label_font_size=24pt,
+#     		minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
+#
+#     # R plot***
+#     Rmax=zeros(Klen,P)
+#     Ravg=zeros(Klen,P)
+#     for p=1:P
+#         for k=1:Klen
+#             R=[max((evS.Snmin[n,1]-Sn[N*(k-1)+n,p]),0)./(evS.Kn[n,1]-k) for n=1:N]
+#             Rmax[k,p]=maximum(R)
+#             Ravg[k,p]=mean(R)
+#         end
+#     end
+#
+#     Rmax=DataFrame(Rmax)
+#     Ravg=DataFrame(Ravg)
+#     Rplot=plot(layer(Ravg,x=Row.index,y=Col.value,Geom.point,Geom.line,color=Col.index),
+#             Guide.xlabel("Time"), Guide.ylabel("R Max",orientation=:vertical),
+#             Guide.colorkey(title="",labels=names),
+#             Coord.Cartesian(xmin=0,xmax=Klen),Theme(background_color=colorant"white",major_label_font_size=24pt,
+#             minor_label_font_size=20pt,key_label_font_size=12pt,key_position=:none))
+#
+#     p=vstack(lamRMSEPlot, objPercPlot, tempPlot, uSumPlot,snSumPlot)
+#     fName="compPlot.png"
+#     draw(PNG(path*fName, 28inch, 20inch),p)
+# end
 
 function compareRunsTable(runs)
     # compareTable = DataFrame(name=String[],time=Float64[],cLamDiff=Float64[],lamDiff=Float64[],
