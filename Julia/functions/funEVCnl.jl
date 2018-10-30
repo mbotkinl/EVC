@@ -151,13 +151,13 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     #iterate at each time step until convergence
     for p=1:maxIt
         #solve subproblem for each EV
-    	@sync @parallel for evInd=1:N
+    	@sync @distributed for evInd=1:N
     		ind=[evInd]
     		for k=1:horzLen
     			append!(ind,k*N+evInd)
     		end
             target=zeros((horzLen+1),1)
-    		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
+    		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1].=evS.Snmin[evInd,1]
             if relaxed
                 evM = Model(solver = GurobiSolver())
             else
@@ -183,7 +183,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
             @constraint(evM,un.<=evS.imax[evInd,1])
             @constraint(evM,un.>=evS.imin[evInd,1])
 
-    		TT = STDOUT # save original STDOUT stream
+    		TT = stdout # save original STDOUT stream
     		redirect_stdout()
             statusEVM = solve(evM)
     		redirect_stdout(TT)
@@ -192,7 +192,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
 
             dLog.Sn[ind,p]=getvalue(sn)
             dLog.Un[ind,p]=getvalue(un)
-			dLog.slackSn[evInd]=getvalue(slackSn)
+			dLog.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
         end
 
     	if updateMethod=="dualAscent"
@@ -343,7 +343,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         #ρADMMp = ρADMM
 
         #x minimization eq 7.66 in Bertsekas
-        @sync @parallel for evInd=1:N
+        @sync @distributed for evInd=1:N
             evV=prevVu[collect(evInd:N:length(prevVu[:,1])),1]
             target=zeros((horzLen+1),1)
     		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
@@ -381,7 +381,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
     		dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=getvalue(sn)
     		dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=getvalue(u)
-			dLogadmm.slackSn[evInd]=getvalue(slackSn)
+			dLogadmm.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
 		end
 
         #N+1 decoupled problem aka transformer current
@@ -538,7 +538,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @printf "Starting iteration %g \n" p
 
         #solve decoupled
-        @sync @parallel for evInd=1:N
+        @sync @distributed for evInd=1:N
             ind=[evInd]
             for k=1:horzLen
                 append!(ind,k*N+evInd)
@@ -610,7 +610,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             # cVal[socMin.<0]=-1
             # Cs[ind,p+1]=cVal
 
-			dLogalad.slackSn[evInd]=getvalue(slackSn)
+			dLogalad.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
             dLogalad.Sn[ind,p]=snVal
     		dLogalad.Un[ind,p]=uVal
             dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal

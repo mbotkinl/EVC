@@ -5,7 +5,7 @@ println("Loading Packages...")
 using JuMP
 using Parameters
 using Printf
-
+using Distributed
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
