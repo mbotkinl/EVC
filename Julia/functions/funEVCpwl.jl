@@ -446,8 +446,8 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
             @printf "snGap    %e after %g iterations\n" snGap p
     		@printf "unGap    %e after %g iterations\n" unGap p
     		@printf("fGap     %e after %g iterations\n\n",fGap,p)
-            prevLam=dLogadmm.Vu[:,p]
-            prevVz=dLogadmm.Vu[:,p]
+            prevLam=dLogadmm.Lam[:,p]
+            prevVz=dLogadmm.Vz[:,p]
             prevVu=dLogadmm.Vu[:,p]
     	end
     end
@@ -585,7 +585,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
             dLogalad.Cu[ind,p]=1cValMax-1cValMin
 
 
-            cValMax=abs.(snVal-1).<tolS
+            cValMax=abs.(snVal.-1).<tolS
             if slack
                 cValMin=abs.(snVal.-target*(1-getvalue(slackSn))).<tolS
             else
@@ -654,7 +654,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 
         dLogalad.Xt[:,p]=xtVal
         dLogalad.Z[:,p]=zVal
-        dLogalad.Gz[:,p]=.0
+        #dLogalad.Gz[:,p].=0
         #Gz[:,p+1]=σZ*(Vz[:,p]-zVal)-repeat(-Lam[:,p],inner=S)
 
         for k=1:horzLen+1

@@ -4,7 +4,7 @@
 #from Mads Almassakhi code
 
 #functions
-function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
+function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false,path=pwd())
 
     #model parameters
     a   = rand(N,1)*.1 .+ 0.8               # efficiency of Li-ion batts is ~80-90%
@@ -108,7 +108,7 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false)
                               ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD,Tamb,Qsi,Ri,β)
 
     if saveS==true
-        @save("EVCscenarioN$(N).jld2","evScenario",evScenario)
+        save(path*"EVCscenarioN$(N).jld2","evScenario",evScenario)
     end
 
     return evScenario

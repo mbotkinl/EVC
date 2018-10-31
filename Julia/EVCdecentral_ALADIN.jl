@@ -67,17 +67,17 @@ if drawFig==1 savefig(pd4alad,path*"J_decentral_ALADIN_Lam.png") end
 
 activeSet=zeros(convIt,1)
 setChanges=zeros(convIt,1)
-for ii=1:convIt
+for ii=2:convIt
     activeSet[ii,1]=sum(abs.(dLogalad.Cs[:,ii]))+sum(abs.(dLogalad.Ct[:,ii]))+
               sum(abs.(dLogalad.Cu[:,ii]))+sum(abs.(dLogalad.Cz[:,ii]))
     setChanges[ii,1]=sum(abs.(dLogalad.Cs[:,ii]-dLogalad.Cs[:,ii-1]))+sum(abs.(dLogalad.Ct[:,ii]-dLogalad.Ct[:,ii-1]))+
                      sum(abs.(dLogalad.Cu[:,ii]-dLogalad.Cu[:,ii-1]))+sum(abs.(dLogalad.Cz[:,ii]-dLogalad.Cz[:,ii-1]))
 end
-activeSetPlot=plot(1:convIt,activeSet[1:convIt],xlabel="Iteration",ylabel="Total Active inequality constraints",
-                   legend=false,xlims=(1,convIt))
-setChangesPlot=plot(1:convIt,setChanges[1:convIt],xlabel="Iteration",ylabel="Changes in Active inequality constraints",
-                  legend=false,xlims=(1,convIt))
-solChangesplot=plot(1:convIt,hcat(ΔY[1:convIt],convCheck[1:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
+activeSetPlot=plot(2:convIt,activeSet[2:convIt],xlabel="Iteration",ylabel="Total Active inequality constraints",
+                   legend=false,xlims=(2,convIt))
+setChangesPlot=plot(2:convIt,setChanges[2:convIt],xlabel="Iteration",ylabel="Changes in Active inequality constraints",
+                  legend=false,xlims=(2,convIt))
+solChangesplot=plot(2:convIt,hcat(ΔY[2:convIt],convCheck[2:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
 
 fPlotalad=plot(1:horzLen+1,dCMalad.obj[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
 yaxis!(fPlotalad,"obj function gap",:log10)

@@ -1,13 +1,13 @@
 #Micah Botkin-Levy
 #4/8/18
 using Gurobi
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 
 #pull out a few key variables
 N=evS.N
 S=evS.S
 horzLen=evS.K1
 
-include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 timeT=@elapsed cSol=pwlEVcentral(N,S,horzLen,evS,slack)
 
 fname = "central_N$(N)"
