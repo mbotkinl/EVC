@@ -1,21 +1,18 @@
 #Micah Botkin-Levy
 #4/10/18
 
-tic()
-dLog,dCM,convIt=pwlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSol,slack)
-timeT=toc()
+timeT=@elapsed dLog,dCM,convIt=pwlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSol,slack)
 
 s=Symbol(@sprintf("dCM_%s",updateMethod))
 v=Symbol(@sprintf("dCM"))
 @eval(($s)=($v))
-
 
 filename = "d_$(updateMethod)_N$(N)"
 # save
 if saveResults==1 saveRun(path,filename,timeT, evS,dLog, dCM, convIt) end
 # load
 if loadResults==1
-	loadF=JLD.load(path*filename*".jld")
+	loadF=load(path*filename*".jld2")
 	evS=loadF["scenario"]
 	dLog=loadF["solution"]
 	dCM=loadF["convMetrics"]

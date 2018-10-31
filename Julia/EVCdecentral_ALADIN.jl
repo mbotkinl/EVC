@@ -6,17 +6,14 @@
 #u, sn, xt, and z are all in "y", v is the auxilliary variable corresponding to x in literature
 #current constraint is coupling
 
-tic()
-dLogalad,dCMalad,convIt,ΔY,convCheck=pwlEValad(N,S,horzLen,maxIt,evS,cSol,slack)
-timeT=toc()
-
+timeT=@elapsed dLogalad,dCMalad,convIt,ΔY,convCheck=pwlEValad(N,S,horzLen,maxIt,evS,cSol,slack)
 
 filename = "dALADIN_N$(N)"
 # save
 if saveResults==1 saveRun(path,filename,timeT, evS,dLogalad, dCMalad, convIt) end
 # load
 if loadResults==1
-	loadF=JLD.load(path*filename*".jld")
+	loadF=load(path*filename*".jld2")
 	evS=loadF["scenario"]
 	dLogalad=loadF["solution"]
 	dCMalad=loadF["convMetrics"]

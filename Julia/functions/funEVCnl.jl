@@ -183,7 +183,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
             @constraint(evM,un.<=evS.imax[evInd,1])
             @constraint(evM,un.>=evS.imin[evInd,1])
 
-    		TT = stdout # save original STDOUT stream
+    		TT = stdout # save original stdout stream
     		redirect_stdout()
             statusEVM = solve(evM)
     		redirect_stdout(TT)
@@ -220,7 +220,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	    @constraint(coorM,xt.>=0)
     	    @constraint(coorM,itotal.<=evS.ItotalMax)
     	    @constraint(coorM,itotal.>=0)
-    		TT = STDOUT # save original STDOUT strea
+    		TT = stdout # save original stdout strea
     		redirect_stdout()
     	    statusC = solve(coorM)
     		redirect_stdout(TT)
@@ -346,7 +346,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @sync @distributed for evInd=1:N
             evV=prevVu[collect(evInd:N:length(prevVu[:,1])),1]
             target=zeros((horzLen+1),1)
-    		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
+    		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1].=evS.Snmin[evInd,1]
 			if relaxed
                 evM = Model(solver = GurobiSolver())
             else
@@ -373,7 +373,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             end
             @constraint(evM,u.<=evS.imax[evInd,1])
             @constraint(evM,u.>=evS.imin[evInd,1])
-        	TT = STDOUT # save original STDOUT stream
+        	TT = stdout # save original stdout stream
         	redirect_stdout()
         	statusEVM = solve(evM)
         	redirect_stdout(TT)
@@ -412,7 +412,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @constraint(tM,itotal.>=0)
         @constraint(tM,itotal.<=evS.ItotalMax)
 
-        TT = STDOUT # save original STDOUT stream
+        TT = stdout # save original stdout stream
         redirect_stdout()
         statusTM = solve(tM)
         redirect_stdout(TT)
@@ -431,7 +431,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
         #v upate eq 7.67
         for k=1:horzLen+1
-            dLogadmm.Vu[(k-1)*N+collect(1:N),p]=min.(max.(dLogadmm.Un[(k-1)*N+collect(1:N),p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp,evS.imin),evS.imax)
+            dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=min.(max.(dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp,evS.imin),evS.imax)
     		dLogadmm.Vi[k,p]=max.(min.(-dLogadmm.Itotal[k,p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp,0),-evS.ItotalMax)
         end
 
@@ -546,7 +546,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             evVu=prevVu[ind,1]
             evVs=prevVs[ind,1]
             target=zeros((horzLen+1),1)
-            target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1]=evS.Snmin[evInd,1]
+            target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1].=evS.Snmin[evInd,1]
             #evM = Model(solver = GurobiSolver(NumericFocus=3))
 			if relaxed
                 evM = Model(solver = GurobiSolver())
@@ -577,7 +577,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             @constraint(evM,curKappaMin,u.>=evS.imin[evInd,1])
 
 
-            TT = STDOUT # save original STDOUT stream
+            TT = stdout # save original stdout stream
             redirect_stdout()
             statusEVM = solve(evM)
             redirect_stdout(TT)
@@ -590,19 +590,19 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             uVal=getvalue(u)
             snVal=getvalue(sn)
 
-            cValMax=abs.(uVal-evS.imax[evInd,1]).<tolU
-            cValMin=abs.(uVal-evS.imin[evInd,1]).<tolU
+            cValMax=abs.(uVal.-evS.imax[evInd,1]).<tolU
+            cValMin=abs.(uVal.-evS.imin[evInd,1]).<tolU
             dLogalad.Cu[ind,p]=1cValMax-1cValMin
             # cVal=zeros(length(ind),1)
             # cVal[kappaMax.>0]=1
             # cVal[kappaMin.<0]=-1
             # Cu[ind,p+1]=cVal
 
-            cValMax=abs.(snVal-1).<tolS
+            cValMax=abs.(snVal.-1).<tolS
 			if slack
-				cValMin=abs.(snVal-target*(1-getvalue(slackSn))).<tolS
+				cValMin=abs.(snVal.-target*(1-getvalue(slackSn))).<tolS
 			else
-				cValMin=abs.(snVal-target).<tolS
+				cValMin=abs.(snVal.-target).<tolS
 			end
             dLogalad.Cs[ind,p+1]=1cValMax-1cValMin
             # cVal=zeros(length(ind),1)
@@ -614,7 +614,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             dLogalad.Sn[ind,p]=snVal
     		dLogalad.Un[ind,p]=uVal
             dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
-            dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal-2*evS.Qsi[evInd,1]
+            dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
             #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=σU[evInd,1]*(evVu-uVal)+lambda
             #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=σN[evInd,1]*(evVs-snVal)-lambda
         end
@@ -644,7 +644,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @constraint(tM,lowerTCon,xt.>=0)
         @constraint(tM,KappaMin,itotal.>=0)
         @constraint(tM,KappaMax,itotal.<=evS.ItotalMax)
-        TT = STDOUT # save original STDOUT stream
+        TT = stdout # save original stdout stream
         redirect_stdout()
         statusTM = solve(tM)
         redirect_stdout(TT)
@@ -662,8 +662,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         iVal=getvalue(itotal)
         xtVal=getvalue(xt)
 
-        cValMax=abs.(iVal-evS.ItotalMax).<tolI
-        cValMin=abs.(iVal-0).<tolI
+        cValMax=abs.(iVal.-evS.ItotalMax).<tolI
+        cValMin=abs.(iVal.-0).<tolI
         dLogalad.Ci[:,p]=1cValMax-1cValMin
         # cVal=zeros(length(ind),1)
         # cVal[kappaMax.>0]=1
@@ -671,8 +671,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         # Ci[:,p+1]=cVal
 
 
-        cValMax=abs.(xtVal-evS.Tmax).<tolT
-        cValMin=abs.(xtVal-0).<tolT
+        cValMax=abs.(xtVal.-evS.Tmax).<tolT
+        cValMin=abs.(xtVal.-0).<tolT
         dLogalad.Ct[:,p]=1cValMax-1cValMin
         # cVal=zeros(length(ind),1)
         # cVal[tMax.>0]=1
@@ -681,7 +681,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
         dLogalad.Xt[:,p]=xtVal
         dLogalad.Itotal[:,p]=iVal
-        dLogalad.Gi[:,p]=0
+        dLogalad.Gi[:,p].=0
         #Gz[:,p+1]=σZ*(Vz[:,p]-zVal)-repeat(-Lam[:,p],inner=S)
 
         for k=1:horzLen+1
@@ -703,7 +703,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         unGap=norm((dLogalad.Un[:,p]-cSolnl.Un),2)
 		itGap = norm(dLogalad.Lam[:,p]-prevLam[:,1],2)
 		convGap = norm(dLogalad.Lam[:,p]-cSolnl.lamCoupl,2)
-        convGap2 = norm(round.(dLogalad.Lam[:,p]-cSolnl.lamCoupl,10)./cSolnl.lamCoupl,2) #need some rounding here if both are 1e-8
+        convGap2 = norm(round.(dLogalad.Lam[:,p]-cSolnl.lamCoupl;digits=10)./cSolnl.lamCoupl,2) #need some rounding here if both are 1e-8
 
         dCMalad.obj[p,1]=fGap
         dCMalad.sn[p,1]=snGap
@@ -752,7 +752,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @constraint(cM,dLogalad.Cs[:,p].*dSn.<=0)
         @constraint(cM,dLogalad.Ct[:,p].*dXt.<=0)
 
-    	TT = STDOUT # save original STDOUT stream
+    	TT = stdout # save original stdout stream
         redirect_stdout()
         statusM = solve(cM)
         redirect_stdout(TT)

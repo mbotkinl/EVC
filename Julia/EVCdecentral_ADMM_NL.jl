@@ -7,9 +7,7 @@
 #current constraint is coupling
 
 
-tic()
-dLognladmm,dCMnladmm,convIt=nlEVadmm(N,S,horzLen,maxIt,evS,cSolnl,relaxed,slack)
-timeT=toc()
+timeT=@elapsed dLognladmm,dCMnladmm,convIt=nlEVadmm(N,S,horzLen,maxIt,evS,cSolnl,relaxed,slack)
 
 relaxString= if relaxed==true "_relax"else "" end
 filename = "dADMM_NL_N$(N)"*relaxString
@@ -17,7 +15,7 @@ filename = "dADMM_NL_N$(N)"*relaxString
 if saveResults==1 saveRun(path,filename,timeT, evS,dLognladmm, dCMnladmm, convIt) end
 # load
 if loadResults==1
-	loadF=JLD.load(path*filename*".jld")
+	loadF=load(path*filename*".jld2")
 	evS=loadF["scenario"]
 	dLognladmm=loadF["solution"]
 	dCMnladmm=loadF["convMetrics"]

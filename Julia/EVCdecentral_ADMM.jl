@@ -6,17 +6,14 @@
 #u, sn, xt, and z are all in "x" v is the auxilliary variable corresponding to z in literature
 #current constraint is coupling
 
-tic()
-dLogadmm,dCMadmm,convIt=pwlEVadmm(N,S,horzLen,maxIt,evS,cSol,slack)
-timeT=toc()
-
+timeT=@elapsed dLogadmm,dCMadmm,convIt=pwlEVadmm(N,S,horzLen,maxIt,evS,cSol,slack)
 
 filename = "dADMM_N$(N)"
 # save
 if saveResults==1 saveRun(path,filename,timeT, evS,dLogadmm, dCMadmm, convIt) end
 # load
 if loadResults==1
-	loadF=JLD.load(path*filename*".jld")
+	loadF=load(path*filename*".jld2")
 	evS=loadF["scenario"]
 	dLogadmm=loadF["solution"]
 	dCMadmm=loadF["convMetrics"]

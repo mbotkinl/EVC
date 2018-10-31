@@ -8,16 +8,14 @@ S=evS.S
 horzLen=evS.K1
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
-tic()
-cSol=pwlEVcentral(N,S,horzLen,evS,slack)
-timeT=toc()
+timeT=@elapsed cSol=pwlEVcentral(N,S,horzLen,evS,slack)
 
 filename = "central_N$(N)"
 # save
 if saveResults==1 saveRun(path,filename,timeT, evS,cSol) end
 # load
 if loadResults==1
-	loadF=JLD.load(path*filename*".jld")
+	loadF=load(path*filename*".jld2")
 	evS=loadF["scenario"]
 	cSol=loadF["solution"]
 end

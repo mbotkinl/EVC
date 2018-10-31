@@ -1,9 +1,7 @@
 #Micah Botkin-Levy
 #4/10/18
 
-tic()
-dLognl,dCMnl,convIt=nlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSolnl,relaxed,slack)
-timeT=toc()
+timeT=@elapsed dLognl,dCMnl,convIt=nlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSolnl,relaxed,slack)
 
 s=Symbol(@sprintf("dCMnl_%s",updateMethod))
 v=Symbol(@sprintf("dCMnl"))
@@ -15,7 +13,7 @@ filename = "d_$(updateMethod)_NL_N$(N)"*relaxString
 if saveResults==1 saveRun(path,filename,timeT, evS,dLognl, dCMnl, convIt) end
 # load
 if loadResults==1
-	loadF=JLD.load(path*filename*".jld")
+	loadF=load(path*filename*".jld2")
 	evS=loadF["scenario"]
 	dLognl=loadF["solution"]
 	dCMnl=loadF["convMetrics"]

@@ -13,7 +13,6 @@ horzLen=evS.K1
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
-tic()
 timeT=@elapsed cSolnl=nlEVcentral(N,S,horzLen,evS,relaxed,slack)
 
 relaxString= if relaxed==true "_relax"else "" end
