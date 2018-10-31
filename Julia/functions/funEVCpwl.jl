@@ -663,6 +663,12 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
             dLogalad.couplConst[k,p]=dLogalad.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLogalad.zSum[k,p]
         end
 
+        #calculate actual temperature from nonlinear model of XFRM
+        dLogalad.Tactual[1,p]=evS.τP*xt0+evS.γP*dLogalad.zSum[1,p]^2+evS.ρP*evS.Tamb[stepI,1] #fix for mpc
+        for k=1:horzLen
+            dLogalad.Tactual[k+1,p]=evS.τP*dLogalad.Tactual[k,p]+evS.γP*dLogalad.zSum[k+1,p]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
+        end
+
         #check for convergence
         constGap=norm(dLogalad.couplConst[:,p],1)
         cc=norm(vcat((prevVu[:,1]-dLogalad.Un[:,p]),(prevVz[:,1]-dLogalad.Z[:,p])),1)
