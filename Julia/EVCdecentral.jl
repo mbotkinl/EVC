@@ -7,12 +7,12 @@ s=Symbol(@sprintf("dCM_%s",updateMethod))
 v=Symbol(@sprintf("dCM"))
 @eval(($s)=($v))
 
-filename = "d_$(updateMethod)_N$(N)"
+fname = "d_$(updateMethod)_N$(N)"
 # save
-if saveResults==1 saveRun(path,filename,timeT, evS,dLog, dCM, convIt) end
+if saveResults==1 saveRun(path,fname,timeT, evS,dLog, dCM, convIt) end
 # load
 if loadResults==1
-	loadF=load(path*filename*".jld2")
+	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	dLog=loadF["solution"]
 	dCM=loadF["convMetrics"]
@@ -34,9 +34,9 @@ if drawFig==1 savefig(p1d,path*"J_"*updateMethod*"_SOC.png") end
 pd2=plot(uPlotd,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,horzLen+1))
 if drawFig==1 savefig(p2d,path*"J_"*updateMethod*"_Curr.png") end
 
-pd3=plot(1:horzLen+1,dLog.Tactual[:,convIt],label="Actual Temp",xlims=(0,horzLen+1),xlabel="Time",ylabel="Xfrm Temp (K)")
+pd3=plot(1:horzLen+1,dLog.Tactual[:,convIt],label="Actual Temp",xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
 plot!(pd3,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
-if updateMethod=="dualAscent" plot!(pd3,1:horzLen+1,dLog.Xt[:,convIt],label="Actual Temp") end
+if updateMethod=="dualAscent" plot!(pd3,1:horzLen+1,dLog.Xt[:,convIt],label="PWL Temp") end
 if drawFig==1 savefig(pd3,path*"J_"*updateMethod*"_Temp.png") end
 
 if updateMethod=="fastAscent"
@@ -53,8 +53,7 @@ if drawFig==1 savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 #fName="J_Decentral_fast.png"
 #draw(PNG(path*fName, 13inch, 14inch), vstack(pd1,pd2,pd3,pd4))
 
-
-
+#
 # A = [i for i=1:100, j=1:100]
 # heatmap(A, c=ColorGradient([:red,:yellow,:blue]))
 #
@@ -63,10 +62,11 @@ if drawFig==1 savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 # cgrad(g) |> C
 #
 # colors=[:red]
-# plot(1:horzLen+1,dLog.uSum[:,1:4],seriescolor=cgrad(:inferno))
+# plot(1:horzLen+1,dLog.uSum[:,1:4], linecolor=cgrad(:inferno))
+# plot(1:horzLen+1,dLog.uSum[:,1:10],	color=cgrad(:grays))
+# plot(1:horzLen+1,dLog.uSum[:,1:10],	zcolor=1:10)
 #
-# plot(1:horzLen+1,dLog.uSum[:,1:10],	line_z=1:10)
-# plot(1:horzLen+1,dLog.uSum[:,1:convIt],palette=:blues)
+# plot(1:horzLen+1,dLog.uSum[:,1:10], palette=:blues)
 #
 
 #
@@ -91,12 +91,12 @@ if drawFig==1 savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 # 			minor_label_font_size=26pt,key_label_font_size=26pt))
 # if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_LamConv.png", 36inch, 12inch), lamPlot) end
 
-fPlot=plot(1:horzLen+1,dCM.obj[1:convIt-1,1],xlabel="Time",xlims=(0,convIt),legend=false)
+fPlot=plot(1:horzLen+1,dCM.obj[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
 yaxis!(fPlot,"obj function gap",:log10)
-convItPlot=plot(1:horzLen+1,dCM.lamIt[1:convIt-1,1],xlabel="Time",ylabel="2-Norm Lambda Gap",xlims=(0,convIt),legend=false)
-yaxis!(convItPlot,"obj function gap",:log10)
-convPlot=plot(1:horzLen+1,dCM.lam[1:convIt-1,1],xlabel="Time",ylabel="Lambda Star Gap",xlims=(0,convIt),legend=false)
-yaxis!(convPlot,"obj function gap",:log10)
+convItPlot=plot(1:horzLen+1,dCM.lamIt[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
+yaxis!(convItPlot,"2-Norm Lambda Gap",:log10)
+convPlot=plot(1:horzLen+1,dCM.lam[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
+yaxis!(convPlot,"central lambda gap",:log10)
 
 #checkDesiredStates(dLog.Sn,evS.Kn,evS.Snmin)
 

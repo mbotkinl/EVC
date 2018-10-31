@@ -10,12 +10,12 @@ horzLen=evS.K1
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 timeT=@elapsed cSol=pwlEVcentral(N,S,horzLen,evS,slack)
 
-filename = "central_N$(N)"
+fname = "central_N$(N)"
 # save
-if saveResults==1 saveRun(path,filename,timeT, evS,cSol) end
+if saveResults==1 saveRun(path,fname,timeT, evS,cSol) end
 # load
 if loadResults==1
-	loadF=load(path*filename*".jld2")
+	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	cSol=loadF["solution"]
 end
@@ -38,7 +38,7 @@ if drawFig==1 savefig(p1,path*"J_central_SOC.png") end
 p2=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,horzLen+1))
 if drawFig==1 savefig(p2,path*"J_central_Curr.png") end
 
-p3=plot(1:horzLen+1,hcat(cSol.Xt,cSol.Tactual),label=["PWL Temp" "Actual Temp"],xlims=(0,horzLen+1),xlabel="Time",ylabel="Xfrm Temp (K)")
+p3=plot(1:horzLen+1,hcat(cSol.Xt,cSol.Tactual),label=["PWL Temp" "Actual Temp"],xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
 plot!(p3,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
 if drawFig==1 savefig(p3,path*"J_central_Temp.png") end
 

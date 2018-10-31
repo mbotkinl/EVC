@@ -30,63 +30,44 @@ for ii= 1:N
     uPlot[:,ii]=dLognladmm.Un[collect(ii:N:length(dLognladmm.Un[:,convIt])),convIt]
 end
 
-pd1NLadmm=plot(xPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
-		Coord.Cartesian(xmin=0,xmax=horzLen+1),
-		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
-		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_centralNL_ADMM_SOC.png", 24inch, 12inch), pd1NLadmm) end
+pd1NLadmm=plot(xPlot,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,horzLen+1),ylims=(0,1))
+if drawFig==1 savefig(pd1NLadmm,path*"J_decentralNL_ADMM_SOC.png") end
 
-pd2NLadmm=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV Current (A)"),
-		Coord.Cartesian(xmin=0,xmax=horzLen+1),
-		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
-		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_centralNL_ADMM_Curr.png", 24inch, 12inch), pd2NLadmm) end
+pd2NLadmm=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,horzLen+1))
+if drawFig==1 savefig(pd2NLadmm,path*"J_decentralNL_ADMM_Curr.png") end
 
-pd3NLadmm=plot(layer(x=1:horzLen+1,y=dLognladmm.Xt[:,convIt],Geom.line,Theme(default_color=colorant"blue")),
-		#layer(x=1:horzLen+1,y=Tactual,Geom.line,Theme(default_color=colorant"green")),
-		yintercept=[evS.Tmax],Geom.hline(color=["red"],style=:dot),
-		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
-		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
-		minor_label_font_size=16pt,key_label_font_size=16pt))
-		#Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
-if drawFig==1 draw(PNG(path*"J_centralNL_ADMM_Temp.png", 24inch, 12inch), pd3NLadmm) end
+pd3NLadmm=plot(1:horzLen+1,dLognladmm.Xt[:,convIt],label="XFRM Temp",xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
+plot!(pd3NLadmm,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
+if drawFig==1 savefig(pd3NLadmm,path*"J_decentralNL_ADMM_Temp.png") end
 
-pd4NLadmm=plot(x=1:horzLen+1,y=dLognladmm.Lam[:,convIt],Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/A)",orientation=:vertical),
-		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
-		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_centralNL_ADMM_Lam.png", 24inch, 12inch), pd4NLadmm) end
+
+pd4NLadmm=plot(1:horzLen+1,hcat(cSolnl.lamCoupl,dLognladmm.Lam[:,convIt]),xlabel="Time",ylabel=raw"Lambda ($/kA)",
+             xlims=(0,horzLen+1),labels=["Central" "ADMM"])
+if drawFig==1 savefig(pd4NLadmm,path*"J_decentralNL_ADMM_Lam.png") end
 
 fName="J_Central.png"
 
 
-lamPlotNLadmm=plot(dLognladmm.Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-            layer(x=1:horzLen+1,y=cSolnl.lamCoupl,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-			Guide.xlabel("Time"), Guide.ylabel("Lambda",orientation=:vertical),Guide.ColorKey(title="Iteration"),
-			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-			minor_label_font_size=26pt,key_label_font_size=26pt))
-constPlotNLadmm2=plot(dLognladmm.couplConst[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-			Guide.xlabel("Time"), Guide.ylabel("curr constraint diff",orientation=:vertical),Guide.ColorKey(title="Iteration"),
-			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-			minor_label_font_size=26pt,key_label_font_size=26pt))
-if drawFig==1 draw(PNG(path*"J_ADMM_LamConv.png", 36inch, 12inch), lamPlotadmm) end
+# lamPlotNLadmm=plot(dLognladmm.Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+#             layer(x=1:horzLen+1,y=cSolnl.lamCoupl,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
+# 			Guide.xlabel("Time"), Guide.ylabel("Lambda",orientation=:vertical),Guide.ColorKey(title="Iteration"),
+# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+# 			minor_label_font_size=26pt,key_label_font_size=26pt))
+# constPlotNLadmm2=plot(dLognladmm.couplConst[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
+# 			Guide.xlabel("Time"), Guide.ylabel("curr constraint diff",orientation=:vertical),Guide.ColorKey(title="Iteration"),
+# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
+# 			minor_label_font_size=26pt,key_label_font_size=26pt))
+# if drawFig==1 draw(PNG(path*"J_ADMM_LamConv.png", 36inch, 12inch), lamPlotadmm) end
 
-convItPlotNLadmm=plot(x=1:convIt,y=dCMnladmm.lamIt[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap",orientation=:vertical),
-			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-			minor_label_font_size=26pt,key_label_font_size=26pt))
-convPlotNLadmm=plot(x=1:convIt,y=dCMnladmm.lam[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap",orientation=:vertical),
-			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-			minor_label_font_size=26pt,key_label_font_size=26pt))
-fPlotadmm=plot(x=1:convIt-1,y=dCMnladmm.obj[1:convIt-1,1],Geom.line,#Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap",orientation=:vertical),
-			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-			minor_label_font_size=26pt,key_label_font_size=26pt))
-constPlotadmm=plot(x=1:convIt,y=dCMnladmm.couplConst[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap",orientation=:vertical),
-			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-			minor_label_font_size=26pt,key_label_font_size=26pt))
-if drawFig==1 draw(PNG(path*"J_ADMM_Conv.png", 36inch, 12inch), convPlotadmm) end
+
+
+fPlotadmm=plot(1:horzLen+1,dCMnladmm.obj[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
+yaxis!(fPlotadmm,"obj function gap",:log10)
+convItPlotadmm=plot(1:horzLen+1,dCMnladmm.lamIt[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
+yaxis!(convItPlotadmm,"2-Norm Lambda Gap",:log10)
+convPlotadmm=plot(1:horzLen+1,dCMnladmm.lam[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
+yaxis!(convPlotadmm,"central lambda gap",:log10)
+constPlotadmm=plot(1:horzLen+1,dCMnladmm.couplConst[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
+yaxis!(constPlotadmm,"curr constraint Gap",:log10)
+
+#checkDesiredStates(dLognladmm.Sn,evS.Kn,evS.Snmin)
