@@ -11,8 +11,8 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,slack::Bool
     target=zeros(N*(horzLen+1),1);
     for ii=1:N
        cur=evS.Kn[ii]-(stepI-1)
-       ind=max(0,(cur-1)*N)+ii:N:length(target)
-       target[ind]=evS.Snmin[ii,1]
+       ind=(max(0,(cur-1)*N)+ii):N:length(target)
+       target[ind].=evS.Snmin[ii,1]
     end
 
     println("setting up model")
@@ -46,7 +46,7 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,slack::Bool
     @constraint(centralModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-evS.iD[stepI+(k-1)]+sum(z[(k-1)*(S)+s] for s=1:S))
     @constraint(centralModel,sn.<=1)
     if slack
-        @constraint(centralModel,sn.>=target.*(1-repmat(slackSn,horzLen+1,1)))
+        @constraint(centralModel,sn.>=target.*(1-repeat(slackSn,horzLen+1,1)))
         @constraint(centralModel,slackSn.>=0)
     else
         @constraint(centralModel,sn.>=target)
@@ -55,8 +55,8 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,slack::Bool
     	@constraint(centralModel,upperTCon,xt.<=evS.Tmax)
     end
     @constraint(centralModel,xt.>=0)
-    @constraint(centralModel,upperCCon,u.<=repmat(evS.imax,horzLen+1,1))
-    @constraint(centralModel,u.>=repmat(evS.imin,horzLen+1,1))
+    @constraint(centralModel,upperCCon,u.<=repeat(evS.imax,horzLen+1,1))
+    @constraint(centralModel,u.>=repeat(evS.imin,horzLen+1,1))
     @constraint(centralModel,z.>=0)
     @constraint(centralModel,z.<=evS.deltaI)
 
@@ -666,7 +666,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         #check for convergence
         constGap=norm(dLogalad.couplConst[:,p],1)
         cc=norm(vcat((prevVu[:,1]-dLogalad.Un[:,p]),(prevVz[:,1]-dLogalad.Z[:,p])),1)
-        #convCheck=ρALAD*norm(vcat(repmat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
+        #convCheck=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
         objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                         sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
                         sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
@@ -731,8 +731,8 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         #local inequality constraints
         # @constraint(cM,(Z[:,p+1]+dZ).>=0)
         # @constraint(cM,(Z[:,p+1]+dZ).<=deltaI)
-     	# @constraint(cM,(Un[:,p+1]+dUn).<=repmat(imax,horzLen+1,1))
-     	# @constraint(cM,(Un[:,p+1]+dUn).>=repmat(imin,horzLen+1,1))
+     	# @constraint(cM,(Un[:,p+1]+dUn).<=repeat(imax,horzLen+1,1))
+     	# @constraint(cM,(Un[:,p+1]+dUn).>=repeat(imin,horzLen+1,1))
 
         #these shouldnt be elementwise?????
         # @constraint(cM,Cz[:,p+1].*dZ.==0)
