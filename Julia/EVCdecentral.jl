@@ -52,6 +52,23 @@ if drawFig==1 savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 #fName="J_Decentral_notfast.png"
 #fName="J_Decentral_fast.png"
 #draw(PNG(path*fName, 13inch, 14inch), vstack(pd1,pd2,pd3,pd4))
+
+
+
+# A = [i for i=1:100, j=1:100]
+# heatmap(A, c=ColorGradient([:red,:yellow,:blue]))
+#
+# C(g::ColorGradient) = RGB[g[z] for z=range(1,step=1,length=10)]
+# g = :inferno
+# cgrad(g) |> C
+#
+# colors=[:red]
+# plot(1:horzLen+1,dLog.uSum[:,1:4],seriescolor=cgrad(:inferno))
+#
+# plot(1:horzLen+1,dLog.uSum[:,1:10],	line_z=1:10)
+# plot(1:horzLen+1,dLog.uSum[:,1:convIt],palette=:blues)
+#
+
 #
 # uSumPlotd=plot(dLog.uSum[:,1:convIt], line_z=1:convIt,xlabel="Time",ylabel="Current Sum",xlims=(0,horzLen+1),legend=false)
 #

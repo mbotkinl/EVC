@@ -1,5 +1,6 @@
 # C:\Users\micah\AppData\Local\JuliaPro-0.6.2.2\Julia-0.6.2\bin\julia
 # C:\Users\micah\AppData\Local\Julia-0.7.0\bin\julia
+# C:\Users\micah\AppData\Local\Julia-1.0.1\bin\julia
 
 println("Loading Packages...")
 using JuMP
