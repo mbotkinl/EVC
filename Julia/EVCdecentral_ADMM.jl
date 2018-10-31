@@ -6,18 +6,18 @@
 #u, sn, xt, and z are all in "x" v is the auxilliary variable corresponding to z in literature
 #current constraint is coupling
 
-timeT=@elapsed dLogadmm,dCMadmm,convIt=pwlEVadmm(N,S,horzLen,maxIt,evS,cSol,slack)
 
 filename = "dADMM_N$(N)"
-# save
-if saveResults==1 saveRun(path,filename,timeT, evS,dLogadmm, dCMadmm, convIt) end
-# load
-if loadResults==1
+
+if loadResults
 	loadF=load(path*filename*".jld2")
 	evS=loadF["scenario"]
 	dLogadmm=loadF["solution"]
 	dCMadmm=loadF["convMetrics"]
 	convIt=loadF["convIt"]
+else
+	timeT=@elapsed dLogadmm,dCMadmm,convIt=pwlEVadmm(N,S,horzLen,maxIt,evS,cSol,slack)
+	if saveResults saveRun(path,filename,timeT, evS,dLogadmm, dCMadmm, convIt) end
 end
 
 
@@ -66,13 +66,9 @@ if drawFig==1 savefig(pd4admm,path*"J_decentral_ADMM_Lam.png") end
 
 
 
-fPlotadmm=plot(1:horzLen+1,dCMadmm.obj[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(fPlotadmm,"obj function gap",:log10)
-convItPlotadmm=plot(1:horzLen+1,dCMadmm.lamIt[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(convItPlotadmm,"2-Norm Lambda Gap",:log10)
-convPlotadmm=plot(1:horzLen+1,dCMadmm.lam[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(convPlotadmm,"central lambda gap",:log10)
-constPlotadmm=plot(1:horzLen+1,dCMadmm.couplConst[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(constPlotadmm,"curr constraint Gap",:log10)
+fPlotadmm=plot(1:horzLen+1,dCMadmm.obj[1:convIt-1,1],xlabel="Iteration",ylabel="obj function gap",xlims=(0,convIt),legend=false,yscale=:log10)
+convItPlotadmm=plot(1:horzLen+1,dCMadmm.lamIt[1:convIt-1,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(0,convIt),legend=false,yscale=:log10)
+convPlotadmm=plot(1:horzLen+1,dCMadmm.lam[1:convIt-1,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(0,convIt),legend=false,yscale=:log10)
+constPlotadmm=plot(1:horzLen+1,dCMadmm.couplConst[1:convIt-1,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(0,convIt),legend=false,yscale=:log10)
 
 #checkDesiredStates(dLogadmm.Sn,evS.Kn,evS.Snmin)

@@ -1,23 +1,23 @@
 #Micah Botkin-Levy
 #4/10/18
 
-timeT=@elapsed dLog,dCM,convIt=pwlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSol,slack)
-
-s=Symbol(@sprintf("dCM_%s",updateMethod))
-v=Symbol(@sprintf("dCM"))
-@eval(($s)=($v))
-
 fname = "d_$(updateMethod)_N$(N)"
-# save
-if saveResults==1 saveRun(path,fname,timeT, evS,dLog, dCM, convIt) end
-# load
-if loadResults==1
+
+if loadResults
 	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	dLog=loadF["solution"]
 	dCM=loadF["convMetrics"]
 	convIt=loadF["convIt"]
+else
+	timeT=@elapsed dLog,dCM,convIt=pwlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSol,slack)
+
+	s=Symbol(@sprintf("dCM_%s",updateMethod))
+	v=Symbol(@sprintf("dCM"))
+	@eval(($s)=($v))
+	if saveResults==1 saveRun(path,fname,timeT, evS,dLog, dCM, convIt) end
 end
+
 
 
 println("plotting....")
@@ -91,12 +91,9 @@ if drawFig==1 savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 # 			minor_label_font_size=26pt,key_label_font_size=26pt))
 # if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_LamConv.png", 36inch, 12inch), lamPlot) end
 
-fPlot=plot(1:horzLen+1,dCM.obj[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(fPlot,"obj function gap",:log10)
-convItPlot=plot(1:horzLen+1,dCM.lamIt[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(convItPlot,"2-Norm Lambda Gap",:log10)
-convPlot=plot(1:horzLen+1,dCM.lam[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(convPlot,"central lambda gap",:log10)
+fPlot=plot(1:horzLen+1,dCM.obj[1:convIt-1,1],xlabel="Iteration",ylabel="obj function gap",xlims=(0,convIt),legend=false,yscale=:log10)
+convItPlot=plot(1:horzLen+1,dCM.lamIt[1:convIt-1,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(0,convIt),legend=false,yscale=:log10)
+convPlot=plot(1:horzLen+1,dCM.lam[1:convIt-1,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(0,convIt),legend=false,yscale=:log10)
 
 #checkDesiredStates(dLog.Sn,evS.Kn,evS.Snmin)
 

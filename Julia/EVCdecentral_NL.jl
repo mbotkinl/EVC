@@ -1,23 +1,21 @@
 #Micah Botkin-Levy
 #4/10/18
 
-timeT=@elapsed dLognl,dCMnl,convIt=nlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSolnl,relaxed,slack)
-
-s=Symbol(@sprintf("dCMnl_%s",updateMethod))
-v=Symbol(@sprintf("dCMnl"))
-@eval(($s)=($v))
-
 relaxString= if relaxed==true "_relax"else "" end
 filename = "d_$(updateMethod)_NL_N$(N)"*relaxString
-# save
-if saveResults==1 saveRun(path,filename,timeT, evS,dLognl, dCMnl, convIt) end
-# load
-if loadResults==1
+
+if loadResults
 	loadF=load(path*filename*".jld2")
 	evS=loadF["scenario"]
 	dLognl=loadF["solution"]
 	dCMnl=loadF["convMetrics"]
 	convIt=loadF["convIt"]
+else
+	timeT=@elapsed dLognl,dCMnl,convIt=nlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSolnl,relaxed,slack)
+	s=Symbol(@sprintf("dCMnl_%s",updateMethod))
+	v=Symbol(@sprintf("dCMnl"))
+	@eval(($s)=($v))
+	if saveResults saveRun(path,filename,timeT, evS,dLognl, dCMnl, convIt) end
 end
 
 
@@ -69,13 +67,9 @@ if drawFig==1 savefig(pd4nl,path*"J_NL_"*updateMethod*"_Lam.png") end
 # if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_LamConv.png", 36inch, 12inch), lamPlot) end
 
 
-fPlotNL=plot(1:horzLen+1,dCMnl.obj[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(fPlotNL,"obj function gap",:log10)
-convItPlotNL=plot(1:horzLen+1,dCMnl.lamIt[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(convItPlotNL,"2-Norm Lambda Gap",:log10)
-convPlotNL=plot(1:horzLen+1,dCMnl.lam[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(convPlotNL,"central lambda gap",:log10)
-constPlotNL=plot(1:horzLen+1,dCMnl.couplConst[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(constPlotNL,"curr constraint Gap",:log10)
+fPlotNL=plot(1:horzLen+1,dCMnl.obj[1:convIt-1,1],xlabel="Iteration",ylabel="obj function gap",xlims=(0,convIt),legend=false,yscale=:log10)
+convItPlotNL=plot(1:horzLen+1,dCMnl.lamIt[1:convIt-1,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(0,convIt),legend=false,yscale=:log10)
+convPlotNL=plot(1:horzLen+1,dCMnl.lam[1:convIt-1,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(0,convIt),legend=false,yscale=:log10)
+constPlotNL=plot(1:horzLen+1,dCMnl.couplConst[1:convIt-1,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(0,convIt),legend=false,yscale=:log10)
 
 checkDesiredStates(dLognl.Sn,evS.Kn,evS.Snmin)

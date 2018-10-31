@@ -5,25 +5,23 @@ if relaxed
 else
 	using Ipopt
 end
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
 #pull out a few key variables
 N=evS.N
 S=evS.S
 horzLen=evS.K1
 
-include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
-
-timeT=@elapsed cSolnl=nlEVcentral(N,S,horzLen,evS,relaxed,slack)
-
 relaxString= if relaxed==true "_relax"else "" end
 filename = "central_NL_N$(N)"*relaxString
-# save
-if saveResults==1 saveRun(path,filename,timeT, evS,cSolnl) end
-# load
-if loadResults==1
+
+if loadResults
 	loadF=load(path*filename*".jld2")
 	evS=loadF["scenario"]
 	cSolnl=loadF["solution"]
+else
+	timeT=@elapsed cSolnl=nlEVcentral(N,S,horzLen,evS,relaxed,slack)
+	if saveResults saveRun(path,filename,timeT, evS,cSolnl) end
 end
 
 println("plotting....")

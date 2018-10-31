@@ -6,20 +6,18 @@
 #u, sn, xt, and z are all in "x" v is the auxilliary variable corresponding to z in literature
 #current constraint is coupling
 
-
-timeT=@elapsed dLognladmm,dCMnladmm,convIt=nlEVadmm(N,S,horzLen,maxIt,evS,cSolnl,relaxed,slack)
-
 relaxString= if relaxed==true "_relax"else "" end
 filename = "dADMM_NL_N$(N)"*relaxString
-# save
-if saveResults==1 saveRun(path,filename,timeT, evS,dLognladmm, dCMnladmm, convIt) end
-# load
-if loadResults==1
+
+if loadResults
 	loadF=load(path*filename*".jld2")
 	evS=loadF["scenario"]
 	dLognladmm=loadF["solution"]
 	dCMnladmm=loadF["convMetrics"]
 	convIt=loadF["convIt"]
+else
+	timeT=@elapsed dLognladmm,dCMnladmm,convIt=nlEVadmm(N,S,horzLen,maxIt,evS,cSolnl,relaxed,slack)
+	if saveResults saveRun(path,filename,timeT, evS,dLognladmm, dCMnladmm, convIt) end
 end
 
 println("plotting....")
@@ -61,13 +59,9 @@ fName="J_Central.png"
 
 
 
-fPlotadmm=plot(1:horzLen+1,dCMnladmm.obj[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(fPlotadmm,"obj function gap",:log10)
-convItPlotadmm=plot(1:horzLen+1,dCMnladmm.lamIt[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(convItPlotadmm,"2-Norm Lambda Gap",:log10)
-convPlotadmm=plot(1:horzLen+1,dCMnladmm.lam[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(convPlotadmm,"central lambda gap",:log10)
-constPlotadmm=plot(1:horzLen+1,dCMnladmm.couplConst[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(constPlotadmm,"curr constraint Gap",:log10)
+fPlotadmm=plot(1:horzLen+1,dCMnladmm.obj[1:convIt-1,1],xlabel="Iteration",ylabel="obj function gap",xlims=(0,convIt),legend=false,yscale=:log10)
+convItPlotadmm=plot(1:horzLen+1,dCMnladmm.lamIt[1:convIt-1,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(0,convIt),legend=false,yscale=:log10)
+convPlotadmm=plot(1:horzLen+1,dCMnladmm.lam[1:convIt-1,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(0,convIt),legend=false,yscale=:log10)
+constPlotadmm=plot(1:horzLen+1,dCMnladmm.couplConst[1:convIt-1,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(0,convIt),legend=false,yscale=:log10)
 
 #checkDesiredStates(dLognladmm.Sn,evS.Kn,evS.Snmin)

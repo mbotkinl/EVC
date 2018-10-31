@@ -7,20 +7,18 @@
 #u, sn, xt, and z are all in "y", v is the auxilliary variable corresponding to x in literature
 #current constraint is coupling
 
-
-timeT=@elapsed dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl,relaxed,slack)
-
 relaxString= if relaxed==true "_relax"else "" end
 filename = "dALADIN_NL_N$(N)"*relaxString
-# save
-if saveResults==1 saveRun(path,filename,timeT, evS,dLognlalad, dCMnlalad, convIt) end
-# load
-if loadResults==1
+
+if loadResults
 	loadF=load(path*filename*".jld2")
 	evS=loadF["scenario"]
 	dLognlalad=loadF["solution"]
 	dCMnlalad=loadF["convMetrics"]
 	convIt=loadF["convIt"]
+else
+	timeT=@elapsed dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl,relaxed,slack)
+	if saveResults==1 saveRun(path,filename,timeT, evS,dLognlalad, dCMnlalad, convIt) end
 end
 
 println("plotting....")
@@ -88,30 +86,7 @@ setChangesPlot=plot(1:convIt,setChanges[1:convIt],xlabel="Iteration",ylabel="Cha
                   legend=false,xlims=(1,convIt))
 solChangesplot=plot(1:convIt,hcat(ΔY[1:convIt],convCheck[1:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
 
-fPlotaladNL=plot(1:horzLen+1,dCMnlalad.obj[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(fPlotaladNL,"obj function gap",:log10)
-convItPlotaladNL=plot(1:horzLen+1,dCMnlalad.lamIt[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(convItPlotaladNL,"2-Norm Lambda Gap",:log10)
-convPlotaladNL=plot(1:horzLen+1,dCMnlalad.lam[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(convPlotaladNL,"central lambda gap",:log10)
-constPlotaladNL=plot(1:horzLen+1,dCMnlalad.couplConst[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(constPlotaladNL,"curr constraint Gap",:log10)
-
-
-convItPlotaladNL=plot(x=1:convIt,y=dCMnlalad.lamIt[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("2-Norm Lambda Gap"),
-			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-			minor_label_font_size=26pt,key_label_font_size=26pt))
-convPlotaladNL=plot(x=1:convIt,y=dCMnlalad.lam[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("central lambda gap"),
-			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-			minor_label_font_size=26pt,key_label_font_size=26pt))
-constPlotaladNL=plot(x=1:convIt,y=dCMnlalad.couplConst[1:convIt,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("consensus gap"),
-			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-			minor_label_font_size=26pt,key_label_font_size=26pt))
-fPlotaladNL=plot(x=1:convIt-1,y=dCMnlalad.obj[1:convIt-1,1],Geom.line,Scale.y_log10,
-			Guide.xlabel("Iteration"), Guide.ylabel("obj function gap"),
-			Coord.Cartesian(xmin=0,xmax=convIt),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-			minor_label_font_size=26pt,key_label_font_size=26pt))
-if drawFig==1 draw(PNG(path*"J_ALADIN_Conv.png", 36inch, 12inch), vstack(convItPlotalad,convPlotalad,fPlotalad)) end
+fPlotaladNL=plot(1:horzLen+1,dCMnlalad.obj[1:convIt-1,1],xlabel="Iteration",ylabel="obj function gap",xlims=(0,convIt),legend=false,yscale=:log10)
+convItPlotaladNL=plot(1:horzLen+1,dCMnlalad.lamIt[1:convIt-1,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(0,convIt),legend=false,yscale=:log10)
+convPlotaladNL=plot(1:horzLen+1,dCMnlalad.lam[1:convIt-1,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(0,convIt),legend=false,yscale=:log10)
+constPlotaladNL=plot(1:horzLen+1,dCMnlalad.couplConst[1:convIt-1,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(0,convIt),legend=false,yscale=:log10)

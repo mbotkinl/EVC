@@ -6,18 +6,18 @@
 #u, sn, xt, and z are all in "y", v is the auxilliary variable corresponding to x in literature
 #current constraint is coupling
 
-timeT=@elapsed dLogalad,dCMalad,convIt,ΔY,convCheck=pwlEValad(N,S,horzLen,maxIt,evS,cSol,slack)
 
 filename = "dALADIN_N$(N)"
-# save
-if saveResults==1 saveRun(path,filename,timeT, evS,dLogalad, dCMalad, convIt) end
-# load
-if loadResults==1
+
+if loadResults
 	loadF=load(path*filename*".jld2")
 	evS=loadF["scenario"]
 	dLogalad=loadF["solution"]
 	dCMalad=loadF["convMetrics"]
 	convIt=loadF["convIt"]
+else
+	timeT=@elapsed dLogalad,dCMalad,convIt,ΔY,convCheck=pwlEValad(N,S,horzLen,maxIt,evS,cSol,slack)
+	if saveResults saveRun(path,filename,timeT, evS,dLogalad, dCMalad, convIt) end
 end
 
 
@@ -79,13 +79,9 @@ setChangesPlot=plot(2:convIt,setChanges[2:convIt],xlabel="Iteration",ylabel="Cha
                   legend=false,xlims=(2,convIt))
 solChangesplot=plot(2:convIt,hcat(ΔY[2:convIt],convCheck[2:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
 
-fPlotalad=plot(1:horzLen+1,dCMalad.obj[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(fPlotalad,"obj function gap",:log10)
-convItPlotalad=plot(1:horzLen+1,dCMalad.lamIt[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(convItPlotalad,"2-Norm Lambda Gap",:log10)
-convPlotalad=plot(1:horzLen+1,dCMalad.lam[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(convPlotalad,"central lambda gap",:log10)
-constPlotalad=plot(1:horzLen+1,dCMalad.couplConst[1:convIt-1,1],xlabel="Iteration",xlims=(0,convIt),legend=false)
-yaxis!(constPlotalad,"curr constraint Gap",:log10)
+fPlotalad=plot(1:horzLen+1,dCMalad.obj[1:convIt-1,1],xlabel="Iteration",ylabel="obj function gap",xlims=(0,convIt),legend=false,yscale=:log10)
+convItPlotalad=plot(1:horzLen+1,dCMalad.lamIt[1:convIt-1,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(0,convIt),legend=false,yscale=:log10)
+convPlotalad=plot(1:horzLen+1,dCMalad.lam[1:convIt-1,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(0,convIt),legend=false,yscale=:log10)
+constPlotalad=plot(1:horzLen+1,dCMalad.couplConst[1:convIt-1,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(0,convIt),legend=false,yscale=:log10)
 
 #checkDesiredStates(dLogalad.Sn,evS.Kn,evS.Snmin)

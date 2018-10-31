@@ -7,17 +7,15 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 N=evS.N
 S=evS.S
 horzLen=evS.K1
-
-timeT=@elapsed cSol=pwlEVcentral(N,S,horzLen,evS,slack)
-
 fname = "central_N$(N)"
-# save
-if saveResults==1 saveRun(path,fname,timeT, evS,cSol) end
-# load
-if loadResults==1
+
+if loadResults
 	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	cSol=loadF["solution"]
+else
+	timeT=@elapsed cSol=pwlEVcentral(N,S,horzLen,evS,slack)
+	if saveResults saveRun(path,fname,timeT, evS,cSol) end
 end
 
 
