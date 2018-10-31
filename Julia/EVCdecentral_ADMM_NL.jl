@@ -59,9 +59,9 @@ fName="J_Central.png"
 
 
 
-fPlotadmm=plot(1:horzLen+1,dCMnladmm.obj[1:convIt-1,1],xlabel="Iteration",ylabel="obj function gap",xlims=(0,convIt),legend=false,yscale=:log10)
-convItPlotadmm=plot(1:horzLen+1,dCMnladmm.lamIt[1:convIt-1,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(0,convIt),legend=false,yscale=:log10)
-convPlotadmm=plot(1:horzLen+1,dCMnladmm.lam[1:convIt-1,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(0,convIt),legend=false,yscale=:log10)
-constPlotadmm=plot(1:horzLen+1,dCMnladmm.couplConst[1:convIt-1,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(0,convIt),legend=false,yscale=:log10)
+fPlotadmm=plot(1:convIt,dCMnladmm.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
+convItPlotadmm=plot(1:convIt,dCMnladmm.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
+convPlotadmm=plot(1:convIt,dCMnladmm.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
+constPlotadmm=plot(1:convIt,dCMnladmm.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 
 #checkDesiredStates(dLognladmm.Sn,evS.Kn,evS.Snmin)

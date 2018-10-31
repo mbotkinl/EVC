@@ -67,9 +67,9 @@ if drawFig==1 savefig(pd4nl,path*"J_NL_"*updateMethod*"_Lam.png") end
 # if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_LamConv.png", 36inch, 12inch), lamPlot) end
 
 
-fPlotNL=plot(1:horzLen+1,dCMnl.obj[1:convIt-1,1],xlabel="Iteration",ylabel="obj function gap",xlims=(0,convIt),legend=false,yscale=:log10)
-convItPlotNL=plot(1:horzLen+1,dCMnl.lamIt[1:convIt-1,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(0,convIt),legend=false,yscale=:log10)
-convPlotNL=plot(1:horzLen+1,dCMnl.lam[1:convIt-1,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(0,convIt),legend=false,yscale=:log10)
-constPlotNL=plot(1:horzLen+1,dCMnl.couplConst[1:convIt-1,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(0,convIt),legend=false,yscale=:log10)
+fPlotNL=plot(1:convIt,dCMnl.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
+convItPlotNL=plot(1:convIt,dCMnl.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
+convPlotNL=plot(1:convIt,dCMnl.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
+constPlotNL=plot(1:convIt,dCMnl.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 
 checkDesiredStates(dLognl.Sn,evS.Kn,evS.Snmin)
