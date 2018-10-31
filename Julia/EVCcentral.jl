@@ -31,43 +31,20 @@ for ii= 1:N
     uPlot[:,ii]=cSol.Un[collect(ii:N:length(cSol.Un))]
 end
 
-p1=plot(snPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
-		Coord.Cartesian(xmin=0,xmax=horzLen+1,ymax=1),
-		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,line_width=3pt,
-		minor_label_font_size=20pt,key_label_font_size=20pt))
-# p1b=plot(xPlot2,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 		Guide.xlabel("Time"), Guide.ylabel("PEV SOC"),
-# 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
-# 		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=18pt,
-# 		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_SOC.png", 24inch, 12inch), p1) end
 
-p2=plot(uPlot,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
-		Coord.Cartesian(xmin=0,xmax=horzLen+1),
-		Theme(background_color=colorant"white",key_position = :none,major_label_font_size=24pt,
-		minor_label_font_size=20pt,line_width=3pt,key_label_font_size=20pt))
-if drawFig==1 draw(PNG(path*"J_central_Curr.png", 24inch, 12inch), p2) end
+p1=plot(snPlot,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,horzLen+1),ylims=(0,1))
+if drawFig==1 savefig(p1,path*"J_central_SOC.png") end
 
-p3=plot(layer(x=1:horzLen+1,y=cSol.Xt,Geom.line,Theme(default_color=colorant"blue")),
-		layer(x=1:horzLen+1,y=cSol.Tactual,Geom.line,Theme(default_color=colorant"green")),
-		yintercept=[evS.Tmax],Geom.hline(color=["red"],style=:dot),
-		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
-		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",key_position = :top,major_label_font_size=18pt,
-		minor_label_font_size=16pt,key_label_font_size=16pt),
-		Guide.manual_color_key("", ["PWL Temp", "Actual Temp"], ["blue", "green"]))
-if drawFig==1 draw(PNG(path*"J_central_Temp.png", 24inch, 12inch), p3) end
+p2=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,horzLen+1))
+if drawFig==1 savefig(p2,path*"J_central_Curr.png") end
 
-p4b=plot(x=1:horzLen+1,y=cSol.lamTemp,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/K)",orientation=:vertical),
-		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
-		minor_label_font_size=16pt,key_label_font_size=16pt))
-p4=plot(x=1:horzLen+1,y=cSol.lamCoupl,Geom.line,
-		Guide.xlabel("Time"), Guide.ylabel(raw"Lambda ($/kA)",orientation=:vertical),
-		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=18pt,
-		minor_label_font_size=16pt,key_label_font_size=16pt))
-if drawFig==1 draw(PNG(path*"J_central_Lam.png", 24inch, 12inch), p4) end
+p3=plot(1:horzLen+1,hcat(cSol.Xt,cSol.Tactual),label=["PWL Temp" "Actual Temp"],xlims=(0,horzLen+1),xlabel="Time",ylabel="Xfrm Temp (K)")
+plot!(p3,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
+if drawFig==1 savefig(p3,path*"J_central_Temp.png") end
+
+p4b=plot(1:horzLen+1,cSol.lamTemp,xlabel="Time",ylabel=raw"Lambda ($/K)",xlims=(0,horzLen+1),legend=false)
+p4=plot(1:horzLen+1,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,horzLen+1),legend=false)
+if drawFig==1 savefig(p4,path*"J_central_Lam.png") end
 
 fName="J_Central.png"
 
