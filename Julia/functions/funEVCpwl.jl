@@ -179,7 +179,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
 
             dLog.Sn[collect(evInd:N:N*(horzLen+1)),p]=getvalue(sn) #solved state goes in next time slot
             dLog.Un[collect(evInd:N:N*(horzLen+1)),p]=getvalue(un) #current go
-            dLog.slackSn[evInd]=getvalue(slackSn)
+            dLog.slackSn[evInd]=if slack getvalue(slackSn) else 0 end
         end
 
     	if updateMethod=="dualAscent"
@@ -363,7 +363,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 
     		dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=getvalue(sn)
     		dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=getvalue(u)
-            dLogadmm.slackSn[evInd]=getvalue(slackSn)
+            dLogadmm.slackSn[evInd]=if slack getvalue(slackSn) else 0 end
         end
 
         #N+1 decoupled problem aka transformer current
@@ -597,7 +597,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
             # cVal[cVal.<0]=-1
             dLogalad.Cs[ind,p]=1cValMax-1cValMin
 
-            dLogalad.slackSn[evInd]=getvalue(slackSn)
+            dLogalad.slackSn[evInd]=if slack getvalue(slackSn) else 0 end
             dLogalad.Sn[ind,p]=snVal
     		dLogalad.Un[ind,p]=uVal
             dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
