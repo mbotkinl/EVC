@@ -9,6 +9,7 @@ using Printf
 using Distributed
 using LinearAlgebra
 using Plots
+using Statistics
 pyplot()
 
 
@@ -17,36 +18,44 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 
 N=10
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\"
-datafile="n" #"mat" #"jld" #"n"
+datafile="jld2" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
 
 updateMethod="dualAscent" #dualAscent #fastAscent
-drawFig=0
-saveResults=0
-loadResults=0
-noTlimit=false
 maxIt=100
+noTlimit=false
 relaxed=false
 slack=false
-verbose=false
 
-if datafile=="jld"
+drawFig=false
+saveResults=false
+loadResults=false
+#verbose=false
+
+if datafile=="jld2"
 	using JLD2
 	println("Reading in Data...")
 	loadF=load(path*file)
 	evS=loadF["evScenario"]
 else #create scenario
 
-	Tmax=393
-	Dload_amplitude=10
-	saveS=false
+	Tmax=371
+	Dload_amplitude=0
+	saveS=true
 
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
     if saveS==true using JLD2 end
 	using Distributions
 	println("Creating EV Scenario...")
-	evS=setupScenario(N;Tmax=Tmax,Dload_amplitude=Dload_amplitude,saveS=saveS)
+	evS=setupScenario(N;Tmax=Tmax,Dload_amplitude=Dload_amplitude,saveS=saveS,path=path)
 end
+
+
+#run comparison
+path = clips()
+path=path*"\\"
+cRun,runs=readRuns(path)
+compareRunsGraph(runs, cRun)
 
 # @time runALADit(1)
 #@time testALAD(1)

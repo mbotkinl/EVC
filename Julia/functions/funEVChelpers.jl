@@ -21,8 +21,8 @@ function clipr()
     return JLD.load(t[2:length(t)-1])
 end
 
-function pubPlot(p;upscale=8,dpi=300,sizeWH=(800,600))
-    plot!(p2,size=(sizeWH[1]*upscale,sizeWH[2]*upscale),thickness_scaling=2*upscale,dpi=dpi)
+function pubPlot(p;upscale=8,thickscale=2,dpi=300,sizeWH=(800,600))
+    plot!(p,size=(sizeWH[1]*upscale,sizeWH[2]*upscale),thickness_scaling=thickscale*upscale,dpi=dpi)
 end
 
 function readRuns(path)
@@ -36,6 +36,7 @@ function readRuns(path)
     for ii=1:length(dFiles)
         runs[dFiles[ii]]=load(path*dFiles[ii])
     end
+    return cRun, runs
 end
 
 function compareRunsGraph(runs, cRun)
@@ -84,11 +85,11 @@ function compareRunsGraph(runs, cRun)
 
     plotLabels=permutedims(runNames)
 
-    lamPlot=plot(lamConv,xlabel="Iteration",ylabel="2-norm Lambda gap",xlims=(0,convIt),labels=plotLabels,yscale=:log10)
-    lamRMSEPlot=plot(lamRMSE,xlabel="Iteration",ylabel="Relative RMSE Lambda Gap",xlims=(0,convIt),labels=plotLabels,yscale=:log10)
-    lamInfNormPlot=plot(lamInfNorm,xlabel="Iteration",ylabel="Max Lambda Gap",xlims=(0,convIt),labels=plotLabels,yscale=:log10)
-    objNormPlot=plot(objConv,xlabel="Iteration",ylabel="Objective Value Magintude Gap",xlims=(0,convIt),labels=plotLabels,yscale=:log10)
-    objPercPlot=plot(objPerc,xlabel="Iteration",ylabel="Objective Value Percentage Gap",xlims=(0,convIt),labels=plotLabels,yscale=:log10)
+    lamPlot=plot(lamConv,xlabel="Iteration",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10)
+    lamRMSEPlot=plot(lamRMSE,xlabel="Iteration",ylabel="Relative RMSE Lambda Gap",labels=plotLabels,yscale=:log10)
+    lamInfNormPlot=plot(lamInfNorm,xlabel="Iteration",ylabel="Max Lambda Gap",labels=plotLabels,yscale=:log10)
+    objNormPlot=plot(objConv,xlabel="Iteration",ylabel="Objective Value Magintude Gap",labels=plotLabels,yscale=:log10)
+    objPercPlot=plot(objPerc,xlabel="Iteration",ylabel="Objective Value Percentage Gap",labels=plotLabels,yscale=:log10)
 
     tempPlot=plot(T,xlabel="Time",ylabel="Temp (K)",xlims=(0,Klen),labels=plotLabels)
     plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
@@ -119,9 +120,11 @@ function compareRunsGraph(runs, cRun)
     Rmax=plot(Rmax,xlabel="Time",ylabel="R Max",xlims=(0,Klen),labels=plotLabels)
 
     p=plot(lamRMSEPlot, objPercPlot, tempPlot, uSumPlot,snSumPlot,layout=(5,1))
-
+    pubPlot(p,thickscale=0.5)
     fName="compPlot.png"
     savefig(p,path*fName)
+
+    return p
 end
 
 function compareRunsTable(runs)
