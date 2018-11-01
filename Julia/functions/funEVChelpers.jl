@@ -21,6 +21,10 @@ function clipr()
     return JLD.load(t[2:length(t)-1])
 end
 
+function pubPlot(p;upscale=8,dpi=300,sizeWH=(800,600))
+    plot!(p2,size=(sizeWH[1]*upscale,sizeWH[2]*upscale),thickness_scaling=2*upscale,dpi=dpi)
+end
+
 function readRuns(path)
     files = filter(x->occursin(".jld2",x), readdir(path))
     files = filter(x->occursin("_",x), files) # avoid evScenario
