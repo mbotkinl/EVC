@@ -701,28 +701,20 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         fGap2= abs((dLogalad.objVal[1,p]-cSolnl.objVal)/cSolnl.objVal)
         snGap=norm((dLogalad.Sn[:,p]-cSolnl.Sn),2)
         unGap=norm((dLogalad.Un[:,p]-cSolnl.Un),2)
-		itGap = norm(dLogalad.Lam[:,p]-prevLam[:,1],2)
-		convGap = norm(dLogalad.Lam[:,p]-cSolnl.lamCoupl,2)
-        convGap2 = norm(round.(dLogalad.Lam[:,p]-cSolnl.lamCoupl,10)./cSolnl.lamCoupl,2) #need some rounding here if both are 1e-8
-
         dCMalad.obj[p,1]=fGap
         dCMalad.sn[p,1]=snGap
         dCMalad.un[p,1]=unGap
-        dCMalad.lamIt[p,1]=itGap
         dCMalad.couplConst[p,1]=constGap
-        dCMalad.lam[p,1]=convGap
         convCheck[p,1]=cc
         if  constGap<=epsilon && convCheck<=epsilon
             @printf "Converged after %g iterations\n" p
             convIt=p
             break
         else
-            @printf "lastGap    %e after %g iterations\n" itGap p
-            @printf "convLamGap %e after %g iterations\n" convGap p
             @printf "convCheck  %e after %g iterations\n" cc p
             @printf "constGap   %e after %g iterations\n" constGap p
             #@printf "snGap      %e after %g iterations\n" snGap p
-            @printf("fGap       %e after %g iterations\n\n",fGap,p)
+            @printf("fGap       %e after %g iterations\n",fGap,p)
         end
 
         #coupled QP
@@ -771,14 +763,19 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         dLogalad.Vs[:,p]=prevVs[:,1]+α1*(dLogalad.Sn[:,p]-prevVs[:,1])+α2*getvalue(dSn)
         dLogalad.Vt[:,p]=prevVt[:,1]+α1*(dLogalad.Xt[:,p]-prevVt[:,1])+α2*getvalue(dXt)
 
+		dCMalad.lamIt[p,1]=norm(dLogalad.Lam[:,p]-prevLam[:,1],2)
+	    dCMalad.lam[p,1]=norm(dLogalad.Lam[:,p]-cSolnl.lamCoupl,2)
+	    @printf "lastGap    %e after %g iterations\n" dCMalad.lamIt[p,1] p
+	    @printf "convLamGap %e after %g iterations\n\n" dCMalad.lam[p,1] p
+
+		ρALADp[1,p+1]=min(ρALADp[1,p]*ρRate,1e6) #increase ρ every iteration
+		ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dI),getvalue(dSn),getvalue(dXt)),Inf)
+
 		prevVu=dLogalad.Vu[:,p]
 	    prevVs=dLogalad.Vs[:,p]
 	    prevVi=dLogalad.Vi[:,p]
 	    prevVt=dLogalad.Vt[:,p]
 	    prevLam=dLogalad.Lam[:,p]
-
-        ρALADp[1,p+1]=min(ρALADp[1,p]*ρRate,1e6) #increase ρ every iteration
-        ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dI),getvalue(dSn),getvalue(dXt)),Inf)
     end
 
     return dLogalad,dCMalad,convIt,ΔY,convCheck
