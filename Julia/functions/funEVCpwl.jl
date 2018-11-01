@@ -446,8 +446,8 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
             @printf "snGap    %e after %g iterations\n" snGap p
     		@printf "unGap    %e after %g iterations\n" unGap p
     		@printf("fGap     %e after %g iterations\n\n",fGap,p)
-            prevLam=dLogadmm.Vu[:,p]
-            prevVz=dLogadmm.Vu[:,p]
+            prevLam=dLogadmm.Lam[:,p]
+            prevVz=dLogadmm.Vz[:,p]
             prevVu=dLogadmm.Vu[:,p]
     	end
     end
