@@ -7,17 +7,17 @@
 #current constraint is coupling
 
 
-filename = "dADMM_N$(N)"
+fname = "dADMM_N$(N)"
 
 if loadResults
-	loadF=load(path*filename*".jld2")
+	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	dLogadmm=loadF["solution"]
 	dCMadmm=loadF["convMetrics"]
 	convIt=loadF["convIt"]
 else
 	timeT=@elapsed dLogadmm,dCMadmm,convIt=pwlEVadmm(N,S,horzLen,maxIt,evS,cSol,slack)
-	if saveResults saveRun(path,filename,timeT, evS,dLogadmm, dCMadmm, convIt) end
+	if saveResults saveRun(path,fname,timeT, evS,dLogadmm, dCMadmm, convIt) end
 end
 
 

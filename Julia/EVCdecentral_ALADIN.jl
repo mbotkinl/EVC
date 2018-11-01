@@ -7,17 +7,17 @@
 #current constraint is coupling
 
 
-filename = "dALADIN_N$(N)"
+fname = "dALADIN_N$(N)"
 
 if loadResults
-	loadF=load(path*filename*".jld2")
+	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	dLogalad=loadF["solution"]
 	dCMalad=loadF["convMetrics"]
 	convIt=loadF["convIt"]
 else
 	timeT=@elapsed dLogalad,dCMalad,convIt,ΔY,convCheck=pwlEValad(N,S,horzLen,maxIt,evS,cSol,slack)
-	if saveResults saveRun(path,filename,timeT, evS,dLogalad, dCMalad, convIt) end
+	if saveResults saveRun(path,fname,timeT, evS,dLogalad, dCMalad, convIt) end
 end
 
 
@@ -40,7 +40,7 @@ plot!(pd3alad,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:das
 if drawFig==1 savefig(pd3alad,path*"J_decentral_ALADIN_Temp.png") end
 
 pd4alad=plot(1:horzLen+1,hcat(cSol.lamCoupl,dLogalad.Lam[:,convIt]),xlabel="Time",ylabel=raw"Lambda ($/kA)",
-             xlims=(0,horzLen+1),labels=["Central" "ADMM"])
+             xlims=(0,horzLen+1),labels=["Central" "ALADIN"])
 if drawFig==1 savefig(pd4alad,path*"J_decentral_ALADIN_Lam.png") end
 
 #

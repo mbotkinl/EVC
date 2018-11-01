@@ -40,7 +40,7 @@ plot!(pd3aladNL,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:d
 if drawFig==1 savefig(pd3aladNL,path*"J_decentralNL_ALADIN_Temp.png") end
 
 pd4aladNL=plot(1:horzLen+1,hcat(cSolnl.lamCoupl,dLognlalad.Lam[:,convIt]),xlabel="Time",ylabel=raw"Lambda ($/kA)",
-             xlims=(0,horzLen+1),labels=["Central" "ADMM"])
+             xlims=(0,horzLen+1),labels=["Central" "ALADIN"])
 if drawFig==1 savefig(pd4aladNL,path*"J_decentralNL_ALADIN_Lam.png") end
 
 #

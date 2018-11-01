@@ -274,7 +274,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
     					sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
         dLog.objVal[1,p]=objFun(dLog.Sn[:,p],dLog.Un[:,p])
-    	fGap=dLog.objVal[1,p]-cSolnl.objVal
+    	fGap=abs(dLog.objVal[1,p]-cSolnl.objVal)
     	snGap=norm((dLog.Sn[:,p]-cSolnl.Sn),2)
     	unGap=norm((dLog.Un[:,p]-cSolnl.Un),2)
     	itGap = norm(dLog.Lam[:,p]-prevLam[:,1],2)
@@ -283,7 +283,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	else
     		convGap = norm(dLog.Lam[:,p]-cSolnl.lamCoupl,2)
     	end
-    	dCM.obj[p,1]=abs(fGap)
+    	dCM.obj[p,1]=fGap
     	dCM.sn[p,1]=snGap
     	dCM.un[p,1]=unGap
     	dCM.lamIt[p,1]=itGap
