@@ -399,7 +399,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     		dLogadmm.uSum[k,p]=sum(dLogadmm.Un[(k-1)*N+n,p] for n=1:N)
     		dLogadmm.zSum[k,p]=sum(dLogadmm.Z[(k-1)*(S)+s,p] for s=1:S)
     		dLogadmm.couplConst[k,p]= dLogadmm.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLogadmm.zSum[k,p]
-            dLogadmm.Lam[k,p]=max.(dLogadmm.Lam[k,p]+ρI/(S*(N))*(dLogadmm.couplConst[k,p]),0)
+            dLogadmm.Lam[k,p]=max.(prevLam[k,1]+ρI/(S*(N))*(dLogadmm.couplConst[k,p]),0)
     		#dLogadmm.Lam[k,p]=dLogadmm.Lam[k,p]+ρI/(S*(N))*(dLogadmm.couplConst[k,p])
     	end
 
@@ -411,11 +411,11 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 
         #v upate eq 7.67
         for k=1:horzLen+1
-            dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(dLogadmm.Lam[k,p]-dLogadmm.Lam[k,p])/ρI
-            dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(dLogadmm.Lam[k,p]-dLogadmm.Lam[k,p])/ρI
+            dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρI
+            dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρI
             #
-            # dLogadmm.Vu[(k-1)*N+collect(1:N),p]=min.(max.(dLogadmm.Un[(k-1)*N+collect(1:N),p]+(dLogadmm.Lam[k,p]-dLogadmm.Lam[k,p])/ρI,evS.imin),evS.imax)
-            # dLogadmm.Vz[(k-1)*(S)+collect(1:S),p]=max.(min.(-dLogadmm.Z[(k-1)*(S)+collect(1:S),p]+(dLogadmm.Lam[k,p]-dLogadmm.Lam[k,p])/ρI,0),-evS.deltaI)
+            # dLogadmm.Vu[(k-1)*N+collect(1:N),p]=min.(max.(dLogadmm.Un[(k-1)*N+collect(1:N),p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρI,evS.imin),evS.imax)
+            # dLogadmm.Vz[(k-1)*(S)+collect(1:S),p]=max.(min.(-dLogadmm.Z[(k-1)*(S)+collect(1:S),p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρI,0),-evS.deltaI)
         end
 
         #check convergence
@@ -427,7 +427,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     	snGap=norm((dLogadmm.Sn[:,p]-cSol.Sn),2)
     	unGap=norm((dLogadmm.Un[:,p]-cSol.Un),2)
     	constGap=norm(dLogadmm.couplConst[:,p],2)
-    	itGap = norm(dLogadmm.Lam[:,p]-dLogadmm.Lam[:,p],2)
+    	itGap = norm(dLogadmm.Lam[:,p]-prevLam[:,1],2)
     	convGap = norm(dLogadmm.Lam[:,p]-cSol.lamCoupl,2)
     	dCMadmm.obj[p,1]=fGap
     	dCMadmm.sn[p,1]=snGap
