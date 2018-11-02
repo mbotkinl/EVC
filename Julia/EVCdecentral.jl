@@ -95,7 +95,7 @@ fPlot=plot(1:convIt,dCM.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function 
 convItPlot=plot(1:convIt,dCM.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 convPlot=plot(1:convIt,dCM.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(2,convIt),legend=false,yscale=:log10)
 
-#checkDesiredStates(dLog.Sn,evS.Kn,evS.Snmin)
+checkDesiredStates(dLog.Sn[:,convIt],evS.Kn,evS.Snmin)
 
 
 #compare central and decentral current agg

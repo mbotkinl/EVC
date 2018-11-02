@@ -72,4 +72,4 @@ convItPlotNL=plot(1:convIt,dCMnl.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-
 convPlotNL=plot(1:convIt,dCMnl.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
 constPlotNL=plot(1:convIt,dCMnl.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 
-checkDesiredStates(dLognl.Sn,evS.Kn,evS.Snmin)
+checkDesiredStates(dLognl.Sn[:,convIt],evS.Kn,evS.Snmin)

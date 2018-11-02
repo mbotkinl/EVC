@@ -90,3 +90,5 @@ fPlotaladNL=plot(1:convIt,dCMnlalad.obj[1:convIt,1],xlabel="Iteration",ylabel="o
 convItPlotaladNL=plot(1:convIt,dCMnlalad.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 convPlotaladNL=plot(1:convIt,dCMnlalad.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
 constPlotaladNL=plot(1:convIt,dCMnlalad.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
+
+checkDesiredStates(dLognlalad.Sn[:,convIt],evS.Kn,evS.Snmin)

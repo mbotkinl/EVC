@@ -84,4 +84,4 @@ convItPlotalad=plot(1:convIt,dCMalad.lamIt[1:convIt,1],xlabel="Iteration",ylabel
 convPlotalad=plot(1:convIt,dCMalad.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
 constPlotalad=plot(1:convIt,dCMalad.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 
-#checkDesiredStates(dLogalad.Sn,evS.Kn,evS.Snmin)
+checkDesiredStates(dLogalad.Sn[:,convIt],evS.Kn,evS.Snmin)

@@ -71,4 +71,4 @@ convItPlotadmm=plot(1:convIt,dCMadmm.lamIt[1:convIt,1],xlabel="Iteration",ylabel
 convPlotadmm=plot(1:convIt,dCMadmm.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
 constPlotadmm=plot(1:convIt,dCMadmm.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 
-#checkDesiredStates(dLogadmm.Sn,evS.Kn,evS.Snmin)
+checkDesiredStates(dLogadmm.Sn[:,convIt],evS.Kn,evS.Snmin)
