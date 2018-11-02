@@ -1,5 +1,4 @@
 # helper functions for EVC code
-using JLD2
 using DataFrames
 using FileIO
 # using Gadfly
@@ -39,7 +38,7 @@ function readRuns(path)
     return cRun, runs
 end
 
-function compareRunsGraph(runs, cRun)
+function compareRunsGraph(runs, cRun, saveF)
     runNames=collect(keys(runs))
     cSol=cRun["solution"]
     numIt=size(runs[runNames[1]]["convMetrics"].lam)[1]
@@ -48,7 +47,7 @@ function compareRunsGraph(runs, cRun)
     evS=cRun["scenario"]
     N=evS.N
 
-    objPerc = zeros(numIt+1,P)
+    objPerc = zeros(numIt,P)
     objConv = zeros(numIt,P)
     lamConv = zeros(numIt,P)
     lamRMSE = zeros(numIt,P)
@@ -62,7 +61,7 @@ function compareRunsGraph(runs, cRun)
         println(runNames[i])
         runI=runs[runNames[i]]
         cIt=runI["convIt"]
-        objPerc[:,i]=abs.(cSol.objVal.-runI["solution"].objVal')/cSol.objVal*100
+        objPerc[:,i]=abs.(cSol.objVal.-runI["solution"].objVal[1:numIt]')/cSol.objVal*100
         objConv[:,i]=runI["convMetrics"].obj
         lamConv[:,i]=runI["convMetrics"].lam
         if typeof(runI["solution"]) == centralSolutionStruct #PEM
@@ -121,8 +120,9 @@ function compareRunsGraph(runs, cRun)
 
     p=plot(lamRMSEPlot, objPercPlot, tempPlot, uSumPlot,snSumPlot,layout=(5,1))
     pubPlot(p,thickscale=0.5)
+
     fName="compPlot.png"
-    savefig(p,path*fName)
+    if saveF savefig(p,path*fName) end
 
     return p
 end
