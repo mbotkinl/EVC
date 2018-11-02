@@ -15,7 +15,7 @@ else
 	s=Symbol(@sprintf("dCM_%s",updateMethod))
 	v=Symbol(@sprintf("dCM"))
 	@eval(($s)=($v))
-	if saveResults==1 saveRun(path,fname,timeT, evS,dLog, dCM, convIt) end
+	if saveResults saveRun(path,fname,timeT, evS,dLog, dCM, convIt) end
 end
 
 
@@ -29,15 +29,15 @@ for ii= 1:N
 end
 
 pd1=plot(snPlotd,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,horzLen+1),ylims=(0,1))
-if drawFig==1 savefig(p1d,path*"J_"*updateMethod*"_SOC.png") end
+if drawFig savefig(p1d,path*"J_"*updateMethod*"_SOC.png") end
 
 pd2=plot(uPlotd,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,horzLen+1))
-if drawFig==1 savefig(p2d,path*"J_"*updateMethod*"_Curr.png") end
+if drawFig savefig(p2d,path*"J_"*updateMethod*"_Curr.png") end
 
 pd3=plot(1:horzLen+1,dLog.Tactual[:,convIt],label="Actual Temp",xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
 plot!(pd3,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
 if updateMethod=="dualAscent" plot!(pd3,1:horzLen+1,dLog.Xt[:,convIt],label="PWL Temp") end
-if drawFig==1 savefig(pd3,path*"J_"*updateMethod*"_Temp.png") end
+if drawFig savefig(pd3,path*"J_"*updateMethod*"_Temp.png") end
 
 if updateMethod=="fastAscent"
 	lamLabel=raw"Lambda ($/K)"
@@ -46,7 +46,7 @@ else
 end
 
 pd4=plot(1:horzLen+1,dLog.Lam[:,convIt],xlabel="Time",ylabel=lamLabel,xlims=(0,horzLen+1),legend=false)
-if drawFig==1 savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
+if drawFig savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 
 
 #fName="J_Decentral_notfast.png"
@@ -72,7 +72,7 @@ if drawFig==1 savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 #
 # uSumPlotd=plot(dLog.uSum[:,1:convIt], line_z=1:convIt,xlabel="Time",ylabel="Current Sum",xlims=(0,horzLen+1),legend=false)
 #
-# if drawFig==1 savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
+# if drawFig savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 #
 # uSumPlotd=plot(dLog.uSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 # 			layer(x=1:horzLen+1,y=cSol.uSum,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
@@ -89,7 +89,7 @@ if drawFig==1 savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 # 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
 # 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 # 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_LamConv.png", 36inch, 12inch), lamPlot) end
+# if drawFig draw(PNG(path*"J_"*updateMethod*"_LamConv.png", 36inch, 12inch), lamPlot) end
 
 fPlot=plot(1:convIt,dCM.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
 convItPlot=plot(1:convIt,dCM.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)

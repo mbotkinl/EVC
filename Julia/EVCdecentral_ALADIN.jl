@@ -30,18 +30,18 @@ for ii= 1:N
 end
 
 pd1alad=plot(xPlot,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,horzLen+1),ylims=(0,1))
-if drawFig==1 savefig(pd1alad,path*"J_decentral_ALADIN_SOC.png") end
+if drawFig savefig(pd1alad,path*"J_decentral_ALADIN_SOC.png") end
 
 pd2alad=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,horzLen+1))
-if drawFig==1 savefig(pd2alad,path*"J_decentral_ALADIN_Curr.png") end
+if drawFig savefig(pd2alad,path*"J_decentral_ALADIN_Curr.png") end
 
 pd3alad=plot(1:horzLen+1,hcat(dLogalad.Tactual[:,convIt],dLogalad.Xt[:,convIt]),label=["Actual Temp" "PWL Temp"],xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
 plot!(pd3alad,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
-if drawFig==1 savefig(pd3alad,path*"J_decentral_ALADIN_Temp.png") end
+if drawFig savefig(pd3alad,path*"J_decentral_ALADIN_Temp.png") end
 
 pd4alad=plot(1:horzLen+1,hcat(cSol.lamCoupl,dLogalad.Lam[:,convIt]),xlabel="Time",ylabel=raw"Lambda ($/kA)",
              xlims=(0,horzLen+1),labels=["Central" "ALADIN"])
-if drawFig==1 savefig(pd4alad,path*"J_decentral_ALADIN_Lam.png") end
+if drawFig savefig(pd4alad,path*"J_decentral_ALADIN_Lam.png") end
 
 #
 # lamPlotalad=plot(dLogalad.Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
@@ -63,7 +63,7 @@ if drawFig==1 savefig(pd4alad,path*"J_decentral_ALADIN_Lam.png") end
 # 			Guide.xlabel("Time"), Guide.ylabel("curr constraint diff",orientation=:vertical),Guide.ColorKey(title="Iteration"),
 # 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 # 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# if drawFig==1 draw(PNG(path*"J_ALADIN_LamConv.png", 36inch, 12inch), lamPlotalad) end
+# if drawFig draw(PNG(path*"J_ALADIN_LamConv.png", 36inch, 12inch), lamPlotalad) end
 
 activeSet=zeros(convIt,1)
 setChanges=zeros(convIt,1)

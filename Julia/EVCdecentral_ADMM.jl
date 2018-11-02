@@ -30,18 +30,18 @@ for ii= 1:N
 end
 
 pd1admm=plot(xPlot,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,horzLen+1),ylims=(0,1))
-if drawFig==1 savefig(pd1admm,path*"J_decentral_ADMM_SOC.png") end
+if drawFig savefig(pd1admm,path*"J_decentral_ADMM_SOC.png") end
 
 pd2admm=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,horzLen+1))
-if drawFig==1 savefig(pd2admm,path*"J_decentral_ADMM_Curr.png") end
+if drawFig savefig(pd2admm,path*"J_decentral_ADMM_Curr.png") end
 
 pd3admm=plot(1:horzLen+1,hcat(dLogadmm.Tactual[:,convIt],dLogadmm.Xt[:,convIt]),label=["Actual Temp" "PWL Temp"],xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
 plot!(pd3admm,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
-if drawFig==1 savefig(pd3admm,path*"J_decentral_ADMM_Temp.png") end
+if drawFig savefig(pd3admm,path*"J_decentral_ADMM_Temp.png") end
 
 pd4admm=plot(1:horzLen+1,hcat(cSol.lamCoupl,dLogadmm.Lam[:,convIt]),xlabel="Time",ylabel=raw"Lambda ($/kA)",
              xlims=(0,horzLen+1),labels=["Central" "ADMM"])
-if drawFig==1 savefig(pd4admm,path*"J_decentral_ADMM_Lam.png") end
+if drawFig savefig(pd4admm,path*"J_decentral_ADMM_Lam.png") end
 #
 # lamPlotadmm=plot(dLogadmm.Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 # 			layer(x=1:horzLen+1,y=cSol.lamCoupl,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
@@ -62,7 +62,7 @@ if drawFig==1 savefig(pd4admm,path*"J_decentral_ADMM_Lam.png") end
 # 			Guide.xlabel("Time"), Guide.ylabel("U sum"),Guide.ColorKey(title="Iteration"),
 # 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
 # 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# if drawFig==1 draw(PNG(path*"J_ADMM_LamConv.png", 36inch, 12inch), lamPlotadmm) end
+# if drawFig draw(PNG(path*"J_ADMM_LamConv.png", 36inch, 12inch), lamPlotadmm) end
 
 
 
