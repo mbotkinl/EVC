@@ -213,9 +213,9 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     		for k=1:horzLen+1
     			dLog.zSum[k,p]=sum(dLog.Z[(k-1)*(S)+s,p] for s=1:S)
     			dLog.uSum[k,p]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N)
-    			gradL[k,1]=dLog.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLog.zSum[k,p]
+    			dLog.couplConst[k,p]=dLog.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLog.zSum[k,p]
     		end
-    		dCM.couplConst[p,1]=norm(gradL,2)
+    		dCM.couplConst[p,1]=norm(dLog.couplConst[:,p],2)
     	end
 
     	#calculate actual temperature from nonlinear model of XFRM

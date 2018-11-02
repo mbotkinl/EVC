@@ -234,9 +234,9 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     		gradL=zeros(horzLen+1,1)
     		for k=1:horzLen+1
     			dLog.uSum[k,p]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N)
-    			gradL[k,1]=dLog.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLog.Itotal[k,p]
+    			dLog.couplConst[k,p]=dLog.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLog.Itotal[k,p]
     		end
-    		dLog.couplConst[p,1]=norm(gradL,2)
+    		dLog.couplConst[p,1]=norm(dLog.couplConst[:,p],2)
     	end
 
     	if updateMethod=="fastAscent"
