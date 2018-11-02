@@ -52,6 +52,7 @@ function compareRunsGraph(runs, cRun, saveF)
     lamConv = zeros(numIt,P)
     lamRMSE = zeros(numIt,P)
     lamInfNorm = zeros(numIt,P)
+    Lam = zeros(Klen,P)
     T = zeros(Klen,P)
     Sn = zeros(Klen*N,P)
     uSum = zeros(Klen,P)
@@ -64,6 +65,7 @@ function compareRunsGraph(runs, cRun, saveF)
         objPerc[:,i]=abs.(cSol.objVal.-runI["solution"].objVal[1:numIt]')/cSol.objVal*100
         objConv[:,i]=runI["convMetrics"].obj
         lamConv[:,i]=runI["convMetrics"].lam
+        Lam[:,i]=runI["solution"].Lam[:,cIt]
         if typeof(runI["solution"]) == centralSolutionStruct #PEM
             lamRMSE[:,i]=zeros(numIt)
             lamInfNorm[:,i]=zeros(numIt)
@@ -84,16 +86,22 @@ function compareRunsGraph(runs, cRun, saveF)
 
     plotLabels=permutedims(runNames)
 
-    lamPlot=plot(lamConv,xlabel="Iteration",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10)
+⁠   #Iteration plots
+    lamConvPlot=plot(lamConv,xlabel="Iteration",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10)
     lamRMSEPlot=plot(lamRMSE,xlabel="Iteration",ylabel="Relative RMSE Lambda Gap",labels=plotLabels,yscale=:log10)
     lamInfNormPlot=plot(lamInfNorm,xlabel="Iteration",ylabel="Max Lambda Gap",labels=plotLabels,yscale=:log10)
     objNormPlot=plot(objConv,xlabel="Iteration",ylabel="Objective Value Magintude Gap",labels=plotLabels,yscale=:log10)
     objPercPlot=plot(objPerc,xlabel="Iteration",ylabel="Objective Value Percentage Gap",labels=plotLabels,yscale=:log10)
 
-    tempPlot=plot(T,xlabel="Time",ylabel="Temp (K)",xlims=(0,Klen),labels=plotLabels)
-    plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
 
-    uSumPlot=plot(uSum,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,Klen),labels=plotLabels)
+    #Time plots
+    tempPlot=plot(1:Klen,cSol.Xt,label="Central",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),xlabel="Time",ylabel="Temp (K)")
+    plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
+    plot!(tempPlot,T,labels=plotLabels)
+
+    uSumPlot=plot(1:Klen,cSol.uSum,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,Klen),labels="Central",
+                  seriescolor=:black,linewidth=4,linealpha=0.25)
+    plot!(uSumPlot,uSum,labels=plotLabels)
 
     target=zeros(Klen)
     for k in 1:Klen
@@ -101,8 +109,17 @@ function compareRunsGraph(runs, cRun, saveF)
         target[k]=sum(evS.Snmin[ind])
     end
 
-    snSumPlot=plot(snSum,xlabel="Time",ylabel="SOC Sum",xlims=(0,Klen),labels=plotLabels)
+    snSumCentral=[sum(cSol.Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# sum up across N
+    snSumPlot=plot(1:Klen,snSumCentral,xlabel="Time",ylabel="SOC Sum",xlims=(0,Klen),labels=plotLabels,
+                   seriescolor=:black,linewidth=4,linealpha=0.25)
     plot!(snSumPlot,1:Klen,target,label="SOC Target",line=(:dash,:red))
+    plot!(snSumPlot,snSum,labels=plotLabels)
+
+    lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),labels=plotLabels,
+                   seriescolor=:black,linewidth=4,linealpha=0.25)
+    plot!(lamPlot,Lam,labels=plotLabels)
+
+
 
     # R plot***
     Rmax=zeros(Klen,P)
@@ -118,8 +135,8 @@ function compareRunsGraph(runs, cRun, saveF)
 
     Rmax=plot(Rmax,xlabel="Time",ylabel="R Max",xlims=(0,Klen),labels=plotLabels)
 
-    p=plot(lamRMSEPlot, objPercPlot, tempPlot, uSumPlot,snSumPlot,layout=(5,1))
-    pubPlot(p,thickscale=0.5)
+    p=plot(lamRMSEPlot,lamInfNormPlot, objPercPlot, tempPlot, uSumPlot,lamPlot,layout=(3,2))
+    pubPlot(p,thickscale=0.8,sizeWH=(1000,600),dpi=300)
 
     fName="compPlot.png"
     if saveF savefig(p,path*fName) end
