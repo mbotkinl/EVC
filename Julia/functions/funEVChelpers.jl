@@ -86,7 +86,7 @@ function compareRunsGraph(runs, cRun, saveF)
 
     plotLabels=permutedims(runNames)
 
-⁠   #Iteration plots
+    #Iteration plots
     lamConvPlot=plot(lamConv,xlabel="Iteration",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10)
     lamRMSEPlot=plot(lamRMSE,xlabel="Iteration",ylabel="Relative RMSE Lambda Gap",labels=plotLabels,yscale=:log10)
     lamInfNormPlot=plot(lamInfNorm,xlabel="Iteration",ylabel="Max Lambda Gap",labels=plotLabels,yscale=:log10)
@@ -118,8 +118,6 @@ function compareRunsGraph(runs, cRun, saveF)
     lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),labels=plotLabels,
                    seriescolor=:black,linewidth=4,linealpha=0.25)
     plot!(lamPlot,Lam,labels=plotLabels)
-
-
 
     # R plot***
     Rmax=zeros(Klen,P)
