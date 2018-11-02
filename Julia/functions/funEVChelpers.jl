@@ -62,7 +62,7 @@ function compareRunsGraph(runs, cRun, saveF)
         println(runNames[i])
         runI=runs[runNames[i]]
         cIt=runI["convIt"]
-        objPerc[:,i]=abs.(cSol.objVal.-runI["solution"].objVal[1:numIt]')/cSol.objVal*100
+        objPerc[1:numIt,i]=abs.(cSol.objVal.-runI["solution"].objVal[1:numIt]')/cSol.objVal*100
         objConv[:,i]=runI["convMetrics"].obj
         lamConv[:,i]=runI["convMetrics"].lam
         Lam[:,i]=runI["solution"].Lam[:,cIt]
@@ -70,7 +70,7 @@ function compareRunsGraph(runs, cRun, saveF)
             lamRMSE[:,i]=zeros(numIt)
             lamInfNorm[:,i]=zeros(numIt)
         else
-            lamRMSE[:,i]=[sqrt(1/Klen*sum((runI["solution"].Lam[k,it]-cSol.lamCoupl[k])^2/abs(cSol.lamCoupl[k]) for k=1:Klen)) for it=1:numIt]
+            lamRMSE[:,i]=[sqrt(1/Klen*sum((runI["solution"].Lam[k,it]-cSol.lamCoupl[k])^2/abs(cSol.lamCoupl[k]) for k=1:numIt)) for it=1:numIt]
             lamInfNorm[:,i]=[maximum(abs.(runI["solution"].Lam[:,it]-cSol.lamCoupl)) for it=1:numIt]
         end
         T[:,i]=runI["solution"].Xt[:,cIt]
@@ -82,6 +82,14 @@ function compareRunsGraph(runs, cRun, saveF)
             Sn[:,i]=runI["solution"].Sn'[:]
             snSum[:,i]=[sum(runI["solution"].Sn[k,:]) for k in 1:Klen]# sum up across N
         end
+
+        # fill in NaN for greater than convIt
+        objPerc[cIt:numIt,i].=NaN
+        lamRMSE[cIt:numIt,i].=NaN
+        lamInfNorm[cIt:numIt,i].=NaN
+        objConv[cIt:numIt,i].=NaN
+        lamConv[cIt:numIt,i].=NaN
+
     end
 
     plotLabels=permutedims(runNames)
