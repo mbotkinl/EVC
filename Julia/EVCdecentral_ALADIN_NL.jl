@@ -43,33 +43,19 @@ pd4aladNL=plot(1:horzLen+1,hcat(cSolnl.lamCoupl,dLognlalad.Lam[:,convIt]),xlabel
              xlims=(0,horzLen+1),labels=["Central" "ALADIN"])
 if drawFig==1 savefig(pd4aladNL,path*"J_decentralNL_ALADIN_Lam.png") end
 
-#
-#
-# lamPlotaladNL=plot(dLognlalad.Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			layer(x=1:horzLen+1,y=cSolnl.lamCoupl,Geom.line,Theme(default_color=colorant"black",line_width=4pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# uSumPlotaladNL=plot(dLognlalad.uSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			layer(x=1:horzLen+1,y=cSolnl.uSum,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("U sum"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# iPlotaladNL=plot(dLognlalad.Itotal[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			layer(x=1:horzLen+1,y=cSolnl.Itotal,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# xtPlotaladNL=plot(dLognlalad.Xt[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			layer(x=1:horzLen+1,y=cSolnl.Xt,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# constPlotaladNL2=plot(dLognlalad.couplConst,x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			Guide.xlabel("Time"), Guide.ylabel("curr constraint diff"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# if drawFig==1 draw(PNG(path*"J_ALADIN_LamConv.png", 36inch, 12inch), lamPlotalad) end
+
+uSumPlotnlalad=plot(dLognlalad.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
+plot!(uSumPlotnlalad,1:horzLen+1,cSolnl.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+
+zSumPlotnlalad=plot(dLognlalad.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
+plot!(zSumPlotnlalad,1:horzLen+1,cSolnl.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+
+constPlotnlalad=plot(dLognlalad.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+
+lamPlotnlalad=plot(dLognlalad.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
+plot!(lamPlotnlalad,1:horzLen+1,cSolnl.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
+
+
 
 activeSet=zeros(convIt,1)
 setChanges=zeros(convIt,1)

@@ -42,29 +42,24 @@ if drawFig savefig(pd3admm,path*"J_decentral_ADMM_Temp.png") end
 pd4admm=plot(1:horzLen+1,hcat(cSol.lamCoupl,dLogadmm.Lam[:,convIt]),xlabel="Time",ylabel=raw"Lambda ($/kA)",
              xlims=(0,horzLen+1),labels=["Central" "ADMM"])
 if drawFig savefig(pd4admm,path*"J_decentral_ADMM_Lam.png") end
-#
-# lamPlotadmm=plot(dLogadmm.Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			layer(x=1:horzLen+1,y=cSol.lamCoupl,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# constPlotadmm2=plot(dLogadmm.couplConst[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			Guide.xlabel("Time"), Guide.ylabel("curr constraint diff"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# zSumPlotadmm=plot(dLogadmm.zSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			layer(x=1:horzLen+1,y=cSol.zSum,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# uSumPlotadmm=plot(dLogadmm.uSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			layer(x=1:horzLen+1,y=cSol.uSum,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("U sum"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# if drawFig draw(PNG(path*"J_ADMM_LamConv.png", 36inch, 12inch), lamPlotadmm) end
 
 
+
+#convergence plots
+halfCI=Int(floor(convIt/2))
+CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
+               range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
+
+uSumPlotadmm=plot(dLogadmm.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
+plot!(uSumPlotadmm,1:horzLen+1,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+
+zSumPlotadmm=plot(dLogadmm.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
+plot!(zSumPlotadmm,1:horzLen+1,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+
+constPlotadmm=plot(dLogadmm.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+
+lamPlotadmm=plot(dLogadmm.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
+plot!(lamPlotadmm,1:horzLen+1,cSol.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
 
 fPlotadmm=plot(1:convIt,dCMadmm.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
 convItPlotadmm=plot(1:convIt,dCMadmm.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)

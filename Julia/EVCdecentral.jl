@@ -28,6 +28,7 @@ for ii= 1:N
 	uPlotd[:,ii]=dLog.Un[collect(ii:N:length(dLog.Un[:,convIt])),convIt]
 end
 
+#solution plots
 pd1=plot(snPlotd,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,horzLen+1),ylims=(0,1))
 if drawFig savefig(p1d,path*"J_"*updateMethod*"_SOC.png") end
 
@@ -48,49 +49,21 @@ end
 pd4=plot(1:horzLen+1,dLog.Lam[:,convIt],xlabel="Time",ylabel=lamLabel,xlims=(0,horzLen+1),legend=false)
 if drawFig savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 
+#convergence plots
+halfCI=Int(floor(convIt/2))
+CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
+               range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
 
-#fName="J_Decentral_notfast.png"
-#fName="J_Decentral_fast.png"
-#draw(PNG(path*fName, 13inch, 14inch), vstack(pd1,pd2,pd3,pd4))
+uSumPlotd=plot(dLog.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
+plot!(uSumPlotd,1:horzLen+1,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
 
-#
-# A = [i for i=1:100, j=1:100]
-# heatmap(A, c=ColorGradient([:red,:yellow,:blue]))
-#
-# C(g::ColorGradient) = RGB[g[z] for z=range(1,step=1,length=10)]
-# g = :inferno
-# cgrad(g) |> C
-#
-# colors=[:red]
-# plot(1:horzLen+1,dLog.uSum[:,1:4], linecolor=cgrad(:inferno))
-# plot(1:horzLen+1,dLog.uSum[:,1:10],	color=cgrad(:grays))
-# plot(1:horzLen+1,dLog.uSum[:,1:10],	zcolor=1:10)
-#
-# plot(1:horzLen+1,dLog.uSum[:,1:10], palette=:blues)
-#
+zSumPlotd=plot(dLog.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
+plot!(zSumPlotd,1:horzLen+1,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
 
-#
-# uSumPlotd=plot(dLog.uSum[:,1:convIt], line_z=1:convIt,xlabel="Time",ylabel="Current Sum",xlims=(0,horzLen+1),legend=false)
-#
-# if drawFig savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
-#
-# uSumPlotd=plot(dLog.uSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			layer(x=1:horzLen+1,y=cSol.uSum,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("U sum"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# zSumPlotd=plot(dLog.zSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			layer(x=1:horzLen+1,y=cSol.zSum,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# lamPlot=plot(dLog.Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			layer(x=1:horzLen+1,y=cSol.lamCoupl,Geom.line,Theme(default_color=colorant"black",line_width=4pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# if drawFig draw(PNG(path*"J_"*updateMethod*"_LamConv.png", 36inch, 12inch), lamPlot) end
+lamPlotd=plot(dLog.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
+plot!(lamPlotd,1:horzLen+1,cSol.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
 
+#convergence metric plots
 fPlot=plot(1:convIt,dCM.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
 convItPlot=plot(1:convIt,dCM.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 convPlot=plot(1:convIt,dCM.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(2,convIt),legend=false,yscale=:log10)

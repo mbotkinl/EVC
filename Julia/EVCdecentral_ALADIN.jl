@@ -43,6 +43,25 @@ pd4alad=plot(1:horzLen+1,hcat(cSol.lamCoupl,dLogalad.Lam[:,convIt]),xlabel="Time
              xlims=(0,horzLen+1),labels=["Central" "ALADIN"])
 if drawFig savefig(pd4alad,path*"J_decentral_ALADIN_Lam.png") end
 
+
+
+
+#convergence plots
+halfCI=Int(floor(convIt/2))
+CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
+               range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
+
+uSumPlotalad=plot(dLogalad.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
+plot!(uSumPlotalad,1:horzLen+1,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+
+zSumPlotalad=plot(dLogalad.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
+plot!(zSumPlotalad,1:horzLen+1,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+
+constPlotalad=plot(dLogalad.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+
+lamPlotalad=plot(dLogalad.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
+plot!(lamPlotalad,1:horzLen+1,cSol.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
+
 #
 # lamPlotalad=plot(dLogalad.Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 # 			layer(x=1:horzLen+1,y=cSol.lamCoupl,Geom.line,Theme(default_color=colorant"black",line_width=4pt)),

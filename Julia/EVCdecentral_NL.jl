@@ -45,26 +45,22 @@ end
 pd4nl=plot(1:horzLen+1,dLognl.Lam[:,convIt],xlabel="Time",ylabel=lamLabel,xlims=(0,horzLen+1),legend=false)
 if drawFig==1 savefig(pd4nl,path*"J_NL_"*updateMethod*"_Lam.png") end
 
-#fName="J_Decentral_notfast.png"
-#fName="J_Decentral_fast.png"
-#draw(PNG(path*fName, 13inch, 14inch), vstack(pd1,pd2,pd3,pd4))
-#
-# uSumPlotNL=plot(dLognl.uSum[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			layer(x=1:horzLen+1,y=cSolnl.uSum,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("U sum"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# iPlotNL=plot(dLognl.Itotal[:,2:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			layer(x=1:horzLen+1,y=cSolnl.Itotal,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("Z sum"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# lamPlotNL=plot(dLognl.Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			layer(x=1:horzLen+1,y=cSolnl.lamCoupl,Geom.line,Theme(default_color=colorant"black",line_width=4pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("Lambda"),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# if drawFig==1 draw(PNG(path*"J_"*updateMethod*"_LamConv.png", 36inch, 12inch), lamPlot) end
+#convergence plots
+halfCI=Int(floor(convIt/2))
+CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
+               range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
+
+
+uSumPlotnl=plot(dLognl.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
+plot!(uSumPlotnl,1:horzLen+1,cSolnl.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+
+zSumPlotnl=plot(dLognl.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
+plot!(zSumPlotnl,1:horzLen+1,cSolnl.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+
+constPlotnl=plot(dLognl.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+
+lamPlotnl=plot(dLognl.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
+plot!(lamPlotnl,1:horzLen+1,cSolnl.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
 
 
 fPlotNL=plot(1:convIt,dCMnl.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)

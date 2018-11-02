@@ -45,6 +45,24 @@ if drawFig==1 savefig(pd4NLadmm,path*"J_decentralNL_ADMM_Lam.png") end
 
 fName="J_Central.png"
 
+#convergence plots
+halfCI=Int(floor(convIt/2))
+CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
+               range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
+
+
+uSumPlotnladmm=plot(dLognladmm.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
+plot!(uSumPlotnladmm,1:horzLen+1,cSolnl.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+
+zSumPlotnladmm=plot(dLognladmm.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
+plot!(zSumPlotnladmm,1:horzLen+1,cSolnl.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+
+constPlotnladmm=plot(dLognladmm.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+
+lamPlotnladmm=plot(dLognladmm.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
+plot!(lamPlotnladmm,1:horzLen+1,cSolnl.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
+
+
 
 # lamPlotNLadmm=plot(dLognladmm.Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
 #             layer(x=1:horzLen+1,y=cSolnl.lamCoupl,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
