@@ -236,7 +236,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     			dLog.uSum[k,p]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N)
     			dLog.couplConst[k,p]=dLog.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLog.Itotal[k,p]
     		end
-    		dLog.couplConst[p,1]=norm(dLog.couplConst[:,p],2)
+    		dCM.couplConst[p,1]=norm(dLog.couplConst[:,p],2)
     	end
 
     	if updateMethod=="fastAscent"
@@ -251,14 +251,14 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
 
     		#fast ascent
     		if noTlimit==false
-    			gradL=dLog.Xt[:,p]-evS.Tmax*ones(horzLen+1,1)
+    			dLog.couplConst[:,p]=dLog.Xt[:,p]-evS.Tmax*ones(horzLen+1,1)
     		else
-    			gradL=zeros(horzLen+1,1)
+    			dLog.couplConst[:,p]=zeros(horzLen+1,1)
     		end
 
     		#add some amount of future lambda
     		for k=1:(horzLen+1-2)
-    			gradL[k,1]=.6*gradL[k,1]+.3*gradL[k+1,1]+.1*gradL[k+2,1]
+    			dLog.couplConst[k,p]=.6*dLog.couplConst[k,p]+.3*dLog.couplConst[k+1,p]+.1*dLog.couplConst[k+2,p]
     			#gradL[k,1]=.5*gradL[k,1]+.2*gradL[k+1,1]+.2*gradL[k+2,1]+.1*gradL[k+3,1]+.1*gradL[k+4,1]
     		end
     	end
@@ -268,7 +268,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	#alphaP[p,1] = alphaP[p,1]*alphaRate
 
     	#Lam[:,p]=Lam[:,p]+alpha_p*gradL
-        dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP[p,1]*gradL,0)
+        dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP[p,1]*dLog.couplConst[:,p],0)
 
     	#check convergence
     	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +

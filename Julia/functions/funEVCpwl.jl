@@ -209,7 +209,6 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     		 dLog.Z[:,p]=getvalue(z)
 
     	    #grad of lagragian
-    		gradL=zeros(horzLen+1,1)
     		for k=1:horzLen+1
     			dLog.zSum[k,p]=sum(dLog.Z[(k-1)*(S)+s,p] for s=1:S)
     			dLog.uSum[k,p]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N)
@@ -221,7 +220,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	#calculate actual temperature from nonlinear model of XFRM
     	ztotal=zeros(horzLen+1,1)
     	for k=1:horzLen+1
-    		ztotal[k,1]=sum(dLog.Un[(k-1)*N+n,p]    for n=1:N) + evS.iD[stepI+(k-1),1]
+    		ztotal[k,1]=dLog.uSum[k,p] + evS.iD[stepI+(k-1),1]
     	end
     	dLog.Tactual[1,p]=evS.τP*xt0+evS.γP*ztotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
     	for k=1:horzLen
@@ -231,13 +230,13 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	if updateMethod=="fastAscent"
     		#fast ascent
     		if noTlimit==false
-    			gradL=dLog.Tactual[:,p]-evS.Tmax*ones(horzLen+1,1)
+    			dLog.couplConst[:,p]=dLog.Tactual[:,p]-evS.Tmax*ones(horzLen+1,1)
     		else
-    			gradL=zeros(horzLen+1,1)
+    			dLog.couplConst[:,p]=zeros(horzLen+1,1)
     		end
     		#add some amount of future lambda
     		for k=1:(horzLen+1-2)
-    			gradL[k,1]=.6*gradL[k,1]+.3*gradL[k+1,1]+.1*gradL[k+2,1]
+    			dLog.couplConst[k,p]=.6*dLog.couplConst[k,p]+.3*dLog.couplConst[k+1,p]+.1*dLog.couplConst[k+2,p]
     			#gradL[k,1]=.5*gradL[k,1]+.2*gradL[k+1,1]+.2*gradL[k+2,1]+.1*gradL[k+3,1]+.1*gradL[k+4,1]
     		end
     	end
@@ -246,7 +245,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	alphaP[p,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
     	#alphaP[p+1,1] = alphaP[p,1]*alphaRate
 
-        dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP[p,1]*gradL,0)
+        dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP[p,1]*dLog.couplConst[:,p],0)
         #dLog.Lam[:,p]=dLog.Lam[:,p]+alphaP[p,1]*gradL
 
     	#check convergence
