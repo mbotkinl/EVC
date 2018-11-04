@@ -10,12 +10,14 @@
 fname = "dADMM_N$(N)"
 
 if loadResults
+	println("Reading in ADMM Sim")
 	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	dLogadmm=loadF["solution"]
 	dCMadmm=loadF["convMetrics"]
 	convIt=loadF["convIt"]
 else
+	println("Running ADMM Sim")
 	timeT=@elapsed dLogadmm,dCMadmm,convIt=pwlEVadmm(N,S,horzLen,maxIt,evS,cSol,slack)
 	if saveResults saveRun(path,fname,timeT, evS,dLogadmm, dCMadmm, convIt) end
 end
@@ -56,7 +58,7 @@ plot!(uSumPlotadmm,1:horzLen+1,cSol.uSum,seriescolor=:black,linewidth=2,linealph
 zSumPlotadmm=plot(dLogadmm.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
 plot!(zSumPlotadmm,1:horzLen+1,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
 
-constPlotadmm=plot(dLogadmm.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+constPlotadmm2=plot(dLogadmm.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
 
 lamPlotadmm=plot(dLogadmm.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
 plot!(lamPlotadmm,1:horzLen+1,cSol.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)

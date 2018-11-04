@@ -13,15 +13,15 @@ S=evS.S
 horzLen=evS.K1
 
 relaxString= if relaxed==true "_relax"else "" end
-filename = "central_NL_N$(N)"*relaxString
+fname = "central_NL_N$(N)"*relaxString
 
 if loadResults
-	loadF=load(path*filename*".jld2")
+	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	cSolnl=loadF["solution"]
 else
 	timeT=@elapsed cSolnl=nlEVcentral(N,S,horzLen,evS,relaxed,slack)
-	if saveResults saveRun(path,filename,timeT, evS,cSolnl) end
+	if saveResults saveRun(path,fname,timeT, evS,cSolnl) end
 end
 
 println("plotting....")

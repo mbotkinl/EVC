@@ -4,12 +4,14 @@
 fname = "d_$(updateMethod)_N$(N)"
 
 if loadResults
+	println("Reading in Dual Decomp Sim")
 	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	dLog=loadF["solution"]
 	dCM=loadF["convMetrics"]
 	convIt=loadF["convIt"]
 else
+	println("Running Dual Decomp Sim")
 	timeT=@elapsed dLog,dCM,convIt=pwlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSol,slack)
 
 	s=Symbol(@sprintf("dCM_%s",updateMethod))
@@ -63,10 +65,13 @@ plot!(zSumPlotd,1:horzLen+1,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0
 lamPlotd=plot(dLog.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
 plot!(lamPlotd,1:horzLen+1,cSol.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
 
+constPlot2=plot(dLog.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+
 #convergence metric plots
 fPlot=plot(1:convIt,dCM.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
 convItPlot=plot(1:convIt,dCM.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 convPlot=plot(1:convIt,dCM.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(2,convIt),legend=false,yscale=:log10)
+constPlot=plot(1:convIt,dCM.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(2,convIt),legend=false,yscale=:log10)
 
 checkDesiredStates(dLog.Sn[:,convIt],evS.Kn,evS.Snmin)
 

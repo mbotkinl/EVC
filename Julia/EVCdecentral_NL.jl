@@ -2,10 +2,10 @@
 #4/10/18
 
 relaxString= if relaxed==true "_relax"else "" end
-filename = "d_$(updateMethod)_NL_N$(N)"*relaxString
+fname = "d_$(updateMethod)_NL_N$(N)"*relaxString
 
 if loadResults
-	loadF=load(path*filename*".jld2")
+	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	dLognl=loadF["solution"]
 	dCMnl=loadF["convMetrics"]
@@ -15,7 +15,7 @@ else
 	s=Symbol(@sprintf("dCMnl_%s",updateMethod))
 	v=Symbol(@sprintf("dCMnl"))
 	@eval(($s)=($v))
-	if saveResults saveRun(path,filename,timeT, evS,dLognl, dCMnl, convIt) end
+	if saveResults saveRun(path,fname,timeT, evS,dLognl, dCMnl, convIt) end
 end
 
 
@@ -54,10 +54,7 @@ CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
 uSumPlotnl=plot(dLognl.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
 plot!(uSumPlotnl,1:horzLen+1,cSolnl.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
 
-zSumPlotnl=plot(dLognl.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
-plot!(zSumPlotnl,1:horzLen+1,cSolnl.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
-
-constPlotnl=plot(dLognl.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+constPlotnl2=plot(dLognl.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
 
 lamPlotnl=plot(dLognl.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
 plot!(lamPlotnl,1:horzLen+1,cSolnl.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)

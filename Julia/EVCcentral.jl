@@ -10,10 +10,12 @@ horzLen=evS.K1
 fname = "central_N$(N)"
 
 if loadResults
+	println("Reading in Central Sim")
 	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	cSol=loadF["solution"]
 else
+	println("Running Central Sim")
 	timeT=@elapsed cSol=pwlEVcentral(N,S,horzLen,evS,slack)
 	if saveResults saveRun(path,fname,timeT, evS,cSol) end
 end
