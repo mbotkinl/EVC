@@ -10,12 +10,14 @@
 fname = "dALADIN_N$(N)"
 
 if loadResults
+	println("Reading in ALAD Sim")
 	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	dLogalad=loadF["solution"]
 	dCMalad=loadF["convMetrics"]
 	convIt=loadF["convIt"]
 else
+	println("Running ALAD Sim")
 	timeT=@elapsed dLogalad,dCMalad,convIt,ΔY,convCheck=pwlEValad(N,S,horzLen,maxIt,evS,cSol,slack)
 	if saveResults saveRun(path,fname,timeT, evS,dLogalad, dCMalad, convIt) end
 end

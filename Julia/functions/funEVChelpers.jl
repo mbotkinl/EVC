@@ -124,7 +124,7 @@ function compareRunsGraph(runs, cRun, saveF)
     plot!(snSumPlot,1:Klen,target,label="SOC Target",line=(:dash,:red))
     plot!(snSumPlot,snSum,labels=plotLabels)
 
-    lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),labels=plotLabels,
+    lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),labels="Central",
                    seriescolor=:black,linewidth=4,linealpha=0.25)
     plot!(lamPlot,Lam,labels=plotLabels)
 
@@ -142,7 +142,7 @@ function compareRunsGraph(runs, cRun, saveF)
 
     Rmax=plot(Rmax,xlabel="Time",ylabel="R Max",xlims=(0,Klen),labels=plotLabels)
 
-    p=plot(lamRMSEPlot,lamInfNormPlot, objPercPlot, tempPlot, uSumPlot,lamPlot,layout=(3,2))
+    p=plot(lamRMSEPlot, tempPlot,lamInfNormPlot, uSumPlot, objPercPlot,lamPlot,layout=(3,2))
     pubPlot(p,thickscale=0.8,sizeWH=(1000,600),dpi=300)
 
     fName="compPlot.png"

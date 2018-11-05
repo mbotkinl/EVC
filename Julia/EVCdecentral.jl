@@ -73,11 +73,11 @@ convItPlot=plot(1:convIt,dCM.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm
 convPlot=plot(1:convIt,dCM.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(2,convIt),legend=false,yscale=:log10)
 constPlot=plot(1:convIt,dCM.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(2,convIt),legend=false,yscale=:log10)
 
-checkDesiredStates(dLog.Sn[:,convIt],evS.Kn,evS.Snmin)
-
-
 #compare central and decentral current agg
 aggU=plot(1:horzLen+1,hcat(sum(uPlot[:,i] for i=1:N),sum(uPlotd[:,i] for i=1:N)),label=["Central" "Decentral"],
 			xlims=(0,horzLen+1),xlabel="Time",ylabel="PEV Current (kA)")
+
+checkDesiredStates(dLog.Sn[:,convIt],evS.Kn,evS.Snmin)
+
 
 #draw(PNG(path*"aggPlot_fast.png", 13inch, 8inch), aggU)
