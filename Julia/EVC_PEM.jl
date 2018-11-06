@@ -11,10 +11,12 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 fname = "d_PEM_N$(N)"
 
 if loadResults
+	println("Reading in PEM Sim")
 	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	pemSol=loadF["solution"]
 else
+	println("Running PEM Sim")
 	timeT=@elapsed pemSol,ratio=pemEVC(N,S,horzLen,evS,slack)
 	timeT=timeT/horzLen
 	if saveResults saveRun(path,fname,timeT, evS,pemSol) end
@@ -30,8 +32,8 @@ p3pem=plot(1:horzLen+1,pemSol.Xt,label="XFRM Temp",xlims=(0,horzLen+1),xlabel="T
 plot!(p3pem,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(p3pem,path*"J_PEM_Temp.png") end
 
-pRpem=plot(ratio,xlabel="Time",ylabel="Ratio",xlims=(0,horzLen+1),legend=false)
-if drawFig savefig(pRpem,path*"J_PEM_Ratio.png") end
+# pRpem=plot(ratio,xlabel="Time",ylabel="Ratio",xlims=(0,horzLen+1),legend=false)
+# if drawFig savefig(pRpem,path*"J_PEM_Ratio.png") end
 
 
 aggUpem=plot(1:horzLen+1,hcat(sum(uPlot[:,i] for i=1:N),pemSol.uSum),label=["Central" "PEM"],
