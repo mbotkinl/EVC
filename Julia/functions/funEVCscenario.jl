@@ -21,10 +21,14 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false,path=pwd())
     Ts = Rh*C/9              # s, sampling time in seconds
     ηP = Ts*Vac*a./b*1000  # 1/kA, normalized battery sizes (0-1)
     #ηP = Ts*Vac*a./b  # 1/A, normalized battery sizes (0-1)
-    τP = 1 - Ts/(Rh*C)      # no units, temp time constant: 1 - 1/RC
+
+    #τP = 1 - Ts/(Rh*C)      # no units, temp time constant: 1 - 1/RC
+    τP = exp(- Ts/(Rh*C))
+
     ρP = 1 - τP            # no units, ambient-to-temp param: 1/RC
-    γP = Ts*Rw/(C*Ntf)*1000^2    # K/kW, ohmic losses-to-temp parameter
+    # γP = Ts*Rw/(C*Ntf)*1000^2    # K/kW, ohmic losses-to-temp parameter
     #γP = Ts*Rw/(C*Ntf)    # K/W, ohmic losses-to-temp parameter
+    γP = Rh*Rw/(Ntf)*ρP*1000^2    # K/kW, ohmic losses-to-temp parameter
 
     # PWL Parameters:
     #S = 3;
