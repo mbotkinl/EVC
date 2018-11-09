@@ -471,6 +471,12 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     tolT=1e-4
     tolZ=1e-6
 
+    # tol=1e-6
+    # tolU=tol
+    # tolS=tol
+    # tolT=tol
+    # tolZ=tol
+
     convIt=maxIt
 
     #ALADIN tuning and initial guess
@@ -485,11 +491,17 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     Hs=2*evS.Qsi
     # Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
     # Hs=2*evS.Qsi *((1.5-2.5)*rand()+2.5)
+    # Hz=0
+    # Ht=0
     Hz=1e-6
     Ht=1e-6
 
     ρALAD=1
     ρRate=1.15
+
+    # ρALAD=1e6
+    # ρRate=1
+
     muALAD=10^8
 
     dCMalad=convMetricsStruct()
@@ -512,13 +524,6 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     # vu0=uStar
     # vs0=snStar
 
-
-
-    # dLogalad.Vu[:,1]=vu0
-    # dLogalad.Vs[:,1]=vs0
-    # dLogalad.Vz[:,1]=vz0
-    # dLogalad.Vt[:,1]=vt0
-    # dLogalad.Lam[:,1]=lambda0
     prevVu=vu0
     prevVs=vs0
     prevVz=vz0
@@ -603,10 +608,16 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
             dLogalad.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
             dLogalad.Sn[ind,p]=snVal
     		dLogalad.Un[ind,p]=uVal
-            dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
-            dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
-            #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=σU[evInd,1]*(evVu-uVal)+lambda
-            #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=σN[evInd,1]*(evVs-snVal)-lambda
+
+            # dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
+            # dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
+
+            dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,digits=4)
+            dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],digits=8)
+
+            #use convex ALADIN approach
+            #dLogalad.Gu[ind,p]=σU[evInd,1]*(evVu-uVal)-prevLam[:,1]
+            #dLogalad.Gs[ind,p]=σS[evInd,1]*(evVs-snVal)#-prevLam[:,1]
         end
 
         #N+1 decoupled problem aka transformer current
@@ -657,8 +668,11 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 
         dLogalad.Xt[:,p]=xtVal
         dLogalad.Z[:,p]=zVal
-        #dLogalad.Gz[:,p].=0
-        #Gz[:,p+1]=σZ*(Vz[:,p]-zVal)-repeat(-Lam[:,p],inner=S)
+        dLogalad.Gz[:,p].=0
+        dLogalad.Gt[:,p].=0
+
+        #dLogalad.Gz[:,p]=σZ*(prevVz-zVal)-repeat(-prevLam[:,1],inner=S)
+        #dLogalad.Gt[:,p]=σT*(prevVt-xtVal)
 
         for k=1:horzLen+1
             dLogalad.uSum[k,p]=sum(dLogalad.Un[(k-1)*N+n,p] for n=1:N)
@@ -679,7 +693,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         #check for convergence
         constGap=norm(dLogalad.couplConst[:,p],1)
         cc=norm(vcat((prevVu[:,1]-dLogalad.Un[:,p]),(prevVz[:,1]-dLogalad.Z[:,p])),1)
-        #convCheck=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
+        #cc=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
         objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                         sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
                         sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
@@ -704,13 +718,13 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         end
 
         #coupled QP
-        cM = Model(solver = GurobiSolver())
-        #cM = Model(solver = IpoptSolver())
+        cM = Model(solver = GurobiSolver(NumericFocus=3))
         @variable(cM,dUn[1:(N)*(horzLen+1)])
         @variable(cM,dSn[1:(N)*(horzLen+1)])
         @variable(cM,dZ[1:(S)*(horzLen+1)])
         @variable(cM,dXt[1:(horzLen+1)])
-        #@variable(cM,relaxS[1:(horzLen+1)])
+        @variable(cM,relaxS[1:(horzLen+1)])
+
         # coupledObj(deltaY,Hi,gi)=1/2*deltaY'*Hi*deltaY+gi'*deltaY
     	# objExp=coupledObj(dZ,Hz,Gz[:,p+1])
         # objExp=objExp+coupledObj(dXt,Ht,zeros(length(dXt)))
@@ -719,37 +733,39 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         #                   coupledObj(dSn[collect(n:N:(N)*(horzLen+1)),1],Hn[n,1],Gs[collect(n:N:(N)*(horzLen+1)),p+1])
     	# end
 
-        #objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
-    	@objective(cM,Min, sum(sum(0.5*dUn[(k-1)*N+i,1]^2*Hu[i,1]+dLogalad.Gu[(k-1)*N+i,p]*dUn[(k-1)*N+i,1] +
-                                   0.5*dSn[(k-1)*N+i,1]^2*Hs[i,1]+dLogalad.Gs[(k-1)*N+i,p]*dSn[(k-1)*N+i,1] for i=1:N) +
-                                   0.5*dZ[k,1]^2*Hz+
-                                   0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1)))
-        # @constraint(cM,currCon[k=1:horzLen+1],iD[stepI+(k-1)]+relaxS[k,1]==-sum(Un[(k-1)*(N)+n,p+1]+dUn[(k-1)*(N)+n,1] for n=1:N)+
-        #                                          sum(Z[(k-1)*(S)+s,p+1]+dZ[(k-1)*(S)+s,1] for s=1:S))
-        @constraint(cM,currCon[k=1:horzLen+1],sum(dLogalad.Un[(k-1)*(N)+n,p]+dUn[(k-1)*(N)+n,1] for n=1:N)-
-                                                 sum(dLogalad.Z[(k-1)*(S)+s,p]+dZ[(k-1)*(S)+s,1] for s=1:S)==-evS.iD[stepI+(k-1)])#+relaxS[k,1])
+        objExp=sum(sum(0.5*dUn[(k-1)*N+n,1]^2*Hu[n,1]+dLogalad.Gu[(k-1)*N+n,p]*dUn[(k-1)*N+n,1] +
+                       0.5*dSn[(k-1)*N+n,1]^2*Hs[n,1]+dLogalad.Gs[(k-1)*N+n,p]*dSn[(k-1)*N+n,1] for n=1:N) +
+                   sum(0.5*dZ[(k-1)*(S)+s,1]^2*Hz for s=1:S)+
+                   0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1))
+        objExp=objExp+prevLam[:,1]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
+        objExp=objExp+dot(dLogalad.Gz[:,p],dZ)+dot(dLogalad.Gt[:,p],dXt)
+
+        @objective(cM,Min,objExp)
+
+        # Unp=dLogalad.Un[:,p]
+        # Zp=dLogalad.Z[:,p]
+        Unp=round.(dLogalad.Un[:,p],digits=8)
+        Zp=round.(dLogalad.Z[:,p],digits=8)
+        @constraint(cM,currCon[k=1:horzLen+1],sum(Unp[(k-1)*(N)+n,1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
+                                              sum(Zp[(k-1)*(S)+s,1]+dZ[(k-1)*(S)+s,1] for s=1:S)==
+                                              -evS.iD[stepI+(k-1)]+relaxS[k,1])
         #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
         @constraint(cM,stateCon1[n=1:N],dSn[n,1]==evS.ηP[n,1]*dUn[n,1])
         @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+evS.ηP[n,1]*dUn[n+(k)*(N),1])
         @constraint(cM,tempCon1,dXt[1,1]==evS.γP*evS.deltaI*sum((2*s-1)*dZ[s,1] for s=1:S))
         @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==evS.τP*dXt[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*dZ[k*S+s,1] for s=1:S))
 
-        #local inequality constraints
-        # @constraint(cM,(Z[:,p+1]+dZ).>=0)
-        # @constraint(cM,(Z[:,p+1]+dZ).<=deltaI)
-     	# @constraint(cM,(Un[:,p+1]+dUn).<=repeat(imax,horzLen+1,1))
-     	# @constraint(cM,(Un[:,p+1]+dUn).>=repeat(imin,horzLen+1,1))
 
-        #these shouldnt be elementwise?????
-        # @constraint(cM,Cz[:,p+1].*dZ.==0)
-        # @constraint(cM,Cu[:,p+1].*dUn.==0)
-        # @constraint(cM,Cn[:,p+1].*dSn.==0)
-        # @constraint(cM,Ct[:,p+1].*dXt.==0)
-
+        #active local constraints
         @constraint(cM,dLogalad.Cz[:,p].*dZ.<=0)
         @constraint(cM,dLogalad.Cu[:,p].*dUn.<=0)
         @constraint(cM,dLogalad.Cs[:,p].*dSn.<=0)
         @constraint(cM,dLogalad.Ct[:,p].*dXt.<=0)
+
+        # @constraint(cM,dLogalad.Cz[:,p].*dZ.==0)
+        # @constraint(cM,dLogalad.Cu[:,p].*dUn.==0)
+        # @constraint(cM,dLogalad.Cs[:,p].*dSn.==0)
+        # @constraint(cM,dLogalad.Ct[:,p].*dXt.==0)
 
 
     	TT = stdout # save original stdout stream
@@ -764,9 +780,9 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         α2=1
         α3=1
         #alpha3=alpha3/ceil(p/2)
-        #Lam[:,p+1]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
 
-        dLogalad.Lam[:,p]=max.(prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1]),0)
+        dLogalad.Lam[:,p]=prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1])
+        #dLogalad.Lam[:,p]=max.(prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1]),0)
         dLogalad.Vu[:,p]=prevVu[:,1]+α1*(dLogalad.Un[:,p]-prevVu[:,1])+α2*getvalue(dUn)
         dLogalad.Vz[:,p]=prevVz[:,1]+α1*(dLogalad.Z[:,p]-prevVz[:,1])+α2*getvalue(dZ)
         dLogalad.Vs[:,p]=prevVs[:,1]+α1*(dLogalad.Sn[:,p]-prevVs[:,1])+α2*getvalue(dSn)
