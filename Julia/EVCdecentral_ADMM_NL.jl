@@ -5,6 +5,7 @@
 #formulation try 2
 #u, sn, xt, and z are all in "x" v is the auxilliary variable corresponding to z in literature
 #current constraint is coupling
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
 relaxString= if relaxed==true "_relax"else "" end
 filename = "dADMM_NL_N$(N)"*relaxString
@@ -54,28 +55,10 @@ CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
 uSumPlotnladmm=plot(dLognladmm.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
 plot!(uSumPlotnladmm,1:horzLen+1,cSolnl.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
 
-zSumPlotnladmm=plot(dLognladmm.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
-plot!(zSumPlotnladmm,1:horzLen+1,cSolnl.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
-
 constPlotnladmm=plot(dLognladmm.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
 
 lamPlotnladmm=plot(dLognladmm.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
 plot!(lamPlotnladmm,1:horzLen+1,cSolnl.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
-
-
-
-# lamPlotNLadmm=plot(dLognladmm.Lam[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-#             layer(x=1:horzLen+1,y=cSolnl.lamCoupl,Geom.line,Theme(default_color=colorant"black",line_width=3pt)),
-# 			Guide.xlabel("Time"), Guide.ylabel("Lambda",orientation=:vertical),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# constPlotNLadmm2=plot(dLognladmm.couplConst[:,1:convIt],x=Row.index,y=Col.value,color=Col.index,Geom.line,
-# 			Guide.xlabel("Time"), Guide.ylabel("curr constraint diff",orientation=:vertical),Guide.ColorKey(title="Iteration"),
-# 			Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",major_label_font_size=30pt,line_width=2pt,
-# 			minor_label_font_size=26pt,key_label_font_size=26pt))
-# if drawFig==1 draw(PNG(path*"J_ADMM_LamConv.png", 36inch, 12inch), lamPlotadmm) end
-
-
 
 fPlotadmm=plot(1:convIt,dCMnladmm.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
 convItPlotadmm=plot(1:convIt,dCMnladmm.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)

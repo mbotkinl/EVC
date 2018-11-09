@@ -1,5 +1,6 @@
 #Micah Botkin-Levy
 #4/10/18
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
 relaxString= if relaxed==true "_relax"else "" end
 fname = "d_$(updateMethod)_NL_N$(N)"*relaxString

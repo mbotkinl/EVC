@@ -148,7 +148,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	#alphaRate=.99
     else
     	#alpha = .01 #for A
-    	alpha = 1e4 #for kA
+    	alpha = 2e4 #for kA
     	alphaDivRate=4
     	minAlpha=1e-6
     	#alphaRate=.99
@@ -182,7 +182,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
             target=zeros((horzLen+1),1)
     		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1].=evS.Snmin[evInd,1]
             if relaxed
-                evM = Model(solver = GurobiSolver())
+                evM = Model(solver = MosekSolver())
             else
                 evM = Model(solver = IpoptSolver())
             end
@@ -222,8 +222,8 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	    #solve coordinator problem
 
             if relaxed
-                coorM = Model(solver = GurobiSolver(QCPDual=1))
-
+                # coorM = Model(solver = GurobiSolver(QCPDual=1))
+				coorM = Model(solver = MosekSolver())
             else
                 coorM = Model(solver = IpoptSolver())
             end
@@ -290,8 +290,8 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	alphaP[p,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
     	#alphaP[p,1] = alphaP[p,1]*alphaRate
 
-    	#Lam[:,p]=Lam[:,p]+alpha_p*gradL
-        dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP[p,1]*dLog.couplConst[:,p],0)
+		dLog.Lam[:,p]=prevLam[:,1]+alphaP[p,1]*dLog.couplConst[:,p]
+        #dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP[p,1]*dLog.couplConst[:,p],0)
 
     	#check convergence
     	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
@@ -342,6 +342,9 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     #ρADMM=10.0^(0)
     ρADMM=5e5
     ρDivRate=10
+	# ρDivRate=1.1
+	# ρADMMp = ρADMM
+	# maxRho=1e9
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
     dCMadmm=convMetricsStruct()
@@ -363,6 +366,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
     for p in 1:maxIt
         ρADMMp = ρADMM/ceil(p/ρDivRate)
+		#ρADMMp = min(ρADMMp*ρDivRate,maxRho)
         #ρADMMp = ρADMM
 
         #x minimization eq 7.66 in Bertsekas
@@ -371,7 +375,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             target=zeros((horzLen+1),1)
     		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1].=evS.Snmin[evInd,1]
 			if relaxed
-                evM = Model(solver = GurobiSolver())
+                evM = Model(solver = MosekSolver())
             else
                 evM = Model(solver = IpoptSolver())
             end
@@ -409,7 +413,8 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
         #N+1 decoupled problem aka transformer current
 		if relaxed
-			tM = Model(solver = GurobiSolver(QCPDual=1, BarQCPConvTol=1e-2))
+			# tM = Model(solver = GurobiSolver(QCPDual=1, BarQCPConvTol=1e-2))
+			tM = Model(solver = MosekSolver())
 		else
 			tM = Model(solver = IpoptSolver())
 		end
@@ -448,14 +453,16 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     	for k=1:horzLen+1
     		dLogadmm.uSum[k,p]=sum(dLogadmm.Un[(k-1)*N+n,p] for n=1:N)
     		dLogadmm.couplConst[k,p]=dLogadmm.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLogadmm.Itotal[k,p]
-            dLogadmm.Lam[k,p]=max.(prevLam[k,1]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p]),0)
-    		# dLogadmm.Lam[k,p]=prevLam[k,1]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p])
+            #dLogadmm.Lam[k,p]=max.(prevLam[k,1]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p]),0)
+    		dLogadmm.Lam[k,p]=prevLam[k,1]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p])
     	end
 
         #v upate eq 7.67
         for k=1:horzLen+1
-            dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=min.(max.(dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp,evS.imin),evS.imax)
-    		dLogadmm.Vi[k,p]=max.(min.(-dLogadmm.Itotal[k,p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp,0),-evS.ItotalMax)
+            # dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=min.(max.(dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp,evS.imin),evS.imax)
+    		# dLogadmm.Vi[k,p]=max.(min.(-dLogadmm.Itotal[k,p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp,0),-evS.ItotalMax)
+			dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp
+			dLogadmm.Vi[k,p]=-dLogadmm.Itotal[k,p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp
         end
 
         #check convergence
