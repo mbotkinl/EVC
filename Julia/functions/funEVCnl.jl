@@ -525,11 +525,20 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     σT=1/10000
     Hu=2*evS.Ri#*(1+rand())
     Hs=2*evS.Qsi#*(1+rand())
-    Hi=1e-6
-    Ht=1e-6
-    ρALAD=1
-    ρRate=1.15
-    muALAD=10^8
+    # Hi=1e-6
+    # Ht=1e-6
+	Hi=0
+	Ht=0
+
+	ρALAD=1e4
+    ρRate=1.5
+	# ρALAD=1
+    # ρRate=1.15
+    ρALADmax=1e6
+
+    μALAD=1e8
+    μRate=1
+    μALADmax=2e9
 
     #.1/.1 looks good expect for const
     #.01/2 increasing ρ helps const
@@ -550,11 +559,6 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     # vu0=uStarNL
     # vs0=snStarNL
 
-    # dLogalad.Vu[:,1]=vu0 #initial guess goes in column 1
-    # dLogalad.Vs[:,1]=vs0 #initial guess goes in column 1
-    # dLogalad.Vi[:,1]=vi0
-    # dLogalad.Vt[:,1]=vt0
-    # dLogalad.Lam[:,1]=lambda0
 	prevVu=vu0
     prevVs=vs0
     prevVi=vi0
@@ -562,6 +566,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     prevLam=lambda0
 
     ρALADp=ρALAD*ones(1,maxIt+1)
+	μALADp=μALAD*ones(1,maxIt+1)
+
     ΔY=zeros(1,maxIt+1)
 
     for p=1:maxIt
@@ -579,7 +585,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1].=evS.Snmin[evInd,1]
             #evM = Model(solver = GurobiSolver(NumericFocus=3))
 			if relaxed
-                evM = Model(solver = GurobiSolver())
+                evM = Model(solver = MosekSolver())
             else
                 evM = Model(solver = IpoptSolver())
             end
@@ -637,8 +643,13 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 			dLogalad.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
             dLogalad.Sn[ind,p]=snVal
     		dLogalad.Un[ind,p]=uVal
-            dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
-            dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
+
+			# dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
+			# dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
+
+			dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,digits=1)
+			dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],digits=4)
+
             #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=σU[evInd,1]*(evVu-uVal)+lambda
             #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=σN[evInd,1]*(evVs-snVal)-lambda
         end
@@ -646,7 +657,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         #N+1 decoupled problem aka transformer current
 		if relaxed
 			#tM = Model(solver = GurobiSolver(QCPDual=1)) #, NumericFocus=3
-			tM = Model(solver = GurobiSolver(QCPDual=1,BarQCPConvTol=1e-8,NumericFocus=3)) #,
+			# tM = Model(solver = GurobiSolver(QCPDual=1,BarQCPConvTol=1e-8,NumericFocus=3)) #,
+			tM = Model(solver = MosekSolver())
 		else
 			tM = Model(solver = IpoptSolver())
 		end
@@ -679,7 +691,9 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         # tMax=-getdual(upperTCon)
         # tMin=-getdual(lowerTCon)
 		if relaxed
-			lambdaTemp=-Gurobi.get_dblattrarray(getrawsolver(tM),"QCPi",1,horzLen+1)
+			# lambdaTemp=-Gurobi.get_dblattrarray(getrawsolver(tM),"QCPi",1,horzLen+1)
+			tt=-Mosek.gety(getrawsolver(tM),Mosek.MSK_SOL_ITR)
+			lambdaTemp=tt[(length(tt)-(horzLen)):length(tt)] #check index***
 		else
         	lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
 		end
@@ -699,6 +713,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         dLogalad.Xt[:,p]=xtVal
         dLogalad.Itotal[:,p]=iVal
         dLogalad.Gi[:,p].=0
+		dLogalad.Gt[:,p].=0
+
         #Gz[:,p+1]=σZ*(Vz[:,p]-zVal)-repeat(-Lam[:,p],inner=S)
 
         for k=1:horzLen+1
@@ -736,8 +752,11 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         end
 
         #coupled QP
+		#cM = Model(solver = MosekSolver())
+		#cM = Model(solver = GurobiSolver())
+
 		if relaxed
-			cM = Model(solver = GurobiSolver())
+			cM = Model(solver = MosekSolver())
 		else
 			cM = Model(solver = IpoptSolver())
 		end
@@ -745,14 +764,19 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @variable(cM,dSn[1:(N)*(horzLen+1)])
         @variable(cM,dI[1:(horzLen+1)])
         @variable(cM,dXt[1:(horzLen+1)])
-        #@variable(cM,relaxS[1:(horzLen+1)])
-        #objExp=objExp+Lam[:,p]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
-    	@objective(cM,Min, sum(sum(0.5*dUn[(k-1)*N+i,1]^2*Hu[i,1]+dLogalad.Gu[(k-1)*N+i,p]*dUn[(k-1)*N+i,1]+
-                                   0.5*dSn[(k-1)*N+i,1]^2*Hs[i,1]+dLogalad.Gs[(k-1)*N+i,p]*dSn[(k-1)*N+i,1] for i=1:N)+
-                               0.5*dI[k,1]^2*(Hi-lambdaTemp[k,1]*2*evS.γP)+
-                               0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1)))
-        @constraint(cM,currCon[k=1:horzLen+1],sum(dLogalad.Un[(k-1)*(N)+n,p]+dUn[(k-1)*(N)+n,1] for n=1:N)-
-                                                    (dLogalad.Itotal[k,p]+dI[k])==-evS.iD[stepI+(k-1)])#+relaxS[k,1])
+        @variable(cM,relaxS[1:(horzLen+1)])
+		objExp=sum(sum(0.5*dUn[(k-1)*N+n,1]^2*Hu[n,1]+dLogalad.Gu[(k-1)*N+n,p]*dUn[(k-1)*N+n,1]+
+                       0.5*dSn[(k-1)*N+n,1]^2*Hs[n,1]+dLogalad.Gs[(k-1)*N+n,p]*dSn[(k-1)*N+n,1] for n=1:N)+
+                   0.5*dI[k,1]^2*(Hi-lambdaTemp[k,1]*2*evS.γP)+
+                   0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1))
+	    objExp=objExp+dot(dLogalad.Gi[:,p],dI)+dot(dLogalad.Gt[:,p],dXt)
+        objExp=objExp+prevLam[:,1]'*relaxS+ρALADp[1,p]/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
+    	@objective(cM,Min,objExp)
+
+		Unp=round.(dLogalad.Un[:,p],digits=8)
+		Ip=round.(dLogalad.Itotal[:,p],digits=8)
+        @constraint(cM,currCon[k=1:horzLen+1],sum(Unp[(k-1)*(N)+n,1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
+                                                    (Ip[k,1]+dI[k])==-evS.iD[stepI+(k-1)]+relaxS[k,1])
         @constraint(cM,stateCon1[n=1:N],dSn[n,1]==evS.ηP[n,1]*dUn[n,1])
         @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+evS.ηP[n,1]*dUn[n+(k)*(N),1])
         @constraint(cM,tempCon1,dXt[1,1]==2*evS.γP*dLogalad.Itotal[1,p]*dI[1])
@@ -789,8 +813,9 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         α2=1
         α3=1
         #α1=α1/ceil(p/2)
-        #Lam[:,p]=Lam[:,p]+alpha3*(-getdual(currCon)-Lam[:,p])
-        dLogalad.Lam[:,p]=max.(prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1]),0)
+
+		dLogalad.Lam[:,p]=prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1])
+        #dLogalad.Lam[:,p]=max.(prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1]),0)
         dLogalad.Vu[:,p]=prevVu[:,1]+α1*(dLogalad.Un[:,p]-prevVu[:,1])+α2*getvalue(dUn)
         dLogalad.Vi[:,p]=prevVi[:,1]+α1*(dLogalad.Itotal[:,p]-prevVi[:,1])+α2*getvalue(dI)
         dLogalad.Vs[:,p]=prevVs[:,1]+α1*(dLogalad.Sn[:,p]-prevVs[:,1])+α2*getvalue(dSn)
@@ -801,8 +826,10 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @printf "lastGap    %e after %g iterations\n" dCMalad.lamIt[p,1] p
         @printf "convLamGap %e after %g iterations\n\n" dCMalad.lam[p,1] p
 
-        ρALADp[1,p+1]=min(ρALADp[1,p]*ρRate,1e6) #increase ρ every iteration
-        ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dI),getvalue(dSn),getvalue(dXt)),Inf)
+        ρALADp[1,p+1]=min(ρALADp[1,p]*ρRate,ρALADmax) #increase ρ every iteration
+		μALADp[1,p+1]=min(μALADp[1,p]*μRate,μALADmax) #increase μ every iteration
+
+		ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dI),getvalue(dSn),getvalue(dXt)),Inf)
 
 		#reset for next iteration
 		prevVu=dLogalad.Vu[:,p]
