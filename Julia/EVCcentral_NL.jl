@@ -1,7 +1,11 @@
 #Micah Botkin-Levy
 #4/8/18
 if relaxed
-	using Gurobi
+	if relaxedSolver=="Mosek"
+		using Mosek
+	else
+		using Gurobi
+	end
 else
 	using Ipopt
 end
@@ -16,11 +20,13 @@ relaxString= if relaxed==true "_relax"else "" end
 fname = "central_NL_N$(N)"*relaxString
 
 if loadResults
+	println("Reading in NL Central Sim")
 	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	cSolnl=loadF["solution"]
 else
-	timeT=@elapsed cSolnl=nlEVcentral(N,S,horzLen,evS,relaxed,slack)
+	println("Running NL Central Sim")
+	timeT=@elapsed cSolnl=nlEVcentral(N,S,horzLen,evS,relaxed,relaxedSolver,relaxedMode,slack)
 	if saveResults saveRun(path,fname,timeT, evS,cSolnl) end
 end
 

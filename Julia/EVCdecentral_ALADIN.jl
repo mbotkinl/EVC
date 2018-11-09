@@ -6,6 +6,7 @@
 #u, sn, xt, and z are all in "y", v is the auxilliary variable corresponding to x in literature
 #current constraint is coupling
 
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 
 fname = "dALADIN_N$(N)"
 

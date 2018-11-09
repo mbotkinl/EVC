@@ -6,6 +6,7 @@
 #formulation try 2
 #u, sn, xt, and z are all in "y", v is the auxilliary variable corresponding to x in literature
 #current constraint is coupling
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
 relaxString= if relaxed==true "_relax"else "" end
 fname = "dALADIN_NL_N$(N)"*relaxString
