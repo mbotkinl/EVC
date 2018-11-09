@@ -622,11 +622,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
             cValMax=abs.(uVal.-evS.imax[evInd,1]).<tolU
             cValMin=abs.(uVal.-evS.imin[evInd,1]).<tolU
-            dLogalad.Cu[ind,p]=1cValMax-1cValMin
-            # cVal=zeros(length(ind),1)
-            # cVal[kappaMax.>0]=1
-            # cVal[kappaMin.<0]=-1
-            # Cu[ind,p+1]=cVal
+            dLogalad.Cuu[ind,p]=1cValMax
+			dLogalad.Cul[ind,p]=-1cValMin
 
             cValMax=abs.(snVal.-1).<tolS
 			if slack
@@ -634,11 +631,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 			else
 				cValMin=abs.(snVal.-target).<tolS
 			end
-            dLogalad.Cs[ind,p+1]=1cValMax-1cValMin
-            # cVal=zeros(length(ind),1)
-            # cVal[socMax.>0]=1
-            # cVal[socMin.<0]=-1
-            # Cs[ind,p+1]=cVal
+            dLogalad.Csu[ind,p+1]=1cValMax
+			dLogalad.Csl[ind,p+1]=-1cValMin
 
 			dLogalad.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
             dLogalad.Sn[ind,p]=snVal
@@ -694,20 +688,13 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
         cValMax=abs.(iVal.-evS.ItotalMax).<tolI
         cValMin=abs.(iVal.-0).<tolI
-        dLogalad.Ci[:,p]=1cValMax-1cValMin
-        # cVal=zeros(length(ind),1)
-        # cVal[kappaMax.>0]=1
-        # cVal[kappaMin.<0]=-1
-        # Ci[:,p+1]=cVal
-
+        dLogalad.Ciu[:,p]=1cValMax
+		dLogalad.Cil[:,p]=-1cValMin
 
         cValMax=abs.(xtVal.-evS.Tmax).<tolT
         cValMin=abs.(xtVal.-0).<tolT
-        dLogalad.Ct[:,p]=1cValMax-1cValMin
-        # cVal=zeros(length(ind),1)
-        # cVal[tMax.>0]=1
-        # cVal[tMin.<0]=-1
-        # Ct[:,p+1]=cVal
+        dLogalad.Ctu[:,p]=1cValMax
+		dLogalad.Ctl[:,p]=-1cValMin
 
         dLogalad.Xt[:,p]=xtVal
         dLogalad.Itotal[:,p]=iVal
@@ -770,10 +757,25 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+evS.ηP[n,1]*dUn[n+(k)*(N),1])
         @constraint(cM,tempCon1,dXt[1,1]==2*evS.γP*dLogalad.Itotal[1,p]*dI[1])
         @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==evS.τP*dXt[k,1]+2*evS.γP*dLogalad.Itotal[k+1,p]*dI[k+1,1])
-        @constraint(cM,dLogalad.Ci[:,p].*dI.<=0)
-        @constraint(cM,dLogalad.Cu[:,p].*dUn.<=0)
-        @constraint(cM,dLogalad.Cs[:,p].*dSn.<=0)
-        @constraint(cM,dLogalad.Ct[:,p].*dXt.<=0)
+
+		#active local constraints
+        # @constraint(cM,dLogalad.Ciu[:,p].*dI.<=0)
+        # @constraint(cM,dLogalad.Cuu[:,p].*dUn.<=0)
+        # @constraint(cM,dLogalad.Csu[:,p].*dSn.<=0)
+        # @constraint(cM,dLogalad.Ctu[:,p].*dXt.<=0)
+		# @constraint(cM,dLogalad.Cil[:,p].*dI.<=0)
+		# @constraint(cM,dLogalad.Cul[:,p].*dUn.<=0)
+		# @constraint(cM,dLogalad.Csl[:,p].*dSn.<=0)
+		# @constraint(cM,dLogalad.Ctl[:,p].*dXt.<=0)
+
+		@constraint(cM,dLogalad.Ciu[:,p].*dI.==0)
+		@constraint(cM,dLogalad.Cuu[:,p].*dUn.==0)
+		@constraint(cM,dLogalad.Csu[:,p].*dSn.==0)
+		@constraint(cM,dLogalad.Ctu[:,p].*dXt.==0)
+		@constraint(cM,dLogalad.Cil[:,p].*dI.==0)
+		@constraint(cM,dLogalad.Cul[:,p].*dUn.==0)
+		@constraint(cM,dLogalad.Csl[:,p].*dSn.==0)
+		@constraint(cM,dLogalad.Ctl[:,p].*dXt.==0)
 
     	TT = stdout # save original stdout stream
         redirect_stdout()

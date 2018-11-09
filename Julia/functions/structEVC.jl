@@ -94,10 +94,14 @@ end
     Gt::Array{Float64}=zeros((horzLen+1),maxIt+1) #row are time (N states for k=1, them N states for k=2),  columns are iteration
 
     #Jacobian C Vectors
-    Cs::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
-    Cu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
-    Cz::Array{Float64}=zeros(S*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
-    Ct::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Csu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Cuu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Czu::Array{Float64}=zeros(S*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Ctu::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Csl::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Cul::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Czl::Array{Float64}=zeros(S*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Ctl::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
 end
 
 @with_kw struct itLogNL
@@ -131,10 +135,14 @@ end
     Gt::Array{Float64}=zeros((horzLen+1),maxIt+1) #row are time (N states for k=1, them N states for k=2),  columns are iteration
 
     #Jacobian C Vectors
-    Cs::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
-    Cu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
-    Ci::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
-    Ct::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Csu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Cuu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Ciu::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Ctu::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Csl::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Cul::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Cil::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Ctl::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
 end
 
 @with_kw struct centralSolutionStruct
