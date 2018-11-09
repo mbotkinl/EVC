@@ -65,6 +65,9 @@ constPlotalad2=plot(dLogalad.couplConst[:,1:convIt],seriescolor=CList,xlabel="Ti
 lamPlotalad=plot(dLogalad.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
 plot!(lamPlotalad,1:horzLen+1,cSol.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
 
+gradPlots=plot(uSumPlotalad, zSumPlotalad,constPlotalad2, lamPlotalad,layout=(2,2))
+pubPlot(gradPlots,thickscale=0.8,sizeWH=(1000,600),dpi=300)
+if drawFig savefig(gradPlots,path*"J_decentral_ALADIN_gradPlots.png") end
 
 activeSet=zeros(convIt,1)
 setChanges=zeros(convIt,1)
@@ -80,9 +83,19 @@ setChangesPlot=plot(2:convIt,setChanges[2:convIt],xlabel="Iteration",ylabel="Cha
                   legend=false,xlims=(2,convIt))
 solChangesplot=plot(2:convIt,hcat(ΔY[2:convIt],convCheck[2:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
 
+setChangePlots=plot(activeSetPlot, setChangesPlot,layout=(2,1))
+pubPlot(setChangePlots,thickscale=0.5,sizeWH=(1000,600),dpi=300)
+if drawFig savefig(setChangePlots,path*"J_decentral_ALADIN_setPlots.png") end
+
+
 fPlotalad=plot(1:convIt,dCMalad.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
 convItPlotalad=plot(1:convIt,dCMalad.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 convPlotalad=plot(1:convIt,dCMalad.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
 constPlotalad=plot(1:convIt,dCMalad.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
+
+convPlots=plot(fPlotalad, convItPlotalad,convPlotalad, constPlotalad,layout=(2,2))
+pubPlot(convPlots,thickscale=0.8,sizeWH=(1000,600),dpi=300)
+if drawFig savefig(convPlots,path*"J_decentral_ALADIN_convPlots.png") end
+
 
 checkDesiredStates(dLogalad.Sn[:,convIt],evS.Kn,evS.Snmin)
