@@ -502,7 +502,9 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     # ρALAD=1e6
     # ρRate=1
 
-    muALAD=10^8
+    μALAD=1e8
+    μRate=1
+    μALADmax=2e9
 
     dCMalad=convMetricsStruct()
     dLogalad=itLogPWL()
@@ -532,6 +534,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 
     ΔY=zeros(1,maxIt+1)
     ρALADp=ρALAD*ones(1,maxIt+1)
+    μALADp=μALAD*ones(1,maxIt+1)
 
     for p=1:maxIt
 
