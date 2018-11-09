@@ -128,6 +128,7 @@ end
     Gu::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1) #row are time (N states for k=1, them N states for k=2),  columns are iteration
     Gs::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1) #row are time (N states for k=1, them N states for k=2),  columns are iteration
     Gi::Array{Float64}=zeros((horzLen+1),maxIt+1) #row are time (N states for k=1, them N states for k=2),  columns are iteration
+    Gt::Array{Float64}=zeros((horzLen+1),maxIt+1) #row are time (N states for k=1, them N states for k=2),  columns are iteration
 
     #Jacobian C Vectors
     Cs::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
