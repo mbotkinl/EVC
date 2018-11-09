@@ -725,7 +725,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
                        0.5*dSn[(k-1)*N+n,1]^2*Hs[n,1]+dLogalad.Gs[(k-1)*N+n,p]*dSn[(k-1)*N+n,1] for n=1:N) +
                    sum(0.5*dZ[(k-1)*(S)+s,1]^2*Hz for s=1:S)+
                    0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1))
-        objExp=objExp+prevLam[:,1]'*relaxS+muALAD/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
+        objExp=objExp+prevLam[:,1]'*relaxS+μALADp[1,p]/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
         objExp=objExp+dot(dLogalad.Gz[:,p],dZ)+dot(dLogalad.Gt[:,p],dXt)
 
         @objective(cM,Min,objExp)
@@ -775,7 +775,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         α1=1
         α2=1
         α3=1
-        #alpha3=alpha3/ceil(p/2)
+        #α3=α3/ceil(p/2)
 
         dLogalad.Lam[:,p]=prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1])
         #dLogalad.Lam[:,p]=max.(prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1]),0)
@@ -789,7 +789,9 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         @printf "lastGap    %e after %g iterations\n" dCMalad.lamIt[p,1] p
         @printf "convLamGap %e after %g iterations\n\n" dCMalad.lam[p,1] p
 
-        ρALADp[1,p+1]=min(ρALADp[1,p]*ρRate,1e6) #increase ρ every iteration
+        ρALADp[1,p+1]=min(ρALADp[1,p]*ρRate,ρALADmax) #increase ρ every iteration
+        μALADp[1,p+1]=min(μALADp[1,p]*μRate,μALADmax) #increase μ every iteration
+
         ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dZ),getvalue(dSn),getvalue(dXt)),Inf)
 
         #reset for next iteration
