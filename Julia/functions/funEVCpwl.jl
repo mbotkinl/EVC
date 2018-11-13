@@ -242,10 +242,11 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	end
 
         #update lambda
-    	alphaP[p,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
-    	#alphaP[p+1,1] = alphaP[p,1]*alphaRate
+    	alphaP= max(alpha/ceil(p/alphaDivRate),minAlpha)
+        dLog.itUpdate[1,p]=alphaP
+    	#alphaP= alphaP*alphaRate
 
-        dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP[p,1]*dLog.couplConst[:,p],0)
+        dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP*dLog.couplConst[:,p],0)
         #dLog.Lam[:,p]=prevLam[:,1]+alphaP[p,1]*dLog.couplConst[:,p]
 
     	#check convergence
@@ -322,11 +323,10 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     prevLam=lambda0
     prevVz=vz0
     prevVu=vu0
+    ρADMMp = ρADMM
+
 
     for p in 1:maxIt
-    	ρI = ρADMM/ceil(p/ρDivRate)
-    	#ρI = ρADMM
-
         #x minimization eq 7.66 in Bertsekas
         @sync @distributed for evInd=1:N
             evV=prevVu[collect(evInd:N:length(prevVu)),1]
@@ -338,7 +338,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
             if slack @variable(evM,slackSn) end
             objExp= sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
     								prevLam[k,1]*(u[k,1]-evV[k,1])+
-    								ρI/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1)
+    								ρADMMp/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1)
             if slack
                 append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
             end
@@ -370,10 +370,10 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         @variable(tM,z[1:(S)*(horzLen+1)])
         @variable(tM,xt[1:(horzLen+1)])
         # constFun1(u,v)=sum(Lam[k,p]*sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
-        # constFun2(u,v)=ρI/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S)  for k=1:(horzLen+1))
+        # constFun2(u,v)=ρADMMp/2*sum(sum((u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1])*(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1]) for s=1:S)  for k=1:(horzLen+1))
         # @objective(tM,Min, constFun1(-z,Vz[:,p])+constFun2(-z,Vz[:,p]))
     	@objective(tM,Min,sum(prevLam[k,1]*(sum(-z[(k-1)*(S)+s,1] for s=1:S)-sum(prevVz[(k-1)*(S)+s,1] for s=1:S)) +
-    						ρI/2*(sum(-z[(k-1)*(S)+s,1] for s=1:S)-sum(prevVz[(k-1)*(S)+s,1] for s=1:S))^2  for k=1:(horzLen+1)))
+    						ρADMMp/2*(sum(-z[(k-1)*(S)+s,1] for s=1:S)-sum(prevVz[(k-1)*(S)+s,1] for s=1:S))^2  for k=1:(horzLen+1)))
         @constraint(tM,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*evS.deltaI*sum((2*m+1)*z[m+1,1] for m=0:S-1)+evS.ρP*evS.Tamb[stepI,1])
         @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*m+1)*z[k*S+(m+1),1] for m=0:S-1)+evS.ρP*evS.Tamb[stepI+k,1])
         if noTlimit==false
@@ -398,8 +398,8 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     		dLogadmm.uSum[k,p]=sum(dLogadmm.Un[(k-1)*N+n,p] for n=1:N)
     		dLogadmm.zSum[k,p]=sum(dLogadmm.Z[(k-1)*(S)+s,p] for s=1:S)
     		dLogadmm.couplConst[k,p]= dLogadmm.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLogadmm.zSum[k,p]
-            dLogadmm.Lam[k,p]=max.(prevLam[k,1]+ρI/(S*(N))*(dLogadmm.couplConst[k,p]),0)
-    		#dLogadmm.Lam[k,p]=dLogadmm.Lam[k,p]+ρI/(S*(N))*(dLogadmm.couplConst[k,p])
+            dLogadmm.Lam[k,p]=max.(prevLam[k,1]+ρADMMp/(S*(N))*(dLogadmm.couplConst[k,p]),0)
+    		#dLogadmm.Lam[k,p]=dLogadmm.Lam[k,p]+ρADMMp/(S*(N))*(dLogadmm.couplConst[k,p])
     	end
 
     	#calculate actual temperature from nonlinear model of XFRM
@@ -420,6 +420,10 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
             # dLogadmm.Vu[(k-1)*N+collect(1:N),p]=min.(max.(dLogadmm.Un[(k-1)*N+collect(1:N),p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρI,evS.imin),evS.imax)
             # dLogadmm.Vz[(k-1)*(S)+collect(1:S),p]=max.(min.(-dLogadmm.Z[(k-1)*(S)+collect(1:S),p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρI,0),-evS.deltaI)
         end
+
+        #update rho
+        #ρADMMp = ρADMM/ceil(p/ρDivRate)
+        dLogadmm.itUpdate[1,p]= min(ρADMMp*ρDivRate,maxRho)
 
         #check convergence
     	objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
@@ -452,6 +456,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
             prevLam=dLogadmm.Lam[:,p]
             prevVz=dLogadmm.Vz[:,p]
             prevVu=dLogadmm.Vu[:,p]
+            ρADMMp=dLogadmm.itUpdate[1,p]
     	end
     end
 
@@ -531,13 +536,11 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     prevVz=vz0
     prevVt=vt0
     prevLam=lambda0
+    ρALADp=ρALAD
+    μALADp=μALAD
 
     ΔY=zeros(1,maxIt+1)
-    ρALADp=ρALAD*ones(1,maxIt+1)
-    μALADp=μALAD*ones(1,maxIt+1)
-
     for p=1:maxIt
-
         #solve decoupled
         @sync @distributed for evInd=1:N
             ind=[evInd]
@@ -555,8 +558,8 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
             if slack @variable(evM,slackSn) end
             objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
                                     prevLam[k,1]*(u[k,1])+
-                                    ρALADp[1,p]/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
-                                    ρALADp[1,p]/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)
+                                    ρALADp/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
+                                    ρALADp/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)
             if slack
                 append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
             end
@@ -622,8 +625,8 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         @variable(tM,z[1:(S)*(horzLen+1)])
         @variable(tM,xt[1:(horzLen+1)])
         @objective(tM,Min, sum(-prevLam[k,1]*sum(z[(k-1)*(S)+s] for s=1:S)+
-                  ρALADp[1,p]/2*σZ*(sum(z[(k-1)*(S)+s] for s=1:S)-sum(prevVz[(k-1)*(S)+s,1] for s=1:S))^2+
-                  ρALADp[1,p]/2*σT*(xt[k]-prevVt[k,1])^2  for k=1:(horzLen+1)))
+                  ρALADp/2*σZ*(sum(z[(k-1)*(S)+s] for s=1:S)-sum(prevVz[(k-1)*(S)+s,1] for s=1:S))^2+
+                  ρALADp/2*σT*(xt[k]-prevVt[k,1])^2  for k=1:(horzLen+1)))
         @constraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*evS.deltaI*sum((2*s-1)*z[s] for s=1:S)-evS.ρP*evS.Tamb[stepI,1]==0)
         @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*evS.deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)-evS.ρP*evS.Tamb[stepI+k,1]==0)
         if noTlimit==false
@@ -792,8 +795,8 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         @printf "lastGap    %e after %g iterations\n" dCMalad.lamIt[p,1] p
         @printf "convLamGap %e after %g iterations\n\n" dCMalad.lam[p,1] p
 
-        ρALADp[1,p+1]=min(ρALADp[1,p]*ρRate,ρALADmax) #increase ρ every iteration
-        μALADp[1,p+1]=min(μALADp[1,p]*μRate,μALADmax) #increase μ every iteration
+        dLogalad.itUpdate[1,p]=min(ρALADp*ρRate,ρALADmax) #increase ρ every iteration
+        μALADp=min(μALADp*μRate,μALADmax) #increase μ every iteration
 
         ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dZ),getvalue(dSn),getvalue(dXt)),Inf)
 
@@ -803,6 +806,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         prevVz=dLogalad.Vz[:,p]
         prevVt=dLogalad.Vt[:,p]
         prevLam=dLogalad.Lam[:,p]
+        ρALADp=dLog.itUpdate[1,p]
     end
 
     return dLogalad,dCMalad,convIt,ΔY,convCheck

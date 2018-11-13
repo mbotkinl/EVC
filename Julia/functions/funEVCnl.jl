@@ -287,10 +287,11 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	end
 
         #update lambda
-    	alphaP[p,1] = max(alpha/ceil(p/alphaDivRate),minAlpha)
-    	#alphaP[p,1] = alphaP[p,1]*alphaRate
+    	alphaP = max(alpha/ceil(p/alphaDivRate),minAlpha)
+    	#alphaP = alphaP*alphaRate
+		dLog.itUpdate[1,p]=alphaP
 
-		dLog.Lam[:,p]=prevLam[:,1]+alphaP[p,1]*dLog.couplConst[:,p]
+		dLog.Lam[:,p]=prevLam[:,1]+alphaP*dLog.couplConst[:,p]
         #dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP[p,1]*dLog.couplConst[:,p],0)
 
     	#check convergence
@@ -363,12 +364,9 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 	prevLam=lambda0
 	prevVu=vu0
 	prevVi=vi0
+	ρADMMp = ρADMM
 
     for p in 1:maxIt
-        ρADMMp = ρADMM/ceil(p/ρDivRate)
-		#ρADMMp = min(ρADMMp*ρDivRate,maxRho)
-        #ρADMMp = ρADMM
-
         #x minimization eq 7.66 in Bertsekas
         @sync @distributed for evInd=1:N
             evV=prevVu[collect(evInd:N:length(prevVu[:,1])),1]
@@ -465,6 +463,10 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 			dLogadmm.Vi[k,p]=-dLogadmm.Itotal[k,p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp
         end
 
+		#update rho
+		#ρADMMp = ρADMM/ceil(p/ρDivRate)
+		dLogadmm.itUpdate[1,p]= min(ρADMMp*ρDivRate,maxRho)
+
         #check convergence
     	objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
     					sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
@@ -496,6 +498,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 			prevLam=dLogadmm.Lam[:,p]
 			prevVu=dLogadmm.Vu[:,p]
 			prevVi=dLogadmm.Vi[:,p]
+			ρADMMp=dLogadmm.itUpdate[1,p]
     	end
     end
 
@@ -564,9 +567,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     prevVi=vi0
     prevVt=vt0
     prevLam=lambda0
-
-    ρALADp=ρALAD*ones(1,maxIt+1)
-	μALADp=μALAD*ones(1,maxIt+1)
+	ρALADp=ρALAD
+    μALADp=μALAD
 
     ΔY=zeros(1,maxIt+1)
 
@@ -594,8 +596,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 			if slack @variable(evM,slackSn) end
 			objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
                                     prevLam[k,1]*(u[k,1])+
-                                    ρALADp[1,p]/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
-                                    ρALADp[1,p]/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)
+                                    ρALADp/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
+                                    ρALADp/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)
 			if slack
                 append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
             end
@@ -665,8 +667,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @variable(tM,itotal[1:(horzLen+1)])
         @variable(tM,xt[1:(horzLen+1)])
         @objective(tM,Min, sum(-prevLam[k,1]*itotal[k]+
-                  ρALADp[1,p]/2*σI*(itotal[k]-prevVi[k,1])^2+
-                  ρALADp[1,p]/2*σT*(xt[k]-prevVt[k,1])^2  for k=1:(horzLen+1)))
+                  ρALADp/2*σI*(itotal[k]-prevVi[k,1])^2+
+                  ρALADp/2*σT*(xt[k]-prevVt[k,1])^2  for k=1:(horzLen+1)))
         if relaxed
             @constraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*(itotal[1])^2-evS.ρP*evS.Tamb[stepI,1]>=0)
             @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*(itotal[k+1])^2-evS.ρP*evS.Tamb[stepI+k,1]>=0)
@@ -826,8 +828,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @printf "lastGap    %e after %g iterations\n" dCMalad.lamIt[p,1] p
         @printf "convLamGap %e after %g iterations\n\n" dCMalad.lam[p,1] p
 
-        ρALADp[1,p+1]=min(ρALADp[1,p]*ρRate,ρALADmax) #increase ρ every iteration
-		μALADp[1,p+1]=min(μALADp[1,p]*μRate,μALADmax) #increase μ every iteration
+		dLogalad.itUpdate[1,p]=min(ρALADp*ρRate,ρALADmax) #increase ρ every iteration
+		μALADp=min(μALADp*μRate,μALADmax) #increase μ every iteration
 
 		ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dI),getvalue(dSn),getvalue(dXt)),Inf)
 

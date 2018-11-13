@@ -102,6 +102,9 @@ end
     Cul::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
     Czl::Array{Float64}=zeros(S*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
     Ctl::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+
+    #update dynamic (either rho or alpha)
+    itUpdate::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 end
 
 @with_kw struct itLogNL
@@ -143,6 +146,9 @@ end
     Cul::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
     Cil::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
     Ctl::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+
+    #update dynamic (either rho or alpha)
+    itUpdate::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 end
 
 @with_kw struct centralSolutionStruct
