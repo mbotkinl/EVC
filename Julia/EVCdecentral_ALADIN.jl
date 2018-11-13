@@ -72,11 +72,16 @@ if drawFig savefig(gradPlots,path*"J_decentral_ALADIN_gradPlots.png") end
 activeSet=zeros(convIt,1)
 setChanges=zeros(convIt,1)
 for ii=2:convIt
-    activeSet[ii,1]=sum(abs.(dLogalad.Cs[:,ii]))+sum(abs.(dLogalad.Ct[:,ii]))+
-              sum(abs.(dLogalad.Cu[:,ii]))+sum(abs.(dLogalad.Cz[:,ii]))
-    setChanges[ii,1]=sum(abs.(dLogalad.Cs[:,ii]-dLogalad.Cs[:,ii-1]))+sum(abs.(dLogalad.Ct[:,ii]-dLogalad.Ct[:,ii-1]))+
-                     sum(abs.(dLogalad.Cu[:,ii]-dLogalad.Cu[:,ii-1]))+sum(abs.(dLogalad.Cz[:,ii]-dLogalad.Cz[:,ii-1]))
+    activeSet[ii,1]=sum(abs.(dLogalad.Csu[:,ii]))+sum(abs.(dLogalad.Ctu[:,ii]))+
+              		sum(abs.(dLogalad.Cuu[:,ii]))+sum(abs.(dLogalad.Ciu[:,ii]))+
+					sum(abs.(dLogalad.Csl[:,ii]))+sum(abs.(dLogalad.Ctl[:,ii]))+
+				    sum(abs.(dLogalad.Cul[:,ii]))+sum(abs.(dLogalad.Cil[:,ii]))
+    setChanges[ii,1]=sum(abs.(dLogalad.Csu[:,ii]-dLogalad.Csu[:,ii-1]))+sum(abs.(dLogalad.Ctu[:,ii]-dLogalad.Ctu[:,ii-1]))+
+                     sum(abs.(dLogalad.Cuu[:,ii]-dLogalad.Cuu[:,ii-1]))+sum(abs.(dLogalad.Ciu[:,ii]-dLogalad.Ciu[:,ii-1]))+
+					 sum(abs.(dLogalad.Csl[:,ii]-dLogalad.Csl[:,ii-1]))+sum(abs.(dLogalad.Ctl[:,ii]-dLogalad.Ctl[:,ii-1]))+
+				     sum(abs.(dLogalad.Cul[:,ii]-dLogalad.Cul[:,ii-1]))+sum(abs.(dLogalad.Cil[:,ii]-dLogalad.Cil[:,ii-1]))
 end
+
 activeSetPlot=plot(2:convIt,activeSet[2:convIt],xlabel="Iteration",ylabel="Total Active inequality constraints",
                    legend=false,xlims=(2,convIt))
 setChangesPlot=plot(2:convIt,setChanges[2:convIt],xlabel="Iteration",ylabel="Changes in Active inequality constraints",
@@ -96,6 +101,5 @@ constPlotalad=plot(1:convIt,dCMalad.couplConst[1:convIt,1],xlabel="Iteration",yl
 convPlots=plot(fPlotalad, convItPlotalad,convPlotalad, constPlotalad,layout=(2,2))
 pubPlot(convPlots,thickscale=0.8,sizeWH=(1000,600),dpi=300)
 if drawFig savefig(convPlots,path*"J_decentral_ALADIN_convPlots.png") end
-
 
 checkDesiredStates(dLogalad.Sn[:,convIt],evS.Kn,evS.Snmin)

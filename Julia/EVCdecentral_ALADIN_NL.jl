@@ -60,15 +60,22 @@ constPlotnlalad=plot(dLognlalad.couplConst[:,1:convIt],seriescolor=CList,xlabel=
 lamPlotnlalad=plot(dLognlalad.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
 plot!(lamPlotnlalad,1:horzLen+1,cSolnl.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
 
+gradPlots=plot(uSumPlotnlalad, constPlotnlalad, lamPlotnlalad,layout=(3,1))
+pubPlot(gradPlots,thickscale=0.8,sizeWH=(1000,600),dpi=300)
+if drawFig savefig(gradPlots,path*"J_decentral_ALADIN_gradPlots.png") end
 
 
 activeSet=zeros(convIt,1)
 setChanges=zeros(convIt,1)
 for ii=2:convIt
-    activeSet[ii,1]=sum(abs.(dLognlalad.Cs[:,ii]))+sum(abs.(dLognlalad.Ct[:,ii]))+
-              sum(abs.(dLognlalad.Cu[:,ii]))+sum(abs.(dLognlalad.Ci[:,ii]))
-    setChanges[ii,1]=sum(abs.(dLognlalad.Cs[:,ii]-dLognlalad.Cs[:,ii-1]))+sum(abs.(dLognlalad.Ct[:,ii]-dLognlalad.Ct[:,ii-1]))+
-                     sum(abs.(dLognlalad.Cu[:,ii]-dLognlalad.Cu[:,ii-1]))+sum(abs.(dLognlalad.Ci[:,ii]-dLognlalad.Ci[:,ii-1]))
+    activeSet[ii,1]=sum(abs.(dLognlalad.Csu[:,ii]))+sum(abs.(dLognlalad.Ctu[:,ii]))+
+              		sum(abs.(dLognlalad.Cuu[:,ii]))+sum(abs.(dLognlalad.Ciu[:,ii]))+
+					sum(abs.(dLognlalad.Csl[:,ii]))+sum(abs.(dLognlalad.Ctl[:,ii]))+
+				    sum(abs.(dLognlalad.Cul[:,ii]))+sum(abs.(dLognlalad.Cil[:,ii]))
+    setChanges[ii,1]=sum(abs.(dLognlalad.Csu[:,ii]-dLognlalad.Csu[:,ii-1]))+sum(abs.(dLognlalad.Ctu[:,ii]-dLognlalad.Ctu[:,ii-1]))+
+                     sum(abs.(dLognlalad.Cuu[:,ii]-dLognlalad.Cuu[:,ii-1]))+sum(abs.(dLognlalad.Ciu[:,ii]-dLognlalad.Ciu[:,ii-1]))+
+					 sum(abs.(dLognlalad.Csl[:,ii]-dLognlalad.Csl[:,ii-1]))+sum(abs.(dLognlalad.Ctl[:,ii]-dLognlalad.Ctl[:,ii-1]))+
+				     sum(abs.(dLognlalad.Cul[:,ii]-dLognlalad.Cul[:,ii-1]))+sum(abs.(dLognlalad.Cil[:,ii]-dLognlalad.Cil[:,ii-1]))
 end
 
 activeSetPlot=plot(2:convIt,activeSet[2:convIt],xlabel="Iteration",ylabel="Total Active inequality constraints",
@@ -77,9 +84,18 @@ setChangesPlot=plot(2:convIt,setChanges[2:convIt],xlabel="Iteration",ylabel="Cha
                   legend=false,xlims=(2,convIt))
 solChangesplot=plot(2:convIt,hcat(ΔY[1:convIt],convCheck[1:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
 
+setChangePlots=plot(activeSetPlot, setChangesPlot,layout=(2,1))
+pubPlot(setChangePlots,thickscale=0.5,sizeWH=(1000,600),dpi=300)
+if drawFig savefig(setChangePlots,path*"J_decentralNL_ALADIN_setPlots.png") end
+
+
 fPlotaladNL=plot(1:convIt,dCMnlalad.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
 convItPlotaladNL=plot(1:convIt,dCMnlalad.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 convPlotaladNL=plot(1:convIt,dCMnlalad.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
 constPlotaladNL=plot(1:convIt,dCMnlalad.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
+
+convPlotsNL=plot(fPlotaladNL, convItPlotaladNL,convPlotaladNL, constPlotaladNL,layout=(2,2))
+pubPlot(convPlotsNL,thickscale=0.8,sizeWH=(1000,600),dpi=300)
+if drawFig savefig(convPlotsNL,path*"J_decentralNL_ALADIN_convPlots.png") end
 
 checkDesiredStates(dLognlalad.Sn[:,convIt],evS.Kn,evS.Snmin)
