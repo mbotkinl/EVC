@@ -21,7 +21,7 @@ if loadResults
 else
 	println("Running NL AlAD Sim")
 	timeT=@elapsed dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl,relaxed,slack)
-	if saveResults==1 saveRun(path,fname,timeT, evS,dLognlalad, dCMnlalad, convIt) end
+	if saveResults saveRun(path,fname,timeT, evS,dLognlalad, dCMnlalad, convIt) end
 end
 
 println("plotting....")

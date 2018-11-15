@@ -41,16 +41,16 @@ for ii= 1:N
 end
 
 
-p1nl=plot(snPlot,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,horzLen+1),ylims=(0,1))
+p1nl=plot(snPlot,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(1,horzLen+1),ylims=(0,1))
 if drawFig==1 savefig(p1nl,path*"J_centralNL_SOC.png") end
-p2nl=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,horzLen+1))
+p2nl=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(1,horzLen+1))
 if drawFig==1 savefig(p2nl,path*"J_centralNL_Curr.png") end
 
-p3nl=plot(1:horzLen+1,cSolnl.Xt,label="XFRM Temp",xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
+p3nl=plot(1:horzLen+1,cSolnl.Xt,label="XFRM Temp",xlims=(1,horzLen+1),xlabel="Time",ylabel="Temp (K)")
 plot!(p3nl,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
 if drawFig==1 savefig(p3nl,path*"J_centralNL_Temp.png") end
 
-p4nl=plot(1:horzLen+1,cSolnl.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,horzLen+1),legend=false)
+p4nl=plot(1:horzLen+1,cSolnl.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,horzLen+1),legend=false)
 if drawFig==1 savefig(p4nl,path*"J_centralNL_Lam.png") end
 
 fName="J_Central.png"

@@ -6,7 +6,7 @@
 #u, sn, xt, and z are all in "x" v is the auxilliary variable corresponding to z in literature
 #current constraint is coupling
 
-
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 fname = "dADMM_N$(N)"
 
 if loadResults

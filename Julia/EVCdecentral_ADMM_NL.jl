@@ -8,17 +8,17 @@
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
 relaxString= if relaxed==true "_relax"else "" end
-filename = "dADMM_NL_N$(N)"*relaxString
+fname = "dADMM_NL_N$(N)"*relaxString
 
 if loadResults
-	loadF=load(path*filename*".jld2")
+	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	dLognladmm=loadF["solution"]
 	dCMnladmm=loadF["convMetrics"]
 	convIt=loadF["convIt"]
 else
 	timeT=@elapsed dLognladmm,dCMnladmm,convIt=nlEVadmm(N,S,horzLen,maxIt,evS,cSolnl,relaxed,slack)
-	if saveResults saveRun(path,filename,timeT, evS,dLognladmm, dCMnladmm, convIt) end
+	if saveResults saveRun(path,fname,timeT, evS,dLognladmm, dCMnladmm, convIt) end
 end
 
 println("plotting....")

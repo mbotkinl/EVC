@@ -1,6 +1,6 @@
 #Micah Botkin-Levy
 #4/10/18
-
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 fname = "d_$(updateMethod)_N$(N)"
 
 if loadResults
@@ -48,7 +48,7 @@ else
 	lamLabel=raw"Lambda ($/kA)"
 end
 
-pd4=plot(1:horzLen+1,dLog.Lam[:,convIt],xlabel="Time",ylabel=lamLabel,xlims=(0,horzLen+1),legend=false)
+pd4=plot(1:horzLen+1,hcat(cSol.lamCoupl,dLog.Lam[:,convIt]),xlabel="Time",ylabel=lamLabel,xlims=(0,horzLen+1),labels=["Central" "ALADIN"])
 if drawFig savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 
 #convergence plots
@@ -58,6 +58,11 @@ CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
 
 uSumPlotd=plot(dLog.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
 plot!(uSumPlotd,1:horzLen+1,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+
+# uSumPlotd=plot(dLog.uSum[:,1:convIt],palette=:greens,line_z=(1:convIt)',legend=false,colorbar=:right,colorbar_title="Iteration",
+#      xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1))
+# plot!(uSumPlotd,1:horzLen+1,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+
 
 zSumPlotd=plot(dLog.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
 plot!(zSumPlotd,1:horzLen+1,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
