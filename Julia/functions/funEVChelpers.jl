@@ -28,7 +28,11 @@ function readRuns(path)
     files = filter(x->occursin(".jld2",x), readdir(path))
     files = filter(x->occursin("_",x), files) # avoid evScenario
     cFile = filter(x->occursin("central",x), files)
-    cRun=load(path*cFile[1])
+    if length(cFile)>0
+        cRun=load(path*cFile[1])
+    else
+        cRun=Nothing
+    end
 
     dFiles= setdiff(files,cFile)
     runs=Dict{String,Any}()
