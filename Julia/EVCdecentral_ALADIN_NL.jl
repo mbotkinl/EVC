@@ -20,7 +20,7 @@ if loadResults
 	convIt=loadF["convIt"]
 else
 	println("Running NL AlAD Sim")
-	timeT=@elapsed dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl,relaxed,slack)
+	timeT=@elapsed dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl,relaxed,slack,eqForm)
 	if saveResults saveRun(path,fname,timeT, evS,dLognlalad, dCMnlalad, convIt) end
 end
 

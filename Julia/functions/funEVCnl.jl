@@ -507,7 +507,7 @@ end
 
 #aladin
 function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct,
-	relaxed=false, slack=false)
+	relaxed=false, slack=false,eqForm=true)
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
@@ -695,7 +695,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 		if relaxed
 			# lambdaTemp=-Gurobi.get_dblattrarray(getrawsolver(tM),"QCPi",1,horzLen+1)
 			tt=-Mosek.gety(getrawsolver(tM),Mosek.MSK_SOL_ITR)
-			lambdaTemp=tt[(length(tt)-(horzLen)):length(tt)] #check index***
+			lambdaTemp=tt[(length(tt)-(horzLen)):length(tt)]
 		else
         	lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
 		end
@@ -772,7 +772,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
                    0.5*dI[k,1]^2*(Hi-lambdaTemp[k,1]*2*evS.γP)+
                    0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1))
 	    objExp=objExp+dot(dLogalad.Gi[:,p],dI)+dot(dLogalad.Gt[:,p],dXt)
-        objExp=objExp+prevLam[:,1]'*relaxS+ρALADp[1,p]/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
+        objExp=objExp+prevLam[:,1]'*relaxS+μALADp/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
     	@objective(cM,Min,objExp)
 
 		Unp=round.(dLogalad.Un[:,p],digits=8)
@@ -785,23 +785,25 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==evS.τP*dXt[k,1]+2*evS.γP*dLogalad.Itotal[k+1,p]*dI[k+1,1])
 
 		#active local constraints
-        # @constraint(cM,dLogalad.Ciu[:,p].*dI.<=0)
-        # @constraint(cM,dLogalad.Cuu[:,p].*dUn.<=0)
-        # @constraint(cM,dLogalad.Csu[:,p].*dSn.<=0)
-        # @constraint(cM,dLogalad.Ctu[:,p].*dXt.<=0)
-		# @constraint(cM,dLogalad.Cil[:,p].*dI.<=0)
-		# @constraint(cM,dLogalad.Cul[:,p].*dUn.<=0)
-		# @constraint(cM,dLogalad.Csl[:,p].*dSn.<=0)
-		# @constraint(cM,dLogalad.Ctl[:,p].*dXt.<=0)
-
-		@constraint(cM,dLogalad.Ciu[:,p].*dI.==0)
-		@constraint(cM,dLogalad.Cuu[:,p].*dUn.==0)
-		@constraint(cM,dLogalad.Csu[:,p].*dSn.==0)
-		@constraint(cM,dLogalad.Ctu[:,p].*dXt.==0)
-		@constraint(cM,dLogalad.Cil[:,p].*dI.==0)
-		@constraint(cM,dLogalad.Cul[:,p].*dUn.==0)
-		@constraint(cM,dLogalad.Csl[:,p].*dSn.==0)
-		@constraint(cM,dLogalad.Ctl[:,p].*dXt.==0)
+		if eqForm
+			@constraint(cM,dLogalad.Ciu[:,p].*dI.==0)
+			@constraint(cM,dLogalad.Cuu[:,p].*dUn.==0)
+			@constraint(cM,dLogalad.Csu[:,p].*dSn.==0)
+			@constraint(cM,dLogalad.Ctu[:,p].*dXt.==0)
+			@constraint(cM,dLogalad.Cil[:,p].*dI.==0)
+			@constraint(cM,dLogalad.Cul[:,p].*dUn.==0)
+			@constraint(cM,dLogalad.Csl[:,p].*dSn.==0)
+			@constraint(cM,dLogalad.Ctl[:,p].*dXt.==0)
+		else
+			@constraint(cM,dLogalad.Ciu[:,p].*dI.<=0)
+	        @constraint(cM,dLogalad.Cuu[:,p].*dUn.<=0)
+	        @constraint(cM,dLogalad.Csu[:,p].*dSn.<=0)
+	        @constraint(cM,dLogalad.Ctu[:,p].*dXt.<=0)
+			@constraint(cM,dLogalad.Cil[:,p].*dI.<=0)
+			@constraint(cM,dLogalad.Cul[:,p].*dUn.<=0)
+			@constraint(cM,dLogalad.Csl[:,p].*dSn.<=0)
+			@constraint(cM,dLogalad.Ctl[:,p].*dXt.<=0)
+		end
 
     	TT = stdout # save original stdout stream
         redirect_stdout()
@@ -839,7 +841,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 		prevVi=dLogalad.Vi[:,p]
 		prevVt=dLogalad.Vt[:,p]
 		prevLam=dLogalad.Lam[:,p]
-
+		ρALADp=dLogalad.itUpdate[1,p]
     end
 
     return dLogalad,dCMalad,convIt,ΔY,convCheck
