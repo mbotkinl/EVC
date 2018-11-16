@@ -118,14 +118,16 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     dLog=itLogPWL()
 
     if updateMethod=="fastAscent"
-    	#alpha = 0.1  #for A
-    	alpha = 5e4 #for kA
+    	#alpha0 = 0.1  #for A
+    	alpha0 = 5e4 #for kA
     	alphaDivRate=2
     	minAlpha=1e-6
     else
-    	#alpha = 3e-3 #for A
-    	alpha = 2e3 #for kA
-    	alphaDivRate=8
+    	#alpha0 = 3e-3 #for A
+    	# alpha = 3e4 #for kA
+    	# alphaDivRate=4
+        alpha0 = 5e3 #for kA
+        alphaDivRate=2
     	minAlpha=1e-6
     end
 
@@ -134,10 +136,9 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     convIt=maxIt
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
-    alphaP=alpha*ones(maxIt+1,1)
 
     #initialize with guess
-    lambda0=1000*ones(horzLen+1,1)
+    lambda0=2e3*ones(horzLen+1,1)
     #lambda0=lamCurrStar
 
     # dLog.Lam[:,1]=lambda0
@@ -242,12 +243,12 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	end
 
         #update lambda
-    	alphaP= max(alpha/ceil(p/alphaDivRate),minAlpha)
+    	alphaP= max(alpha0/ceil(p/alphaDivRate),minAlpha)
         dLog.itUpdate[1,p]=alphaP
     	#alphaP= alphaP*alphaRate
 
-        dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP*dLog.couplConst[:,p],0)
-        #dLog.Lam[:,p]=prevLam[:,1]+alphaP[p,1]*dLog.couplConst[:,p]
+        #dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP*dLog.couplConst[:,p],0)
+        dLog.Lam[:,p]=prevLam[:,1]+alphaP*dLog.couplConst[:,p]
 
     	#check convergence
     	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
