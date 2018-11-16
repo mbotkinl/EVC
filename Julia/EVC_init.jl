@@ -1,6 +1,8 @@
 # C:\Users\micah\AppData\Local\JuliaPro-0.6.2.2\Julia-0.6.2\bin\julia
 # C:\Users\micah\AppData\Local\Julia-0.7.0\bin\julia
 # C:\Users\micah\AppData\Local\Julia-1.0.1\bin\julia
+# C:\Users\micah\AppData\Local\Julia-1.0.2\bin\julia
+
 
 println("Loading Packages...")
 using JuMP
@@ -15,7 +17,7 @@ pyplot()
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
-N=50
+N=100
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\"
 datafile="jld2" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
@@ -23,10 +25,11 @@ file="EVCscenarioN$(N)."*datafile
 updateMethod="dualAscent" #dualAscent #fastAscent
 maxIt=25
 noTlimit=false
-relaxed=false
-relaxedModel=1
+relaxed=true
+relaxedMode=1
 relaxedSolver="Mosek"
 slack=false
+eqForm=true
 
 drawFig=false
 saveResults=false
@@ -41,7 +44,7 @@ if datafile=="jld2"
 	evS=loadF["evScenario"]
 else #create scenario
 	println("Creating EV Scenario...")
-	Tmax=370.1
+	Tmax=393
 	Dload_amplitude=0
 
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
@@ -56,7 +59,7 @@ end
 # path=path*"\\"
 # cRun,runs=readRuns(path);
 # pComp=compareRunsGraph(runs, cRun, saveResults)
-#cTable=compareRunsTable(runs)
+# cTable=compareRunsTable(runs)
 
 # @time runALADit(1)
 #@time testALAD(1)
