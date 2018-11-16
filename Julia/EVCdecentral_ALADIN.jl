@@ -18,7 +18,7 @@ if loadResults
 	convIt=loadF["convIt"]
 else
 	println("Running ALAD Sim")
-	timeT=@elapsed dLogalad,dCMalad,convIt,ΔY,convCheck=pwlEValad(N,S,horzLen,maxIt,evS,cSol,slack)
+	timeT=@elapsed dLogalad,dCMalad,convIt,ΔY,convCheck=pwlEValad(N,S,horzLen,maxIt,evS,cSol,slack,eqForm)
 	if saveResults saveRun(path,fname,timeT, evS,dLogalad, dCMalad, convIt) end
 end
 
@@ -61,7 +61,7 @@ plot!(zSumPlotalad,1:horzLen+1,cSol.zSum,seriescolor=:black,linewidth=2,linealph
 
 constPlotalad2=plot(dLogalad.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
 
-lamPlotalad=plot(dLogalad.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
+lamPlotalad=plot(dLogalad.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)#,ylims=(0,1e4))
 plot!(lamPlotalad,1:horzLen+1,cSol.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
 
 gradPlots=plot(uSumPlotalad, zSumPlotalad,constPlotalad2, lamPlotalad,layout=(2,2))

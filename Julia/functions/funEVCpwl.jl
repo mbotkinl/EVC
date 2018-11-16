@@ -465,7 +465,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 end
 
 #ALADIN
-function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolutionStruct,slack::Bool)
+function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolutionStruct,slack::Bool,eqForm::Bool)
     #initialize
     sn0=evS.s0
     xt0=evS.t0
@@ -486,31 +486,58 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     convIt=maxIt
 
     #ALADIN tuning and initial guess
-    σU=1*ones(N,1)
-    σS=ones(N,1)/10 #for kA
+    #σU=ones(N,1)
+    #σS=ones(N,1)/10 #for kA
     #σS=ones(N,1)*100 #for A
-    σZ=1/N
-    σT=1/10000 #for kA
-    #σT=1/10  #for A
+    # σZ=1/N
+    # σT=1/10000 #for kA
 
-    Hu=2*evS.Ri
-    Hs=2*evS.Qsi
-    # Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
-    # Hs=2*evS.Qsi *((1.5-2.5)*rand()+2.5)
-    # Hz=0
-    # Ht=0
-    Hz=1e-6
-    Ht=1e-6
+    if eqForm
+        scalingF=1e2
+        σZ=1e4*scalingF
+        σT=scalingF
+        σU=ones(N,1)*scalingF
+        σS=ones(N,1)/10*scalingF #for kA
+        Hu=2*evS.Ri
+        Hs=2*evS.Qsi
+        # Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
+        # Hs=2*evS.Qsi *((1.5-2.5)*rand()+2.5)
+        Hz=0
+        Ht=0
+        # Hz=1e-6
+        # Ht=1e-6
 
-    ρALAD=1
-    ρRate=1.15
+        ρALAD=1e3
+        ρRate=1.5
+        ρALADmax=1e6
 
-    # ρALAD=1e6
-    # ρRate=1
+        μALAD=1e8
+        μRate=1
+        μALADmax=2e10
+    else
+        scalingF=1e-4
+        σZ=1e2*scalingF
+        #σZ=1e4*scalingF #this doesnt work very sensitive!
+        σT=scalingF
+        σU=ones(N,1)
+        σS=ones(N,1)/10 #for kA
+        Hu=2*evS.Ri
+        Hs=2*evS.Qsi
+        # Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
+        # Hs=2*evS.Qsi *((1.5-2.5)*rand()+2.5)
+        Hz=0
+        Ht=0
+        # Hz=1e-6
+        # Ht=1e-6
 
-    μALAD=1e8
-    μRate=1
-    μALADmax=2e9
+        ρALAD=1e3
+        ρRate=1.5
+        ρALADmax=1e6
+
+        μALAD=1e8
+        μRate=1
+        μALADmax=2e9
+    end
 
     dCMalad=convMetricsStruct()
     dLogalad=itLogPWL()
@@ -521,11 +548,12 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     # vz0=ItotalMax/1000*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
     # vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
     # vs0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
-    lambda0=1000*ones(horzLen+1,1)
+    lambda0=2e3*ones(horzLen+1,1)
     vt0=ones(horzLen+1,1)
     vz0=ones(S*(horzLen+1),1)
     vu0=.01*ones(N*(horzLen+1),1)
     vs0=.5*ones(N*(horzLen+1),1)
+
     # lambda0=lamCurrStar
     # vt0=xtStar
     # vz0=zStar
@@ -577,7 +605,6 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
             @constraint(evM,curKappaMax,u.<=evS.imax[evInd,1])
             @constraint(evM,curKappaMin,u.>=evS.imin[evInd,1])
 
-
             TT = stdout # save original stdout stream
             redirect_stdout()
             statusEVM = solve(evM)
@@ -621,7 +648,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         end
 
         #N+1 decoupled problem aka transformer current
-        tM = Model(solver = GurobiSolver())
+        tM = Model(solver = GurobiSolver(NumericFocus=3))
         #tM = Model(solver = IpoptSolver())
         @variable(tM,z[1:(S)*(horzLen+1)])
         @variable(tM,xt[1:(horzLen+1)])
@@ -646,7 +673,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     	#kappaMin=-getdual(pwlKappaMin)
         #tMax=-getdual(upperTCon)
         #tMin=-getdual(lowerTCon)
-        lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
+        #lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
         zVal=getvalue(z)
         xtVal=getvalue(xt)
 
@@ -654,7 +681,6 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         cValMin=abs.(zVal.-0).<tolZ
         dLogalad.Czu[:,p]=1cValMax
         dLogalad.Czl[:,p]=-1cValMin
-
 
         cValMax=abs.(xtVal.-evS.Tmax).<tolT
         cValMin=abs.(xtVal.-0).<tolT
@@ -732,7 +758,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
                        0.5*dSn[(k-1)*N+n,1]^2*Hs[n,1]+dLogalad.Gs[(k-1)*N+n,p]*dSn[(k-1)*N+n,1] for n=1:N) +
                    sum(0.5*dZ[(k-1)*(S)+s,1]^2*Hz for s=1:S)+
                    0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1))
-        objExp=objExp+prevLam[:,1]'*relaxS+μALADp[1,p]/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
+        objExp=objExp+prevLam[:,1]'*relaxS+μALADp/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
         objExp=objExp+dot(dLogalad.Gz[:,p],dZ)+dot(dLogalad.Gt[:,p],dXt)
 
         @objective(cM,Min,objExp)
@@ -752,23 +778,25 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 
 
         #active local constraints
-        @constraint(cM,dLogalad.Czu[:,p].*dZ.<=0)
-        @constraint(cM,dLogalad.Cuu[:,p].*dUn.<=0)
-        @constraint(cM,dLogalad.Csu[:,p].*dSn.<=0)
-        @constraint(cM,dLogalad.Ctu[:,p].*dXt.<=0)
-        @constraint(cM,dLogalad.Czl[:,p].*dZ.<=0)
-        @constraint(cM,dLogalad.Cul[:,p].*dUn.<=0)
-        @constraint(cM,dLogalad.Csl[:,p].*dSn.<=0)
-        @constraint(cM,dLogalad.Ctl[:,p].*dXt.<=0)
-
-        # @constraint(cM,dLogalad.Czu[:,p].*dZ.==0)
-        # @constraint(cM,dLogalad.Cuu[:,p].*dUn.==0)
-        # @constraint(cM,dLogalad.Csu[:,p].*dSn.==0)
-        # @constraint(cM,dLogalad.Ctu[:,p].*dXt.==0)
-        # @constraint(cM,dLogalad.Czl[:,p].*dZ.==0)
-        # @constraint(cM,dLogalad.Cul[:,p].*dUn.==0)
-        # @constraint(cM,dLogalad.Csl[:,p].*dSn.==0)
-        # @constraint(cM,dLogalad.Ctl[:,p].*dXt.==0)
+        if eqForm
+            @constraint(cM,dLogalad.Czu[:,p].*dZ.==0)
+            @constraint(cM,dLogalad.Cuu[:,p].*dUn.==0)
+            @constraint(cM,dLogalad.Csu[:,p].*dSn.==0)
+            @constraint(cM,dLogalad.Ctu[:,p].*dXt.==0)
+            @constraint(cM,dLogalad.Czl[:,p].*dZ.==0)
+            @constraint(cM,dLogalad.Cul[:,p].*dUn.==0)
+            @constraint(cM,dLogalad.Csl[:,p].*dSn.==0)
+            @constraint(cM,dLogalad.Ctl[:,p].*dXt.==0)
+        else
+            @constraint(cM,dLogalad.Czu[:,p].*dZ.<=0)
+            @constraint(cM,dLogalad.Cuu[:,p].*dUn.<=0)
+            @constraint(cM,dLogalad.Csu[:,p].*dSn.<=0)
+            @constraint(cM,dLogalad.Ctu[:,p].*dXt.<=0)
+            @constraint(cM,dLogalad.Czl[:,p].*dZ.<=0)
+            @constraint(cM,dLogalad.Cul[:,p].*dUn.<=0)
+            @constraint(cM,dLogalad.Csl[:,p].*dSn.<=0)
+            @constraint(cM,dLogalad.Ctl[:,p].*dXt.<=0)
+        end
 
 
     	TT = stdout # save original stdout stream
@@ -807,7 +835,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         prevVz=dLogalad.Vz[:,p]
         prevVt=dLogalad.Vt[:,p]
         prevLam=dLogalad.Lam[:,p]
-        ρALADp=dLog.itUpdate[1,p]
+        ρALADp=dLogalad.itUpdate[1,p]
     end
 
     return dLogalad,dCMalad,convIt,ΔY,convCheck
