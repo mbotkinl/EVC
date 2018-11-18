@@ -150,7 +150,7 @@ function pemEVC(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,slack::Bool)
 	end
 
 	objVal=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,1]+(un[k,n])^2*evS.Ri[n,1] for n=1:N) for k=1:(horzLen+1))
-	pemSol=centralSolutionStruct(Xt=T,Un=un,Sn=sn, Itotal=Itotal,uSum=uSum,objVal=objVal)
+	pemSol=centralSolutionStruct(Xt=T,Tactual=T,Un=un,Sn=sn, Itotal=Itotal,uSum=uSum,objVal=objVal)
 
 	return pemSol, ratio
 end
