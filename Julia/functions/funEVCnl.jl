@@ -523,9 +523,16 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     #ALADIN tuning and initial guess
     ##σs are tuned to i_n [.010kA]
     σU=1*ones(N,1)
-    σS=ones(N,1)/10
-    σI=1/N
-    σT=1/10000
+    σS=ones(N,1)/1e2
+    σI=1
+    σT=1e-3
+
+	# σU=1*ones(N,1)
+	# σS=ones(N,1)/10
+	# σI=1e-2
+	# σT=1e-4
+
+
     Hu=2*evS.Ri#*(1+rand())
     Hs=2*evS.Qsi#*(1+rand())
     # Hi=1e-6
@@ -533,11 +540,9 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 	Hi=0
 	Ht=0
 
-	ρALAD=1e4
-    ρRate=1.5
-	# ρALAD=1
-    # ρRate=1.15
-    ρALADmax=1e6
+	ρALAD=1e3
+    ρRate=1.1
+    ρALADmax=1e7
 
     μALAD=1e8
     μRate=1
@@ -551,7 +556,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     dLogalad=itLogNL()
     convCheck=zeros(maxIt+1,1)
 
-    lambda0=1000*ones(horzLen+1,1)
+    lambda0=2e3*ones(horzLen+1,1)
     vt0=ones(horzLen+1,1)
     vi0=ones((horzLen+1),1)
     vu0=.01*ones(N*(horzLen+1),1)
@@ -588,6 +593,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             #evM = Model(solver = GurobiSolver(NumericFocus=3))
 			if relaxed
                 evM = Model(solver = MosekSolver())
+				#evM = Model(solver = GurobiSolver())
             else
                 evM = Model(solver = IpoptSolver())
             end
@@ -649,8 +655,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 			# dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
 			# dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
 
-			dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,digits=1)
-			dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],digits=4)
+			dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,digits=4) # these might matter....
+			dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],digits=8)
 
             #Gu[collect(evInd:N:length(Gu[:,p+1])),p+1]=σU[evInd,1]*(evVu-uVal)+lambda
             #Gs[collect(evInd:N:length(Gs[:,p+1])),p+1]=σN[evInd,1]*(evVs-snVal)-lambda
@@ -686,7 +692,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         redirect_stdout()
         statusTM = solve(tM)
         redirect_stdout(TT)
-        @assert statusTM==:Optimal "ALAD XFRM NL optimization not solved to optimality"
+        #@assert statusTM==:Optimal "ALAD XFRM NL optimization not solved to optimality"
 
         # kappaMax=-getdual(KappaMin)
         # kappaMin=-getdual(KappaMax)
@@ -746,10 +752,11 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         if  constGap<=epsilon && convCheck<=epsilon
             @printf "Converged after %g iterations\n" p
             convIt=p
-            break
+            #break
         else
             @printf "convCheck  %e after %g iterations\n" cc p
             @printf "constGap   %e after %g iterations\n" constGap p
+			@printf "snGap      %e after %g iterations\n" snGap p
             @printf("fGap       %e after %g iterations\n",fGap,p)
         end
 
