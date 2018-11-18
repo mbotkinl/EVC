@@ -148,8 +148,8 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	#alphaRate=.99
     else
     	#alpha = .01 #for A
-    	alpha = 2e4 #for kA
-    	alphaDivRate=4
+    	alpha = 5e3 #for kA
+    	alphaDivRate=2
     	minAlpha=1e-6
     	#alphaRate=.99
     end
@@ -164,7 +164,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     dLog=itLogNL()
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
-    lambda0=1000*ones(horzLen+1,1)
+    lambda0=2e3*ones(horzLen+1,1)
     #lambda0=lamCurrStarNL
     #lambda0=max.(lamCurrStarNL,0)
 
@@ -341,11 +341,10 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
     #admm  initial parameters and guesses
     #ρADMM=10.0^(0)
-    ρADMM=5e5
-    ρDivRate=10
-	# ρDivRate=1.1
-	# ρADMMp = ρADMM
-	# maxRho=1e9
+    ρADMM=1e5
+    # ρDivRate=10
+	ρDivRate=1.1
+	maxRho=1e7
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
     dCMadmm=convMetricsStruct()
@@ -354,7 +353,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     # lambda0=lamCurrStarNL
     # vi0=-itotalStarNL
     # vu0=uStarNL
-    lambda0=1000*ones(horzLen+1,1)
+    lambda0=2e3*ones(horzLen+1,1)
     vi0=-ones(horzLen+1,1)
     vu0=.01*ones(N*(horzLen+1),1)
 
@@ -373,7 +372,8 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             target=zeros((horzLen+1),1)
     		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1].=evS.Snmin[evInd,1]
 			if relaxed
-                evM = Model(solver = MosekSolver())
+                #evM = Model(solver = MosekSolver())
+				evM = Model(solver = GurobiSolver(NumericFocus=3))
             else
                 evM = Model(solver = IpoptSolver())
             end
