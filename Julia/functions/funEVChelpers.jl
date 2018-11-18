@@ -66,20 +66,23 @@ function compareRunsGraph(runs, cRun, saveF)
         println(runNames[i])
         runI=runs[runNames[i]]
         cIt=runI["convIt"]
-        objConv[:,i]=runI["convMetrics"].obj
-        lamConv[:,i]=runI["convMetrics"].lam
         if typeof(runI["solution"]) == centralSolutionStruct #PEM
             lamRMSE[:,i].=NaN
             lamInfNorm[:,i].=NaN
             objPerc[1:numIt,i].=abs.(cSol.objVal.-runI["solution"].objVal)/cSol.objVal*100
             Lam[:,i].=NaN
+            T[:,i]=runI["solution"].Xt[:,cIt]
         else
             lamRMSE[:,i]=[sqrt(1/Klen*sum((runI["solution"].Lam[k,it]-cSol.lamCoupl[k])^2/abs(cSol.lamCoupl[k]) for k=1:numIt)) for it=1:numIt]
             lamInfNorm[:,i]=[maximum(abs.(runI["solution"].Lam[:,it]-cSol.lamCoupl)) for it=1:numIt]
             objPerc[1:numIt,i]=abs.(cSol.objVal.-runI["solution"].objVal[1:numIt]')/cSol.objVal*100
             Lam[:,i]=runI["solution"].Lam[:,cIt]
+            #T[:,i]=runI["solution"].Tactual[:,cIt] #for PWL
+            T[:,i]=runI["solution"].Xt[:,cIt]
+
+            objConv[:,i]=runI["convMetrics"].obj
+            lamConv[:,i]=runI["convMetrics"].lam
         end
-        T[:,i]=runI["solution"].Xt[:,cIt]
         uSum[:,i]=runI["solution"].uSum[:,cIt]
         if size(runI["solution"].Sn)[1]>Klen+1
             Sn[:,i]=runI["solution"].Sn[:,cIt]
