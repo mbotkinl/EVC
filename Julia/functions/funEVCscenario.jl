@@ -70,7 +70,7 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false,path=pwd())
     FullChargeTime_relative = .25*rand(N,1).+.75
     #FullChargeTime_relative=ones(N,1)
     FullChargeTime = convert(Array{Int,2},round.(K1*FullChargeTime_relative))
-    Snmin=SOCmin
+    Snmin=round.(SOCmin,digits=4)
     Kn=FullChargeTime
 
     # Disturbances
