@@ -125,7 +125,7 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,
         uSum[k,1]=sum(uRaw[(k-1)*N+n,1] for n=1:N)
     end
 
-    cSol=centralSolutionStruct(Xt=xtRaw,Un=uRaw,Sn=snRaw,
+    cSol=centralSolutionStruct(Xt=xtRaw,Tactual=xtRaw, Un=uRaw,Sn=snRaw,
                         Itotal=itotalRaw,uSum=uSum,
                         objVal=getobjectivevalue(cModel),
                         lamTemp=lambdaTemp,lamCoupl=lambdaCurr,slackSn=slackSnRaw)
@@ -251,6 +251,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     		@assert statusC==:Optimal "XFRM NL optimization not solved to optimality"
 
     		 dLog.Xt[:,p]=getvalue(xt)
+			 dLog.Tactual[:,p]=dLog.Xt[:,p]
     		 dLog.Itotal[:,p]=getvalue(itotal)
 
     	    #grad of lagragian
@@ -271,6 +272,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
             for k=1:horzLen
                 dLog.Xt[k+1,p]=evS.τP*dLog.Xt[k,p]+evS.γP*ztotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]
             end
+			dLog.Tactual[:,p]=dLog.Xt[:,p]
 
     		#fast ascent
     		if noTlimit==false
@@ -445,6 +447,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         @assert statusTM==:Optimal "XFRM NLP NL optimization not solved to optimality"
 
         dLogadmm.Xt[:,p]=getvalue(xt)
+		dLogadmm.Tactual[:,p]=dLogadmm.Xt[:,p]
         dLogadmm.Itotal[:,p]=getvalue(itotal)
 
         #lambda update eq 7.68
@@ -719,6 +722,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 		dLogalad.Ctl[:,p]=-1cValMin
 
         dLogalad.Xt[:,p]=xtVal
+		dLogalad.Tactual[:,p]=dLogalad.Xt[:,p]
         dLogalad.Itotal[:,p]=iVal
         dLogalad.Gi[:,p].=0
 		dLogalad.Gt[:,p].=0
