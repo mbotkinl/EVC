@@ -42,7 +42,7 @@ function readRuns(path)
     return cRun, runs
 end
 
-function compareRunsGraph(runs, cRun, saveF)
+function compareRunsGraph(runs, cRun, saveF::Bool, lowRes::Bool)
     runNames=collect(keys(runs))
     cSol=cRun["solution"]
     numIt=size(runs[runNames[1]]["convMetrics"].lam)[1]
@@ -77,9 +77,12 @@ function compareRunsGraph(runs, cRun, saveF)
             lamInfNorm[:,i]=[maximum(abs.(runI["solution"].Lam[:,it]-cSol.lamCoupl)) for it=1:numIt]
             objPerc[1:numIt,i]=abs.(cSol.objVal.-runI["solution"].objVal[1:numIt]')/cSol.objVal*100
             Lam[:,i]=runI["solution"].Lam[:,cIt]
-            #T[:,i]=runI["solution"].Tactual[:,cIt] #for PWL
-            T[:,i]=runI["solution"].Xt[:,cIt]
 
+            if typeof(runI["solution"])==itLogPWL
+                T[:,i]=runI["solution"].Tactual[:,cIt] #for PWL
+            else
+                T[:,i]=runI["solution"].Xt[:,cIt] # for NL
+            end
             objConv[:,i]=runI["convMetrics"].obj
             lamConv[:,i]=runI["convMetrics"].lam
         end
@@ -101,23 +104,25 @@ function compareRunsGraph(runs, cRun, saveF)
     end
 
     plotLabels=permutedims(runNames)
+    plotColors=get_color_palette(:auto, plot_color(:white), P)
+
 
     #Iteration plots
-    lamConvPlot=plot(lamConv,xlabel="Iteration",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10)
-    lamRMSEPlot=plot(lamRMSE,xlabel="Iteration",ylabel="Relative RMSE Lambda Gap",labels=plotLabels,yscale=:log10)
-    lamInfNormPlot=plot(lamInfNorm,xlabel="Iteration",ylabel="Max Lambda Gap",labels=plotLabels,yscale=:log10)
-    objNormPlot=plot(objConv,xlabel="Iteration",ylabel="Objective Value Magintude Gap",labels=plotLabels,yscale=:log10)
-    objPercPlot=plot(objPerc,xlabel="Iteration",ylabel="Objective Value Percentage Gap",labels=plotLabels,yscale=:log10)
+    lamConvPlot=plot(lamConv,xlabel="Iteration",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
+    lamRMSEPlot=plot(lamRMSE,xlabel="Iteration",ylabel="Relative RMSE Lambda Gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
+    lamInfNormPlot=plot(lamInfNorm,xlabel="Iteration",ylabel="Max Lambda Gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
+    objNormPlot=plot(objConv,xlabel="Iteration",ylabel="Objective Value Magintude Gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
+    objPercPlot=plot(objPerc,xlabel="Iteration",ylabel="Objective Value Percentage Gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
 
 
     #Time plots
     tempPlot=plot(1:Klen,cSol.Xt,label="Central",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),xlabel="Time",ylabel="Temp (K)")
     plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
-    plot!(tempPlot,T,labels=plotLabels)
+    plot!(tempPlot,T,labels=plotLabels,seriescolor=plotColors')
 
     uSumPlot=plot(1:Klen,cSol.uSum,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,Klen),labels="Central",
                   seriescolor=:black,linewidth=4,linealpha=0.25)
-    plot!(uSumPlot,uSum,labels=plotLabels)
+    plot!(uSumPlot,uSum,labels=plotLabels,seriescolor=plotColors',legend=false)
 
     target=zeros(Klen)
     for k in 1:Klen
@@ -129,11 +134,11 @@ function compareRunsGraph(runs, cRun, saveF)
     snSumPlot=plot(1:Klen,snSumCentral,xlabel="Time",ylabel="SOC Sum",xlims=(0,Klen),labels=plotLabels,
                    seriescolor=:black,linewidth=4,linealpha=0.25)
     plot!(snSumPlot,1:Klen,target,label="SOC Target",line=(:dash,:red))
-    plot!(snSumPlot,snSum,labels=plotLabels)
+    plot!(snSumPlot,snSum,labels=plotLabels,seriescolor=plotColors',legend=false)
 
     lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),labels="Central",
                    seriescolor=:black,linewidth=4,linealpha=0.25)
-    plot!(lamPlot,Lam,labels=plotLabels)
+    plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors',legend=false)
 
     # R plot***
     Rmax=zeros(Klen,P)
@@ -147,10 +152,14 @@ function compareRunsGraph(runs, cRun, saveF)
     end
 
 
-    Rmax=plot(Rmax,xlabel="Time",ylabel="R Max",xlims=(0,Klen),labels=plotLabels)
+    Rmax=plot(Rmax,xlabel="Time",ylabel="R Max",xlims=(0,Klen),labels=plotLabels,seriescolor=plotColors',legend=false)
 
     p=plot(lamRMSEPlot, tempPlot,lamInfNormPlot, uSumPlot, objPercPlot,lamPlot,layout=(3,2))
-    pubPlot(p,thickscale=0.8,sizeWH=(1000,600),dpi=300)
+    if lowRes
+        pubPlot(p,thickscale=0.4,sizeWH=(500,300),dpi=40)
+    else
+        pubPlot(p,thickscale=0.8,sizeWH=(1000,600),dpi=100)
+    end
 
     fName="compPlot.png"
     if saveF savefig(p,path*fName) end
