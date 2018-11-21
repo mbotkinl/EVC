@@ -22,7 +22,6 @@ else
 	if saveResults saveRun(path,fname,timeT, evS,dLogalad, dCMalad, convIt) end
 end
 
-
 println("plotting....")
 xPlot=zeros(horzLen+1,N)
 uPlot=zeros(horzLen+1,N)
@@ -45,9 +44,6 @@ pd4alad=plot(1:horzLen+1,hcat(cSol.lamCoupl,dLogalad.Lam[:,convIt]),xlabel="Time
              xlims=(0,horzLen+1),labels=["Central" "ALADIN"])
 if drawFig savefig(pd4alad,path*"J_decentral_ALADIN_Lam.png") end
 
-
-
-
 #convergence plots
 halfCI=Int(floor(convIt/2))
 CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
@@ -61,7 +57,7 @@ plot!(zSumPlotalad,1:horzLen+1,cSol.zSum,seriescolor=:black,linewidth=2,linealph
 
 constPlotalad2=plot(dLogalad.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
 
-lamPlotalad=plot(dLogalad.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)#,ylims=(0,1e4))
+lamPlotalad=plot(dLogalad.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false,ylims=(0,1e4))
 plot!(lamPlotalad,1:horzLen+1,cSol.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
 
 gradPlots=plot(uSumPlotalad, zSumPlotalad,constPlotalad2, lamPlotalad,layout=(2,2))

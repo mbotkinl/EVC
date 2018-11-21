@@ -46,7 +46,6 @@ pd4admm=plot(1:horzLen+1,hcat(cSol.lamCoupl,dLogadmm.Lam[:,convIt]),xlabel="Time
 if drawFig savefig(pd4admm,path*"J_decentral_ADMM_Lam.png") end
 
 
-
 #convergence plots
 halfCI=Int(floor(convIt/2))
 CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);

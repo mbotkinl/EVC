@@ -23,11 +23,9 @@ datafile="jld2" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
 
 updateMethod="dualAscent" #dualAscent #fastAscent
-maxIt=25
+maxIt=50
 noTlimit=false
-relaxed=true
-relaxedMode=1
-relaxedSolver="Mosek"
+relaxedMode=2
 slack=false
 eqForm=true
 
@@ -54,11 +52,13 @@ else #create scenario
 end
 
 
+
 #run comparison
 # path = clips()
-# path=path*"\\"
+# path=path*"PWL\\"
 # cRun,runs=readRuns(path);
-# pComp=compareRunsGraph(runs, cRun, saveResults)
+# lowRes=true
+# pComp=compareRunsGraph(runs, cRun, saveResults,lowRes)
 # cTable=compareRunsTable(runs)
 
 # @time runALADit(1)
