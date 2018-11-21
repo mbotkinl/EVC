@@ -6,13 +6,15 @@ relaxString= if relaxed==true "_relax"else "" end
 fname = "d_$(updateMethod)_NL_N$(N)"*relaxString
 
 if loadResults
+	println("Reading in NL Dual Sim")
 	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
 	dLognl=loadF["solution"]
 	dCMnl=loadF["convMetrics"]
 	convIt=loadF["convIt"]
 else
-	timeT=@elapsed dLognl,dCMnl,convIt=nlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSolnl,relaxed,slack)
+	println("Running NL Dual Sim")
+	timeT=@elapsed dLognl,dCMnl,convIt=nlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSolnl,relaxedMode,slack)
 	s=Symbol(@sprintf("dCMnl_%s",updateMethod))
 	v=Symbol(@sprintf("dCMnl"))
 	@eval(($s)=($v))

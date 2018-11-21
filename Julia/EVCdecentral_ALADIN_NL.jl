@@ -8,7 +8,7 @@
 #current constraint is coupling
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
-relaxString= if relaxed==true "_relax"else "" end
+relaxString= "_R$(relaxedMode)"
 fname = "dALADIN_NL_N$(N)"*relaxString
 
 if loadResults
@@ -20,7 +20,7 @@ if loadResults
 	convIt=loadF["convIt"]
 else
 	println("Running NL AlAD Sim")
-	timeT=@elapsed dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl,relaxed,slack,eqForm)
+	timeT=@elapsed dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl,relaxedMode,slack,eqForm)
 	if saveResults saveRun(path,fname,timeT, evS,dLognlalad, dCMnlalad, convIt) end
 end
 

@@ -1,11 +1,9 @@
 #Micah Botkin-Levy
 #4/8/18
-if relaxed
-	if relaxedSolver=="Mosek"
-		using Mosek
-	else
-		using Gurobi
-	end
+if relaxedMode==2 #SOCP
+	using Mosek
+elseif relaxedMode==1 #QCQP
+	using Gurobi
 else
 	using Ipopt
 end
@@ -16,7 +14,7 @@ N=evS.N
 S=evS.S
 horzLen=evS.K1
 
-relaxString= if relaxed==true "_relax"else "" end
+relaxString= "_R$(relaxedMode)"
 fname = "central_NL_N$(N)"*relaxString
 
 if loadResults
@@ -26,7 +24,7 @@ if loadResults
 	cSolnl=loadF["solution"]
 else
 	println("Running NL Central Sim")
-	timeT=@elapsed cSolnl=nlEVcentral(N,S,horzLen,evS,relaxed,relaxedSolver,relaxedMode,slack)
+	timeT=@elapsed cSolnl=nlEVcentral(N,S,horzLen,evS,relaxedMode,slack)
 	if saveResults saveRun(path,fname,timeT, evS,cSolnl) end
 end
 

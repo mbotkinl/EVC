@@ -7,7 +7,7 @@
 #current constraint is coupling
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
-relaxString= if relaxed==true "_relax"else "" end
+relaxString= "_R$(relaxedMode)"
 fname = "dADMM_NL_N$(N)"*relaxString
 
 if loadResults
@@ -17,7 +17,7 @@ if loadResults
 	dCMnladmm=loadF["convMetrics"]
 	convIt=loadF["convIt"]
 else
-	timeT=@elapsed dLognladmm,dCMnladmm,convIt=nlEVadmm(N,S,horzLen,maxIt,evS,cSolnl,relaxed,slack)
+	timeT=@elapsed dLognladmm,dCMnladmm,convIt=nlEVadmm(N,S,horzLen,maxIt,evS,cSolnl,relaxedMode,slack)
 	if saveResults saveRun(path,fname,timeT, evS,dLognladmm, dCMnladmm, convIt) end
 end
 

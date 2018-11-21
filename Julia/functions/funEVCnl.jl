@@ -2,8 +2,7 @@
 
 
 #central
-function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,
-	relaxed=false, relaxedSolver="Mosek", relaxedMode=1,slack=false)
+function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,relaxedMode=2,slack=false)
 
     #initialize with current states
     sn0=evS.s0
@@ -19,12 +18,10 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,
     end
 
     println("setting up model")
-    if relaxed==true
-		if relaxedSolver=="Mosek"
-			cModel = Model(solver = MosekSolver())
-		else
-			cModel = Model(solver = GurobiSolver(QCPDual=1))
-		end
+    if relaxedMode==2
+		cModel = Model(solver = MosekSolver())
+	elseif relaxedMode==1
+		cModel = Model(solver = GurobiSolver(QCPDual=1))
     else
         cModel = Model(solver = IpoptSolver())
     end
@@ -34,40 +31,64 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,
     @variable(cModel,sn[1:(N)*(horzLen+1)])
     @variable(cModel,xt[1:(horzLen+1)])
     @variable(cModel,itotal[1:(horzLen+1)])
-	if relaxedMode==2
-		@variable(cModel,e[1:(horzLen+1)])
-	end
-
-	if slack
-        @variable(cModel,slackSn[1:N])
-    end
-
-    println("obj")
-	objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,1]+(u[n,1])^2*evS.Ri[n,1] for n=1:N)
-	for k=2:horzLen+1
-		append!(objExp,sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1]  for n=1:N))
-	end
-	if slack append!(objExp,sum(evS.β[n]*slackSn[n]^2 for n=1:N)) end
 
 	#objExp=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1] for n=1:N) for k=1:(horzLen+1))
-    @objective(cModel,Min, objExp)
 
     println("constraints")
 
-	if relaxed
-		if relaxedMode==1
-			@constraint(cModel,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.Tamb[stepI,1])
-			@constraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1])^2+evS.ρP*evS.Tamb[stepI+k,1])
-		elseif relaxedMode==2
-			@constraint(cModel,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*e[1]+evS.ρP*evS.Tamb[stepI,1])
-			@constraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*e[k+1]+evS.ρP*evS.Tamb[stepI+k,1])
-	        @constraint(cModel,eCon[k=1:horzLen+1],e[k]>=(itotal[k])^2)
-			#@constraint(cModel,eCon[k=1:horzLen+1],norm(itotal[k])<=e[k])
+	if relaxedMode==1
+		objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,1]+(u[n,1])^2*evS.Ri[n,1] for n=1:N)
+		for k=2:horzLen+1
+			append!(objExp,sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1]  for n=1:N))
 		end
+		@constraint(cModel,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.Tamb[stepI,1])
+		@constraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1])^2+evS.ρP*evS.Tamb[stepI+k,1])
+	elseif relaxedMode==2
+		@variable(cModel,e[1:(horzLen+1)])
+		@variable(cModel,t)
+		objExp=t
+		@constraint(cModel,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*e[1]+evS.ρP*evS.Tamb[stepI,1])
+		@constraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*e[k+1]+evS.ρP*evS.Tamb[stepI+k,1])
+        #@constraint(cModel,eCon[k=1:horzLen+1],(itotal[k])^2-e[k]<=0)
+		@constraint(cModel,eCon[k=1:horzLen+1],norm([1/2-1/2*e[k] itotal[k] 0])<=1/2+1/2*e[k])
+		#@constraint(cModel,eCon[k=1:horzLen+1],norm([2itotal[k] e[k]-1])<=e[k]+1)
+		#@constraint(cModel,eCon[k=1:horzLen+1],norm(itotal[k])<=e[k])
+
+
+
+		#reformulated objective function
+		# @constraint(cModel,objCon[k=1:horzLen+1],
+		# 	norm(sum(sqrt(evS.Qsi[n,1])*sn[(k-1)*(N)+n,1]+sqrt(evS.Ri[n,1])*u[(k-1)*(N)+n,1]-evS.Qsi[n,1]/sqrt(evS.Qsi[n,1]) for n=1:N))
+		# 	<=t)
+		# @constraint(cModel,objCon[k=1:horzLen+1],
+		# 	norm(sum([sqrt(evS.Qsi[n,1])*sn[(k-1)*(N)+n,1]-evS.Qsi[n,1]/sqrt(evS.Qsi[n,1]) sqrt(evS.Ri[n,1])*u[(k-1)*(N)+n,1]] for n=1:N))
+		# 	<=t)
+		# @constraint(cModel,objCon[k=1:horzLen+1],
+		# 	norm([sqrt(evS.Qsi[n,1])*sn[(k-1)*(N)+n,1]-evS.Qsi[n,1]/sqrt(evS.Qsi[n,1]) sqrt(evS.Ri[n,1])*u[(k-1)*(N)+n,1]] for n=1:N)
+		# 	<=t)
+
+		objExpCon=0*sn[1:2]
+		for k=1:horzLen+1
+			for n=1:N
+				tt=[sqrt(evS.Qsi[n,1])*sn[(k-1)*(N)+n,1]-evS.Qsi[n,1]/sqrt(evS.Qsi[n,1]);sqrt(evS.Ri[n,1])*u[(k-1)*(N)+n,1]]
+				append!(objExpCon,tt)
+			end
+		end
+		@constraint(cModel,objCon,norm(objExpCon)<=t)
     else
+		objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,1]+(u[n,1])^2*evS.Ri[n,1] for n=1:N)
+		for k=2:horzLen+1
+			append!(objExp,sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1]  for n=1:N))
+		end
         @NLconstraint(cModel,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.Tamb[stepI,1])
         @NLconstraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1])^2+evS.ρP*evS.Tamb[stepI+k,1])
     end
+	if slack
+		@variable(cModel,slackSn[1:N])
+		append!(objExp,sum(evS.β[n]*slackSn[n]^2 for n=1:N))
+	end
+
+	@objective(cModel,Min, objExp)
 
     @constraint(cModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+evS.ηP[:,1].*u[1:N,1])
     @constraint(cModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+evS.ηP[n,1]*u[n+(k)*(N),1])
@@ -109,13 +130,8 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,
     	kappaUpperT=zeros(horzLen+1,1)
     end
     lambdaCurr=-getdual(currCon)
-    if relaxed
-		if relaxedSolver=="Mosek"
-			tt=-Mosek.gety(getrawsolver(cModel),Mosek.MSK_SOL_ITR)
-			lambdaTemp=tt[(length(tt)-(horzLen)):length(tt)]
-		else
-        	lambdaTemp=-Gurobi.get_dblattrarray(getrawsolver(cModel),"QCPi",1,horzLen+1)
-		end
+    if relaxedMode==1
+    	lambdaTemp=-Gurobi.get_dblattrarray(getrawsolver(cModel),"QCPi",1,horzLen+1)
     else
         lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
     end
@@ -134,7 +150,7 @@ end
 
 #dual
 function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
-    evS::scenarioStruct,cSolnl::centralSolutionStruct, relaxed=false, slack=false)
+    evS::scenarioStruct,cSolnl::centralSolutionStruct, relaxedMode=2,slack=false)
 
     #initialize with current states
     sn0=evS.s0
@@ -181,11 +197,13 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     		end
             target=zeros((horzLen+1),1)
     		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1].=evS.Snmin[evInd,1]
-            if relaxed
-                evM = Model(solver = MosekSolver())
-            else
-                evM = Model(solver = IpoptSolver())
-            end
+			if relaxedMode==2
+				evM = Model(solver = MosekSolver())
+			elseif relaxedMode==1
+				evM = Model(solver = GurobiSolver())
+		    else
+		        evM = Model(solver = IpoptSolver())
+		    end
             @variable(evM,un[1:horzLen+1])
             @variable(evM,sn[1:horzLen+1])
 			if slack @variable(evM,slackSn) end
@@ -221,18 +239,24 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	if updateMethod=="dualAscent"
     	    #solve coordinator problem
 
-            if relaxed
-                # coorM = Model(solver = GurobiSolver(QCPDual=1))
+			if relaxedMode==2
 				coorM = Model(solver = MosekSolver())
-            else
-                coorM = Model(solver = IpoptSolver())
-            end
+			elseif relaxedMode==1
+				coorM = Model(solver = GurobiSolver())
+		    else
+		        coorM = Model(solver = IpoptSolver())
+		    end
 	        @variable(coorM,itotal[1:(horzLen+1)])
     	    @variable(coorM,xt[1:(horzLen+1)])
     	    @objective(coorM,Min,-sum(prevLam[k,1]*itotal[k,1] for k=1:(horzLen+1)))
-            if relaxed
+			if relaxedMode ==1
                 @constraint(coorM,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.Tamb[stepI,1]) #fix for MPC loop
         		@constraint(coorM,[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.Tamb[stepI+k,1])
+			elseif relaxedMode==2
+				@variable(coorM,e[1:(horzLen+1)])
+				@constraint(coorM,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*e[1]+evS.ρP*evS.Tamb[stepI,1])
+				@constraint(coorM,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*e[k+1]+evS.ρP*evS.Tamb[stepI+k,1])
+				@constraint(coorM,eCon[k=1:horzLen+1],norm([1/2-1/2*e[k] itotal[k]])<=1/2+1/2*e[k])
             else
                 @NLconstraint(coorM,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.Tamb[stepI,1]) #fix for MPC loop
         		@NLconstraint(coorM,[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.Tamb[stepI+k,1])
@@ -250,8 +274,8 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
 
     		@assert statusC==:Optimal "XFRM NL optimization not solved to optimality"
 
-    		 dLog.Xt[:,p]=getvalue(xt)
-    		 dLog.Itotal[:,p]=getvalue(itotal)
+    		dLog.Xt[:,p]=getvalue(xt)
+    		dLog.Itotal[:,p]=getvalue(itotal)
 
     	    #grad of lagragian
     		gradL=zeros(horzLen+1,1)
@@ -330,7 +354,7 @@ end
 
 #admm
 function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct,
-	relaxed=false, slack=false)
+	relaxedMode=false, slack=false)
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
@@ -371,12 +395,13 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             evV=prevVu[collect(evInd:N:length(prevVu[:,1])),1]
             target=zeros((horzLen+1),1)
     		target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1].=evS.Snmin[evInd,1]
-			if relaxed
-                #evM = Model(solver = MosekSolver())
-				evM = Model(solver = GurobiSolver(NumericFocus=3))
-            else
-                evM = Model(solver = IpoptSolver())
-            end
+			if relaxedMode==2
+				evM = Model(solver = MosekSolver())
+			elseif relaxedMode==1
+				evM = Model(solver = GurobiSolver(NumericalFocus=3))
+		    else
+		        evM = Model(solver = IpoptSolver())
+		    end
         	@variable(evM,sn[1:(horzLen+1)])
         	@variable(evM,u[1:(horzLen+1)])
 			if slack @variable(evM,slackSn) end
@@ -410,24 +435,40 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 		end
 
         #N+1 decoupled problem aka transformer current
-		if relaxed
-			# tM = Model(solver = GurobiSolver(QCPDual=1, BarQCPConvTol=1e-2))
+		if relaxedMode==2
 			tM = Model(solver = MosekSolver())
-		else
-			tM = Model(solver = IpoptSolver())
-		end
+		elseif relaxedMode==1
+			tM = Model(solver = GurobiSolver())
+	    else
+	        tM = Model(solver = IpoptSolver())
+	    end
         #@variable(tM,z[1:(S)*(horzLen+1)])
         @variable(tM,xt[1:(horzLen+1)])
         @variable(tM,itotal[1:(horzLen+1)])
     	# constFun1(u,v)=sum(Lam[k,p]*(u[k,1]-v[k,1])  for k=1:(horzLen+1))
     	# constFun2(u,v)=ρADMM/2*sum((u[k,1]-v[k,1])^2  for k=1:(horzLen+1))
         # @objective(tM,Min, constFun1(-itotal,Vi[:,p])+constFun2(-itotal,Vi[:,p]))
-        @objective(tM,Min,sum(prevLam[k,1]*(-itotal[k,1]-prevVi[k,1])+
-                              ρADMM/2*(-itotal[k,1]-prevVi[k,1])^2  for k=1:(horzLen+1)))
-        if relaxed
-            @constraint(tM,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1,1])^2+evS.ρP*evS.Tamb[stepI,1])
-            @constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.Tamb[stepI+k,1])
+
+
+		if relaxedMode ==1
+			@objective(tM,Min,sum(prevLam[k,1]*(-itotal[k,1]-prevVi[k,1])+
+								  ρADMM/2*(-itotal[k,1]-prevVi[k,1])^2  for k=1:(horzLen+1)))
+			@constraint(tM,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*(itotal[1,1])^2+evS.ρP*evS.Tamb[stepI,1])
+			@constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.Tamb[stepI+k,1])
+		elseif relaxedMode==2
+			@variable(tM,e[1:(horzLen+1)])
+			@variable(tM,t)
+
+			#fix objective***
+			@objective(tM,Min,sum(prevLam[k,1]*(-itotal[k,1]-prevVi[k,1])+
+								  ρADMM/2*(-itotal[k,1]-prevVi[k,1])^2  for k=1:(horzLen+1)))
+
+			@constraint(tM,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*e[1]+evS.ρP*evS.Tamb[stepI,1])
+			@constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*e[k+1]+evS.ρP*evS.Tamb[stepI+k,1])
+			@constraint(tM,eCon[k=1:horzLen+1],norm([1/2-1/2*e[k] itotal[k]])<=1/2+1/2*e[k])
         else
+			@objective(tM,Min,sum(prevLam[k,1]*(-itotal[k,1]-prevVi[k,1])+
+								  ρADMM/2*(-itotal[k,1]-prevVi[k,1])^2  for k=1:(horzLen+1)))
             @NLconstraint(tM,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1,1])^2+evS.ρP*evS.Tamb[stepI,1])
             @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.Tamb[stepI+k,1])
         end
@@ -507,7 +548,7 @@ end
 
 #aladin
 function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSolnl::centralSolutionStruct,
-	relaxed=false, slack=false,eqForm=true)
+	relaxedMode=false, slack=false,eqForm=true)
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
@@ -591,12 +632,13 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
             target=zeros((horzLen+1),1)
             target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1].=evS.Snmin[evInd,1]
             #evM = Model(solver = GurobiSolver(NumericFocus=3))
-			if relaxed
-                evM = Model(solver = MosekSolver())
-				#evM = Model(solver = GurobiSolver())
-            else
-                evM = Model(solver = IpoptSolver())
-            end
+			if relaxedMode==2
+				evM = Model(solver = MosekSolver())
+			elseif relaxedMode==1
+				evM = Model(solver = GurobiSolver())
+		    else
+		        evM = Model(solver = IpoptSolver())
+		    end
             @variable(evM,sn[1:(horzLen+1)])
             @variable(evM,u[1:(horzLen+1)])
 			if slack @variable(evM,slackSn) end
@@ -663,22 +705,37 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         end
 
         #N+1 decoupled problem aka transformer current
-		if relaxed
-			#tM = Model(solver = GurobiSolver(QCPDual=1)) #, NumericFocus=3
-			# tM = Model(solver = GurobiSolver(QCPDual=1,BarQCPConvTol=1e-8,NumericFocus=3)) #,
+		if relaxedMode==2
 			tM = Model(solver = MosekSolver())
-		else
-			tM = Model(solver = IpoptSolver())
-		end
+		elseif relaxedMode==1
+			tM = Model(solver = GurobiSolver(QCPDual=1))
+	    else
+	        tM = Model(solver = IpoptSolver())
+	    end
         @variable(tM,itotal[1:(horzLen+1)])
         @variable(tM,xt[1:(horzLen+1)])
-        @objective(tM,Min, sum(-prevLam[k,1]*itotal[k]+
-                  ρALADp/2*σI*(itotal[k]-prevVi[k,1])^2+
-                  ρALADp/2*σT*(xt[k]-prevVt[k,1])^2  for k=1:(horzLen+1)))
-        if relaxed
-            @constraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*(itotal[1])^2-evS.ρP*evS.Tamb[stepI,1]>=0)
-            @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*(itotal[k+1])^2-evS.ρP*evS.Tamb[stepI+k,1]>=0)
+		if relaxedMode ==1
+			@objective(tM,Min, sum(-prevLam[k,1]*itotal[k]+
+					  ρALADp/2*σI*(itotal[k]-prevVi[k,1])^2+
+					  ρALADp/2*σT*(xt[k]-prevVt[k,1])^2  for k=1:(horzLen+1)))
+		    @constraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*(itotal[1])^2-evS.ρP*evS.Tamb[stepI,1]>=0)
+		  	@constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*(itotal[k+1])^2-evS.ρP*evS.Tamb[stepI+k,1]>=0)
+		elseif relaxedMode==2
+			@variable(tM,e[1:(horzLen+1)])
+			@variable(tM,t)
+
+			#fix objective***
+			@objective(tM,Min, sum(-prevLam[k,1]*itotal[k]+
+					  ρALADp/2*σI*(itotal[k]-prevVi[k,1])^2+
+					  ρALADp/2*σT*(xt[k]-prevVt[k,1])^2  for k=1:(horzLen+1)))
+
+			@constraint(tM,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*e[1]+evS.ρP*evS.Tamb[stepI,1])
+			@constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*e[k+1]+evS.ρP*evS.Tamb[stepI+k,1])
+			@constraint(tM,eCon[k=1:horzLen+1],norm([1/2-1/2*e[k] itotal[k]])<=1/2+1/2*e[k])
         else
+			@objective(tM,Min, sum(-prevLam[k,1]*itotal[k]+
+					  ρALADp/2*σI*(itotal[k]-prevVi[k,1])^2+
+					  ρALADp/2*σT*(xt[k]-prevVt[k,1])^2  for k=1:(horzLen+1)))
             @NLconstraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*(itotal[1])^2-evS.ρP*evS.Tamb[stepI,1]==0)
             @NLconstraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*(itotal[k+1])^2-evS.ρP*evS.Tamb[stepI+k,1]==0)
         end
@@ -698,10 +755,8 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         # kappaMin=-getdual(KappaMax)
         # tMax=-getdual(upperTCon)
         # tMin=-getdual(lowerTCon)
-		if relaxed
-			# lambdaTemp=-Gurobi.get_dblattrarray(getrawsolver(tM),"QCPi",1,horzLen+1)
-			tt=-Mosek.gety(getrawsolver(tM),Mosek.MSK_SOL_ITR)
-			lambdaTemp=tt[(length(tt)-(horzLen)):length(tt)]
+		if relaxedMode==1
+			lambdaTemp=-Gurobi.get_dblattrarray(getrawsolver(tM),"QCPi",1,horzLen+1)
 		else
         	lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
 		end
@@ -761,14 +816,13 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         end
 
         #coupled QP
-		#cM = Model(solver = MosekSolver())
-		#cM = Model(solver = GurobiSolver())
-
-		if relaxed
-			cM = Model(solver = MosekSolver())
-		else
-			cM = Model(solver = IpoptSolver())
-		end
+		if relaxedMode==2
+		 	cM= Model(solver = MosekSolver())
+		elseif relaxedMode==1
+			cM = Model(solver = GurobiSolver(QCPDual=1))
+	    else
+	        cM = Model(solver = IpoptSolver())
+	    end
         @variable(cM,dUn[1:(N)*(horzLen+1)])
         @variable(cM,dSn[1:(N)*(horzLen+1)])
         @variable(cM,dI[1:(horzLen+1)])
