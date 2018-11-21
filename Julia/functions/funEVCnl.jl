@@ -50,23 +50,13 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,relaxedMode=
 		@constraint(cModel,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*e[1]+evS.ρP*evS.Tamb[stepI,1])
 		@constraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*e[k+1]+evS.ρP*evS.Tamb[stepI+k,1])
         #@constraint(cModel,eCon[k=1:horzLen+1],(itotal[k])^2-e[k]<=0)
+
 		@constraint(cModel,eCon[k=1:horzLen+1],norm([1/2-1/2*e[k] itotal[k] 0])<=1/2+1/2*e[k])
 		#@constraint(cModel,eCon[k=1:horzLen+1],norm([2itotal[k] e[k]-1])<=e[k]+1)
+
 		#@constraint(cModel,eCon[k=1:horzLen+1],norm(itotal[k])<=e[k])
 
-
-
-		#reformulated objective function
-		# @constraint(cModel,objCon[k=1:horzLen+1],
-		# 	norm(sum(sqrt(evS.Qsi[n,1])*sn[(k-1)*(N)+n,1]+sqrt(evS.Ri[n,1])*u[(k-1)*(N)+n,1]-evS.Qsi[n,1]/sqrt(evS.Qsi[n,1]) for n=1:N))
-		# 	<=t)
-		# @constraint(cModel,objCon[k=1:horzLen+1],
-		# 	norm(sum([sqrt(evS.Qsi[n,1])*sn[(k-1)*(N)+n,1]-evS.Qsi[n,1]/sqrt(evS.Qsi[n,1]) sqrt(evS.Ri[n,1])*u[(k-1)*(N)+n,1]] for n=1:N))
-		# 	<=t)
-		# @constraint(cModel,objCon[k=1:horzLen+1],
-		# 	norm([sqrt(evS.Qsi[n,1])*sn[(k-1)*(N)+n,1]-evS.Qsi[n,1]/sqrt(evS.Qsi[n,1]) sqrt(evS.Ri[n,1])*u[(k-1)*(N)+n,1]] for n=1:N)
-		# 	<=t)
-
+		#reformulated objective function (do this smarter***)
 		objExpCon=0*sn[1:2]
 		for k=1:horzLen+1
 			for n=1:N
@@ -74,6 +64,11 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,relaxedMode=
 				append!(objExpCon,tt)
 			end
 		end
+
+		# objExpCon1 = [sqrt(evS.Qsi[n,1])*sn[(k-1)*(N)+n,1]-evS.Qsi[n,1]/sqrt(evS.Qsi[n,1])  for n=1:N for k=1:(horzLen+1)]
+		# objExpCon2 = [sqrt(evS.Ri[n,1])*u[(k-1)*(N)+n,1]  for n=1:N for k=1:(horzLen+1)]
+		# objExpCon=vcat(objExpCon1,objExpCon2)
+
 		@constraint(cModel,objCon,norm(objExpCon)<=t)
     else
 		objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,1]+(u[n,1])^2*evS.Ri[n,1] for n=1:N)
@@ -113,7 +108,6 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,relaxedMode=
     statusC = solve(cModel)
     @assert statusC==:Optimal "Central NL optimization not solved to optimality"
 
-
     uRaw=getvalue(u)
     snRaw=getvalue(sn)
     xtRaw=getvalue(xt)
@@ -141,9 +135,15 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,relaxedMode=
         uSum[k,1]=sum(uRaw[(k-1)*N+n,1] for n=1:N)
     end
 
+
+	if relaxedMode==2
+		objVal=getobjectivevalue(cModel)^2
+	else
+		objVal=getobjectivevalue(cModel)
+	end
+
     cSol=centralSolutionStruct(Xt=xtRaw,Un=uRaw,Sn=snRaw,
-                        Itotal=itotalRaw,uSum=uSum,
-                        objVal=getobjectivevalue(cModel),
+                        Itotal=itotalRaw,uSum=uSum,objVal=objVal,
                         lamTemp=lambdaTemp,lamCoupl=lambdaCurr,slackSn=slackSnRaw)
     return cSol
 end
