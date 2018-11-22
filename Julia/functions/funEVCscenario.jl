@@ -94,8 +94,8 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false,path=pwd())
     FullDload   = Dload_amplitude*FullinelasticDemand;    # peaks during mid-day
     iD = FullDload/Vtf;                                     #background demand current
 
-    noiseAmp= .05*Dload_amplitude*2
-    iDnoise = round.(iD+2noiseAmp*rand(length(iD),1)-noiseAmp,digits=2)
+    noisePerc= .05
+    iDnoise = round.(iD+2*noisePerc*iD.*rand(length(iD),1).-iD*noisePerc,digits=6)
     Tamb    = Tamb_amplitude*ones(K+1,1);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
     #ndisturbs = 2;
     # w = zeros((K+1)*ndisturbs,1);
