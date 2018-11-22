@@ -8,6 +8,11 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,relaxedMode=
     sn0=evS.s0
     xt0=evS.t0
     stepI=1
+	if forecastError
+		iD=evS.iDnoise
+	else
+		iD=evS.iD
+	end
 
     #desired SOC
     target=zeros(N*(horzLen+1),1)
@@ -87,7 +92,7 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,relaxedMode=
 
     @constraint(cModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+evS.ηP[:,1].*u[1:N,1])
     @constraint(cModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+evS.ηP[n,1]*u[n+(k)*(N),1])
-    @constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-evS.iD[stepI+(k-1)]+itotal[k])
+    @constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n,1] for n=1:N)-iD[stepI+(k-1)]+itotal[k])
     @constraint(cModel,sn.<=1)
 	if slack
 		@constraint(cModel,sn.>=target.*(1-repeat(slackSn,horzLen+1,1)))
@@ -155,6 +160,12 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
+	if forecastError
+		iD=evS.iDnoise
+	else
+		iD=evS.iD
+	end
+
 
     if updateMethod=="fastAscent"
     	#alpha = 0.1 #for A
@@ -281,7 +292,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     		gradL=zeros(horzLen+1,1)
     		for k=1:horzLen+1
     			dLog.uSum[k,p]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N)
-    			dLog.couplConst[k,p]=dLog.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLog.Itotal[k,p]
+    			dLog.couplConst[k,p]=dLog.uSum[k,p] + iD[stepI+(k-1),1] - dLog.Itotal[k,p]
     		end
     		dCM.couplConst[p,1]=norm(dLog.couplConst[:,p],2)
     	end
@@ -289,7 +300,7 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
     	if updateMethod=="fastAscent"
             ztotal=zeros(horzLen+1,1)
             for k=1:horzLen+1
-                ztotal[k,1]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N) + evS.iD[stepI+(k-1),1]
+                ztotal[k,1]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N) + iD[stepI+(k-1),1]
             end
             dLog.Xt[1,p]=evS.τP*xt0+evS.γP*ztotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
             for k=1:horzLen
@@ -358,6 +369,12 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
+	if forecastError
+		iD=evS.iDnoise
+	else
+		iD=evS.iD
+	end
+
 
     stepI = 1
     convChk = 1e-8
@@ -491,7 +508,7 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
         #lambda update eq 7.68
     	for k=1:horzLen+1
     		dLogadmm.uSum[k,p]=sum(dLogadmm.Un[(k-1)*N+n,p] for n=1:N)
-    		dLogadmm.couplConst[k,p]=dLogadmm.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLogadmm.Itotal[k,p]
+    		dLogadmm.couplConst[k,p]=dLogadmm.uSum[k,p] + iD[stepI+(k-1),1] - dLogadmm.Itotal[k,p]
             #dLogadmm.Lam[k,p]=max.(prevLam[k,1]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p]),0)
     		dLogadmm.Lam[k,p]=prevLam[k,1]+ρADMMp/(N+1)*(dLogadmm.couplConst[k,p])
     	end
@@ -552,6 +569,12 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
+	if forecastError
+		iD=evS.iDnoise
+	else
+		iD=evS.iD
+	end
+
 
     stepI = 1
     epsilon = 1e-12
@@ -782,7 +805,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 
         for k=1:horzLen+1
             dLogalad.uSum[k,p]=sum(dLogalad.Un[(k-1)*N+n,p] for n=1:N)
-            dLogalad.couplConst[k,p]=dLogalad.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLogalad.Itotal[k,p]
+            dLogalad.couplConst[k,p]=dLogalad.uSum[k,p] + iD[stepI+(k-1),1] - dLogalad.Itotal[k,p]
         end
 
         #check for convergence
@@ -839,7 +862,7 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 		Unp=round.(dLogalad.Un[:,p],digits=8)
 		Ip=round.(dLogalad.Itotal[:,p],digits=8)
         @constraint(cM,currCon[k=1:horzLen+1],sum(Unp[(k-1)*(N)+n,1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
-                                                    (Ip[k,1]+dI[k])==-evS.iD[stepI+(k-1)]+relaxS[k,1])
+                                                    (Ip[k,1]+dI[k])==-iD[stepI+(k-1)]+relaxS[k,1])
         @constraint(cM,stateCon1[n=1:N],dSn[n,1]==evS.ηP[n,1]*dUn[n,1])
         @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+evS.ηP[n,1]*dUn[n+(k)*(N),1])
         @constraint(cM,tempCon1,dXt[1,1]==2*evS.γP*dLogalad.Itotal[1,p]*dI[1])

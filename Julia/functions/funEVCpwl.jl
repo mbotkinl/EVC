@@ -6,6 +6,13 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,slack::Bool
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
+    if forecastError
+        iD=evS.iDnoise
+    else
+        iD=evS.iD
+    end
+
+
     stepI=1
     #desired SOC
     target=zeros(N*(horzLen+1),1);
@@ -43,7 +50,7 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,slack::Bool
     @constraint(centralModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+evS.ηP[n,1]*u[n+(k)*(N),1])
     @constraint(centralModel,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*evS.deltaI*sum((2*s-1)*z[s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI,1])
     @constraint(centralModel,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI+k,1])
-    @constraint(centralModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-evS.iD[stepI+(k-1)]+sum(z[(k-1)*(S)+s] for s=1:S))
+    @constraint(centralModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-iD[stepI+(k-1)]+sum(z[(k-1)*(S)+s] for s=1:S))
     @constraint(centralModel,sn.<=1)
     if slack
         @constraint(centralModel,sn.>=target.*(1-repeat(slackSn,horzLen+1,1)))
@@ -78,7 +85,7 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,slack::Bool
     Tactual=zeros(horzLen+1,1)
     itotal=zeros(horzLen+1,1)
     for k=1:horzLen+1
-        itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + evS.iD[stepI+(k-1),1]
+        itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + iD[stepI+(k-1),1]
     end
     Tactual[1,1]=evS.τP*xt0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
     for k=1:horzLen
@@ -113,6 +120,12 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     #initialize
     sn0=evS.s0
     xt0=evS.t0
+    if forecastError
+        iD=evS.iDnoise
+    else
+        iD=evS.iD
+    end
+
 
     dCM=convMetricsStruct()
     dLog=itLogPWL()
@@ -213,7 +226,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     		for k=1:horzLen+1
     			dLog.zSum[k,p]=sum(dLog.Z[(k-1)*(S)+s,p] for s=1:S)
     			dLog.uSum[k,p]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N)
-    			dLog.couplConst[k,p]=dLog.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLog.zSum[k,p]
+    			dLog.couplConst[k,p]=dLog.uSum[k,p] + iD[stepI+(k-1),1] - dLog.zSum[k,p]
     		end
     		dCM.couplConst[p,1]=norm(dLog.couplConst[:,p],2)
     	end
@@ -221,7 +234,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	#calculate actual temperature from nonlinear model of XFRM
     	itotal=zeros(horzLen+1,1)
     	for k=1:horzLen+1
-    		itotal[k,1]=dLog.uSum[k,p] + evS.iD[stepI+(k-1),1]
+    		itotal[k,1]=dLog.uSum[k,p] + iD[stepI+(k-1),1]
     	end
     	dLog.Tactual[1,p]=evS.τP*xt0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
     	for k=1:horzLen
@@ -295,6 +308,12 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     #initialize
     sn0=evS.s0
     xt0=evS.t0
+    if forecastError
+        iD=evS.iDnoise
+    else
+        iD=evS.iD
+    end
+
 
     stepI = 1
     convChk = 1e-16
@@ -398,15 +417,15 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     	for k=1:horzLen+1
     		dLogadmm.uSum[k,p]=sum(dLogadmm.Un[(k-1)*N+n,p] for n=1:N)
     		dLogadmm.zSum[k,p]=sum(dLogadmm.Z[(k-1)*(S)+s,p] for s=1:S)
-    		dLogadmm.couplConst[k,p]= dLogadmm.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLogadmm.zSum[k,p]
-            dLogadmm.Lam[k,p]=max.(prevLam[k,1]+ρADMMp/(S*(N))*(dLogadmm.couplConst[k,p]),0)
-    		#dLogadmm.Lam[k,p]=dLogadmm.Lam[k,p]+ρADMMp/(S*(N))*(dLogadmm.couplConst[k,p])
+    		dLogadmm.couplConst[k,p]= dLogadmm.uSum[k,p] + iD[stepI+(k-1),1] - dLogadmm.zSum[k,p]
+            #dLogadmm.Lam[k,p]=max.(prevLam[k,1]+ρADMMp/(S*(N))*(dLogadmm.couplConst[k,p]),0)
+    		dLogadmm.Lam[k,p]=dLogadmm.Lam[k,p]+ρADMMp/(S*(N))*(dLogadmm.couplConst[k,p])
     	end
 
     	#calculate actual temperature from nonlinear model of XFRM
         itotal=zeros(horzLen+1,1)
         for k=1:horzLen+1
-            itotal[k,1]=dLogadmm.uSum[k,p] + evS.iD[stepI+(k-1),1]
+            itotal[k,1]=dLogadmm.uSum[k,p] + iD[stepI+(k-1),1]
         end
     	dLogadmm.Tactual[1,p]=evS.τP*xt0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1] #fix for mpc
     	for k=1:horzLen
@@ -415,11 +434,11 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 
         #v upate eq 7.67
         for k=1:horzLen+1
-            dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρI
-            dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρI
-            #
-            # dLogadmm.Vu[(k-1)*N+collect(1:N),p]=min.(max.(dLogadmm.Un[(k-1)*N+collect(1:N),p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρI,evS.imin),evS.imax)
-            # dLogadmm.Vz[(k-1)*(S)+collect(1:S),p]=max.(min.(-dLogadmm.Z[(k-1)*(S)+collect(1:S),p]+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρI,0),-evS.deltaI)
+            dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp
+            dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp
+
+            # dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=min.(max.(dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp,evS.imin),evS.imax)
+            # dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=max.(min.(-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp,0),-evS.deltaI)
         end
 
         #update rho
@@ -469,6 +488,12 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     #initialize
     sn0=evS.s0
     xt0=evS.t0
+    if forecastError
+        iD=evS.iDnoise
+    else
+        iD=evS.iD
+    end
+
 
     stepI = 1
     epsilon = 1e-8
@@ -698,13 +723,13 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         for k=1:horzLen+1
             dLogalad.uSum[k,p]=sum(dLogalad.Un[(k-1)*N+n,p] for n=1:N)
             dLogalad.zSum[k,p]=sum(dLogalad.Z[(k-1)*(S)+s,p] for s=1:S)
-            dLogalad.couplConst[k,p]=dLogalad.uSum[k,p] + evS.iD[stepI+(k-1),1] - dLogalad.zSum[k,p]
+            dLogalad.couplConst[k,p]=dLogalad.uSum[k,p] + iD[stepI+(k-1),1] - dLogalad.zSum[k,p]
         end
 
         #calculate actual temperature from nonlinear model of XFRM
         itotal=zeros(horzLen+1,1)
         for k=1:horzLen+1
-            itotal[k,1]=dLogalad.uSum[k,p] + evS.iD[stepI+(k-1),1]
+            itotal[k,1]=dLogalad.uSum[k,p] + iD[stepI+(k-1),1]
         end
         dLogalad.Tactual[1,p]=evS.τP*xt0+evS.γP*dLogalad.zSum[1,p]^2+evS.ρP*evS.Tamb[stepI,1] #fix for mpc
         for k=1:horzLen
@@ -769,7 +794,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         Zp=round.(dLogalad.Z[:,p],digits=8)
         @constraint(cM,currCon[k=1:horzLen+1],sum(Unp[(k-1)*(N)+n,1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
                                               sum(Zp[(k-1)*(S)+s,1]+dZ[(k-1)*(S)+s,1] for s=1:S)==
-                                              -evS.iD[stepI+(k-1)]+relaxS[k,1])
+                                              -iD[stepI+(k-1)]+relaxS[k,1])
         #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
         @constraint(cM,stateCon1[n=1:N],dSn[n,1]==evS.ηP[n,1]*dUn[n,1])
         @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+evS.ηP[n,1]*dUn[n+(k)*(N),1])

@@ -93,6 +93,9 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false,path=pwd())
     FullinelasticDemand = [FullinelasticDemand; FullinelasticDemand[length(FullinelasticDemand)]*ones(K2+1,1)]
     FullDload   = Dload_amplitude*FullinelasticDemand;    # peaks during mid-day
     iD = FullDload/Vtf;                                     #background demand current
+
+    noiseAmp= .05*Dload_amplitude*2
+    iDnoise = round.(iD+2noiseAmp*rand(length(iD),1)-noiseAmp,digits=2)
     Tamb    = Tamb_amplitude*ones(K+1,1);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
     #ndisturbs = 2;
     # w = zeros((K+1)*ndisturbs,1);
@@ -122,7 +125,7 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false,path=pwd())
 
 
     evScenario=scenarioStruct(N,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,
-                              ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD,Tamb,Qsi,Ri,β)
+                              ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD,iDnoise,Tamb,Qsi,Ri,β)
 
     if saveS==true
         save(path*"EVCscenarioN$(N).jld2","evScenario",evScenario)

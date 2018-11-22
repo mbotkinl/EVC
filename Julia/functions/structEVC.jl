@@ -38,6 +38,7 @@ struct scenarioStruct
 
     #disturbances
     iD::Array{Float64,2}
+    iDnoise::Array{Float64,2}
     Tamb::Array{Float64,2}
 
     #User def penalty matrix
