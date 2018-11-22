@@ -27,22 +27,30 @@ end
 function readRuns(path)
     files = filter(x->occursin(".jld2",x), readdir(path))
     files = filter(x->occursin("_",x), files) # avoid evScenario
+    noLimFile = filter(x->occursin("noLimit",x), files)
     cFile = filter(x->occursin("central",x), files)
     if length(cFile)>0
+        cFile=setdiff(cFile,noLimFile)
         cRun=load(path*cFile[1])
     else
         cRun=Nothing
     end
 
-    dFiles= setdiff(files,cFile)
+    if length(noLimFile)>0
+        noLim=load(path*noLimFile[1])
+    else
+        noLim=Nothing
+    end
+
+    dFiles= setdiff(files,[cFile noLimFile])
     runs=Dict{String,Any}()
     for ii=1:length(dFiles)
         runs[dFiles[ii]]=load(path*dFiles[ii])
     end
-    return cRun, runs
+    return cRun, runs, noLim
 end
 
-function compareRunsGraph(runs, cRun, saveF::Bool, lowRes::Bool)
+function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     runNames=collect(keys(runs))
     cSol=cRun["solution"]
     numIt=size(runs[runNames[1]]["convMetrics"].lam)[1]
@@ -61,6 +69,7 @@ function compareRunsGraph(runs, cRun, saveF::Bool, lowRes::Bool)
     Sn = zeros(Klen*N,P)
     uSum = zeros(Klen,P)
     snSum = zeros(Klen,P)
+    snAvg = zeros(Klen,P)
 
     for i in 1:length(runNames)
         println(runNames[i])
@@ -90,9 +99,11 @@ function compareRunsGraph(runs, cRun, saveF::Bool, lowRes::Bool)
         if size(runI["solution"].Sn)[1]>Klen+1
             Sn[:,i]=runI["solution"].Sn[:,cIt]
             snSum[:,i]=[sum(Sn[N*(k-1)+n,i] for n=1:N) for k in 1:Klen]# sum up across N
+            snAvg[:,i]=[mean(Sn[N*(k-1)+n,i] for n=1:N) for k in 1:Klen]# mean across N
         else
             Sn[:,i]=runI["solution"].Sn'[:]
             snSum[:,i]=[sum(runI["solution"].Sn[k,:]) for k in 1:Klen]# sum up across N
+            snAvg[:,i]=[mean(runI["solution"].Sn[k,:]) for k in 1:Klen]# mean across N
         end
 
         # fill in NaN for greater than convIt
@@ -116,13 +127,28 @@ function compareRunsGraph(runs, cRun, saveF::Bool, lowRes::Bool)
 
 
     #Time plots
-    tempPlot=plot(1:Klen,cSol.Xt,label="Central",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),xlabel="Time",ylabel="Temp (K)")
+    tempPlot=plot(1:Klen,cSol.Tactual,label="Central",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),xlabel="Time",ylabel="Temp (K)")
     plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
     plot!(tempPlot,T,labels=plotLabels,seriescolor=plotColors')
+    if noLim !=nothing
+        plot!(tempPlot,1:Klen,noLim["solution"].Tactual,label="Uncoordinated")
+    end
 
     uSumPlot=plot(1:Klen,cSol.uSum,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,Klen),labels="Central",
                   seriescolor=:black,linewidth=4,linealpha=0.25)
     plot!(uSumPlot,uSum,labels=plotLabels,seriescolor=plotColors',legend=false)
+    if noLim !=nothing
+        plot!(uSumPlot,1:Klen,noLim["solution"].uSum,label="Uncoordinated")
+    end
+
+    iD=evS.iD[1:Klen].+10
+    loadPlot=plot(1:Klen,cSol.uSum+iD,xlabel="Time",ylabel="Total Load (kA)",xlims=(0,Klen),labels="Central",
+                  seriescolor=:black,linewidth=4,linealpha=0.25)
+    plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash))
+    plot!(loadPlot,uSum.+iD,labels=plotLabels,seriescolor=plotColors')
+    if noLim !=nothing
+        plot!(loadPlot,1:Klen,noLim["solution"].uSum+iD,label="Uncoordinated")
+    end
 
     target=zeros(Klen)
     for k in 1:Klen
@@ -134,7 +160,21 @@ function compareRunsGraph(runs, cRun, saveF::Bool, lowRes::Bool)
     snSumPlot=plot(1:Klen,snSumCentral,xlabel="Time",ylabel="SOC Sum",xlims=(0,Klen),labels=plotLabels,
                    seriescolor=:black,linewidth=4,linealpha=0.25)
     plot!(snSumPlot,1:Klen,target,label="SOC Target",line=(:dash,:red))
-    plot!(snSumPlot,snSum,labels=plotLabels,seriescolor=plotColors',legend=false)
+    plot!(snSumPlot,snSum,labels=plotLabels,seriescolor=plotColors')
+    if noLim !=nothing
+        snSumNoLim=[sum(noLim["solution"].Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# sum up across N
+        plot!(snSumPlot,1:Klen,snSumNoLim,label="Uncoordinated")
+    end
+
+
+    snAvgCentral=[mean(cSol.Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# mean across N
+    snAvgPlot=plot(1:Klen,snAvgCentral,xlabel="Time",ylabel="Avg.SOC",xlims=(0,Klen),labels=plotLabels,
+                   seriescolor=:black,linewidth=4,linealpha=0.25)
+    plot!(snAvgPlot,snAvg,labels=plotLabels,seriescolor=plotColors')
+    if noLim !=nothing
+        snAvgNoLim=[mean(noLim["solution"].Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# sum up across N
+        plot!(snAvgPlot,1:Klen,snAvgNoLim,label="Uncoordinated")
+    end
 
     lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),labels="Central",
                    seriescolor=:black,linewidth=4,linealpha=0.25)
