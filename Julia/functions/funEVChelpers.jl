@@ -117,14 +117,12 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     plotLabels=permutedims(runNames)
     plotColors=get_color_palette(:auto, plot_color(:white), P)
 
-
     #Iteration plots
     lamConvPlot=plot(lamConv,xlabel="Iteration",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
     lamRMSEPlot=plot(lamRMSE,xlabel="Iteration",ylabel="Relative RMSE Lambda Gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
     lamInfNormPlot=plot(lamInfNorm,xlabel="Iteration",ylabel="Max Lambda Gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
     objNormPlot=plot(objConv,xlabel="Iteration",ylabel="Objective Value Magintude Gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
     objPercPlot=plot(objPerc,xlabel="Iteration",ylabel="Objective Value Percentage Gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
-
 
     #Time plots
     tempPlot=plot(1:Klen,cSol.Tactual,label="Central",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),xlabel="Time",ylabel="Temp (K)")
@@ -145,7 +143,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     loadPlot=plot(1:Klen,cSol.uSum+iD,xlabel="Time",ylabel="Total Load (kA)",xlims=(0,Klen),labels="Central",
                   seriescolor=:black,linewidth=4,linealpha=0.25)
     plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash))
-    plot!(loadPlot,uSum.+iD,labels=plotLabels,seriescolor=plotColors')
+    plot!(loadPlot,uSum.+iD,labels=plotLabels,seriescolor=plotColors',legend=false)
     if noLim !=nothing
         plot!(loadPlot,1:Klen,noLim["solution"].uSum+iD,label="Uncoordinated")
     end
@@ -160,7 +158,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     snSumPlot=plot(1:Klen,snSumCentral,xlabel="Time",ylabel="SOC Sum",xlims=(0,Klen),labels=plotLabels,
                    seriescolor=:black,linewidth=4,linealpha=0.25)
     plot!(snSumPlot,1:Klen,target,label="SOC Target",line=(:dash,:red))
-    plot!(snSumPlot,snSum,labels=plotLabels,seriescolor=plotColors')
+    plot!(snSumPlot,snSum,labels=plotLabels,seriescolor=plotColors',legend=false)
     if noLim !=nothing
         snSumNoLim=[sum(noLim["solution"].Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# sum up across N
         plot!(snSumPlot,1:Klen,snSumNoLim,label="Uncoordinated")
@@ -194,15 +192,30 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 
     Rmax=plot(Rmax,xlabel="Time",ylabel="R Max",xlims=(0,Klen),labels=plotLabels,seriescolor=plotColors',legend=false)
 
-    p=plot(lamRMSEPlot, tempPlot,lamInfNormPlot, uSumPlot, objPercPlot,lamPlot,layout=(3,2))
+
+    resPlot=plot(tempPlot,loadPlot,snSumPlot,lamPlot,layout=(4,1))
     if lowRes
-        pubPlot(p,thickscale=0.4,sizeWH=(500,300),dpi=40)
+        pubPlot(resPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
     else
-        pubPlot(p,thickscale=0.8,sizeWH=(1000,600),dpi=100)
+        pubPlot(resPlot,thickscale=0.8,sizeWH=(800,600),dpi=100)
     end
 
-    fName="compPlot.png"
-    if saveF savefig(p,path*fName) end
+    convPlot=plot(lamRMSEPlot,lamInfNormPlot,objPercPlot,layout=(3,1))
+    if lowRes
+        pubPlot(convPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
+    else
+        pubPlot(convPlot,thickscale=0.8,sizeWH=(800,600),dpi=100)
+    end
+
+    # p=plot(lamRMSEPlot, tempPlot,lamInfNormPlot, loadPlot, objPercPlot,lamPlot,layout=(3,2))
+    # if lowRes
+    #     pubPlot(p,thickscale=0.4,sizeWH=(500,300),dpi=40)
+    # else
+    #     pubPlot(p,thickscale=0.8,sizeWH=(1000,600),dpi=100)
+    # end
+
+    if saveF savefig(resPlot,path*"resPlot.png") end
+    if saveF savefig(convPlot,path*"convPlot.png") end
 
     return p
 end
