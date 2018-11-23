@@ -30,7 +30,7 @@ struct scenarioStruct
 
     #initial conditions
     s0::Array{Float64,2}
-    t0::Int
+    t0::Float64
 
     #desired conditions
     Snmin::Array{Float64,2}

@@ -17,16 +17,16 @@ pyplot()
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
-N=100
+N=80
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\"
-datafile="jld2" #"mat" #"jld" #"n"
+datafile="n" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
 
 updateMethod="dualAscent" #dualAscent #fastAscent
 maxIt=100
 noTlimit=false
 forecastError=false
-relaxedMode=1
+relaxedMode=2
 slack=false
 eqForm=true
 
@@ -41,10 +41,15 @@ if datafile=="jld2"
 	println("Reading in Scenario Data...")
 	loadF=load(path*file)
 	evS=loadF["evScenario"]
+
+	# if isassigned(evS.iDnoise)==false
+	# 	evS.iDnoise=zeros(length(iD),1)
+	# end
+
 else #create scenario
 	println("Creating EV Scenario...")
-	Tmax=393
-	Dload_amplitude=0
+	Tmax=400/1000
+	Dload_amplitude=20
 
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
     if saveS using FileIO end
@@ -54,10 +59,11 @@ end
 
 
 
+
 #run comparison
 #path = clips()
 # path=path*"PWL\\"
-#cRun,runs, noLim=readRuns(path);
+# cRun,runs, noLim=readRuns(path);
 # lowRes=true
 #pComp=compareRunsGraph(runs, cRun, noLim, saveResults,lowRes)
 # cTable=compareRunsTable(runs)

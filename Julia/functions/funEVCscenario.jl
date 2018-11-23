@@ -31,7 +31,9 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false,path=pwd())
     ρP = 1 - τP            # no units, ambient-to-temp param: 1/RC
     # γP = Ts*Rw/(C*Ntf)*1000^2    # K/kW, ohmic losses-to-temp parameter
     #γP = Ts*Rw/(C*Ntf)    # K/W, ohmic losses-to-temp parameter
-    γP = Rh*Rw/(Ntf)*ρP*1000^2    # K/kW, ohmic losses-to-temp parameter
+
+    #γP = Rh*Rw/(Ntf)*ρP*1000^2    # K/kW, ohmic losses-to-temp parameter
+    γP = Rh*Rw/(Ntf)*ρP*1000^2/1000    # kK/kW, ohmic losses-to-temp parameter
 
     # PWL Parameters:
     #S = 3;
@@ -62,7 +64,7 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false,path=pwd())
     # Initial conditions:
     #s0=0.98*ones(N,1)
     s0 = 0.2*rand(N,1)       # initial states of charge (0 - 0.20)
-    t0 = 370                 # initial temp (~65 K below Tmax) 368K
+    t0 = 370/1000                 # initial temp (~65 K below Tmax) 368K
 
     #desired states
     SOCmin = 1 .- 0.20*rand(N,1)            # Required min final states of charge (~0.80-1)
@@ -78,7 +80,7 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false,path=pwd())
     #Dload_amplitude = 85 #kWatts?
     #Dload_amplitude = 75000 #Watts?
     #Dload_amplitude = 0
-    Tamb_amplitude  = 370   # assume hot night in summer (30 C) 363K
+    Tamb_amplitude  = 370/1000   # assume hot night in summer (30 C) 363K
 
     # Disturbance scenario:
     #FullinelasticDemand = [normpdf(0,linspace(0,8,round((K1-1)/2)),3) normpdf(0,linspace(-8,0,round(K1/2)),3)]; # let demand per household be peaking at 8PM and 8 PM with nadir inbetween

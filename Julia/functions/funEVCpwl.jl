@@ -497,6 +497,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 
     stepI = 1
     epsilon = 1e-8
+
     tolU=1e-4
     tolS=1e-8
     tolT=1e-4
@@ -518,11 +519,12 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     # σT=1/10000 #for kA
 
     if eqForm
-        scalingF=1e2
-        σZ=1e4*scalingF
+        println("Running Eq ALADIN")
+        scalingF=1
+        σZ=scalingF*1e1
         σT=scalingF
-        σU=ones(N,1)*scalingF
-        σS=ones(N,1)/10*scalingF #for kA
+        σU=ones(N,1)
+        σS=ones(N,1)/10#for kA
         Hu=2*evS.Ri
         Hs=2*evS.Qsi
         # Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
@@ -533,13 +535,14 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         # Ht=1e-6
 
         ρALAD=1e3
-        ρRate=1.5
-        ρALADmax=1e6
+        ρRate=1.1
+        ρALADmax=1e9
 
         μALAD=1e8
         μRate=1
-        μALADmax=2e10
+        μALADmax=2e9
     else
+        println("Running ineq ALADIN")
         scalingF=1e-4
         σZ=1e2*scalingF
         #σZ=1e4*scalingF #this doesnt work very sensitive!
@@ -574,8 +577,8 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     # vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
     # vs0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
     lambda0=2e3*ones(horzLen+1,1)
-    vt0=ones(horzLen+1,1)
-    vz0=ones(S*(horzLen+1),1)
+    vt0=evS.Tmax*ones(horzLen+1,1)
+    vz0=.01*ones(S*(horzLen+1),1)
     vu0=.01*ones(N*(horzLen+1),1)
     vs0=.5*ones(N*(horzLen+1),1)
 
@@ -677,9 +680,11 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         #tM = Model(solver = IpoptSolver())
         @variable(tM,z[1:(S)*(horzLen+1)])
         @variable(tM,xt[1:(horzLen+1)])
-        @objective(tM,Min, sum(-prevLam[k,1]*sum(z[(k-1)*(S)+s] for s=1:S)+
+        # objExp=sum( ρALADp/2*σT*(xt[k]-prevVt[k,1])^2 for k=1:(horzLen+1))
+        objExp=sum(-prevLam[k,1]*sum(z[(k-1)*(S)+s] for s=1:S)+
                   ρALADp/2*σZ*(sum(z[(k-1)*(S)+s] for s=1:S)-sum(prevVz[(k-1)*(S)+s,1] for s=1:S))^2+
-                  ρALADp/2*σT*(xt[k]-prevVt[k,1])^2  for k=1:(horzLen+1)))
+                  ρALADp/2*σT*(xt[k]-prevVt[k,1])^2  for k=1:(horzLen+1))
+        @objective(tM,Min, objExp)
         @constraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*evS.deltaI*sum((2*s-1)*z[s] for s=1:S)-evS.ρP*evS.Tamb[stepI,1]==0)
         @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*evS.deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)-evS.ρP*evS.Tamb[stepI+k,1]==0)
         if noTlimit==false
@@ -755,7 +760,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         if  constGap<=epsilon && cc<=epsilon
             @printf "Converged after %g iterations\n" p
             convIt=p
-            break
+            #break
         else
             @printf "convCheck  %e after %g iterations\n" cc p
             @printf "constGap   %e after %g iterations\n" constGap p
@@ -835,7 +840,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         α1=1
         α2=1
         α3=1
-        #α3=α3/ceil(p/2)
+        #α3=1/ceil(p/2)
 
         dLogalad.Lam[:,p]=prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1])
         #dLogalad.Lam[:,p]=max.(prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1]),0)
