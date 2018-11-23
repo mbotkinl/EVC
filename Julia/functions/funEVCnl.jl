@@ -264,7 +264,8 @@ function nlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,
 				@variable(coorM,e[1:(horzLen+1)])
 				@constraint(coorM,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*e[1]+evS.ρP*evS.Tamb[stepI,1])
 				@constraint(coorM,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*e[k+1]+evS.ρP*evS.Tamb[stepI+k,1])
-				@constraint(coorM,eCon[k=1:horzLen+1],norm([1/2-1/2*e[k] itotal[k]])<=1/2+1/2*e[k])
+				#@constraint(coorM,eCon[k=1:horzLen+1],norm([1/2-1/2*e[k] itotal[k]])<=1/2+1/2*e[k])
+				@constraint(coorM,eCon[k=1:horzLen+1],norm([2itotal[k] e[k]-1])<=e[k]+1)
             else
                 @NLconstraint(coorM,xt[1,1]==evS.τP*xt0+evS.γP*(itotal[1])^2+evS.ρP*evS.Tamb[stepI,1]) #fix for MPC loop
         		@NLconstraint(coorM,[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*(itotal[k+1,1])^2+evS.ρP*evS.Tamb[stepI+k,1])
@@ -473,13 +474,18 @@ function nlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 			@variable(tM,e[1:(horzLen+1)])
 			@variable(tM,t)
 
-			#fix objective***
-			@objective(tM,Min,sum(prevLam[k,1]*(-itotal[k,1]-prevVi[k,1])+
-								  ρADMM/2*(-itotal[k,1]-prevVi[k,1])^2  for k=1:(horzLen+1)))
+			objExp=t+sum(prevLam[k,1]*(-itotal[k,1]-prevVi[k,1])+
+								  ρADMM/2*(2*prevVi[k,1]*itotal[k,1]+(prevVi[k,1])^2)  for k=1:(horzLen+1))
+			@objective(tM,Min,objExp)
 
 			@constraint(tM,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*e[1]+evS.ρP*evS.Tamb[stepI,1])
 			@constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*e[k+1]+evS.ρP*evS.Tamb[stepI+k,1])
-			@constraint(tM,eCon[k=1:horzLen+1],norm([1/2-1/2*e[k] itotal[k]])<=1/2+1/2*e[k])
+			#@constraint(tM,eCon[k=1:horzLen+1],norm([1/2-1/2*e[k] itotal[k]])<=1/2+1/2*e[k])
+			@constraint(tM,eCon[k=1:horzLen+1],norm([2itotal[k] e[k]-1])<=e[k]+1)
+
+			objExpCon = [2*sqrt(ρADMM/2)*itotal[k,1] for k=1:(horzLen+1)]
+			append!(objExpCon,[t-1])
+			@constraint(tM,objCon,norm(objExpCon)<=t+1)
         else
 			@objective(tM,Min,sum(prevLam[k,1]*(-itotal[k,1]-prevVi[k,1])+
 								  ρADMM/2*(-itotal[k,1]-prevVi[k,1])^2  for k=1:(horzLen+1)))
@@ -744,14 +750,22 @@ function nlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol
 			@variable(tM,e[1:(horzLen+1)])
 			@variable(tM,t)
 
-			#fix objective***
 			@objective(tM,Min, sum(-prevLam[k,1]*itotal[k]+
-					  ρALADp/2*σI*(itotal[k]-prevVi[k,1])^2+
-					  ρALADp/2*σT*(xt[k]-prevVt[k,1])^2  for k=1:(horzLen+1)))
+					  ρALADp/2*σI*(-2itotal[k]*prevVi[k,1]+(prevVi[k,1])^2)+
+					  ρALADp/2*σT*(-2xt[k]*prevVt[k,1]+(prevVt[k,1])^2)  for k=1:(horzLen+1)))
 
 			@constraint(tM,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*e[1]+evS.ρP*evS.Tamb[stepI,1])
 			@constraint(tM,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*e[k+1]+evS.ρP*evS.Tamb[stepI+k,1])
-			@constraint(tM,eCon[k=1:horzLen+1],norm([1/2-1/2*e[k] itotal[k]])<=1/2+1/2*e[k])
+			#@constraint(tM,eCon[k=1:horzLen+1],norm([1/2-1/2*e[k] itotal[k]])<=1/2+1/2*e[k])
+			@constraint(tM,eCon[k=1:horzLen+1],norm([2itotal[k] e[k]-1])<=e[k]+1)
+
+			objExpCon=0*xt[1:2]
+			for k=1:horzLen+1
+				tt=[2sqrt(ρALADp/2*σI)*itotal[k];2sqrt(ρALADp/2*σT)*xt[k]]
+				append!(objExpCon,tt)
+			end
+			append!(objExpCon,[t-1])
+			@constraint(tM,objCon,norm(objExpCon)<=t+1)
         else
 			@objective(tM,Min, sum(-prevLam[k,1]*itotal[k]+
 					  ρALADp/2*σI*(itotal[k]-prevVi[k,1])^2+
