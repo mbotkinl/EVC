@@ -51,13 +51,16 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,relaxedMode=
 	elseif relaxedMode==2
 		@variable(cModel,e[1:(horzLen+1)])
 		@variable(cModel,t)
-		objExp=t
+		objExp=t+sum(-2*evS.Qsi[n,1]*sn[n,1]+evS.Qsi[n,1] for n=1:N)
+		for k=2:horzLen+1
+			append!(objExp,sum(-2*evS.Qsi[n,1]*sn[(k-1)*(N)+n,1]+evS.Qsi[n,1]  for n=1:N))
+		end
 		@constraint(cModel,tempCon1,xt[1,1]>=evS.τP*xt0+evS.γP*e[1]+evS.ρP*evS.Tamb[stepI,1])
 		@constraint(cModel,tempCon2[k=1:horzLen],xt[k+1,1]>=evS.τP*xt[k,1]+evS.γP*e[k+1]+evS.ρP*evS.Tamb[stepI+k,1])
         #@constraint(cModel,eCon[k=1:horzLen+1],(itotal[k])^2-e[k]<=0)
 
-		@constraint(cModel,eCon[k=1:horzLen+1],norm([1/2-1/2*e[k] itotal[k] 0])<=1/2+1/2*e[k])
-		#@constraint(cModel,eCon[k=1:horzLen+1],norm([2itotal[k] e[k]-1])<=e[k]+1)
+		#@constraint(cModel,eCon[k=1:horzLen+1],norm([1/2-1/2*e[k] itotal[k] 0])<=1/2+1/2*e[k])
+		@constraint(cModel,eCon[k=1:horzLen+1],norm([2itotal[k] e[k]-1])<=e[k]+1)
 
 		#@constraint(cModel,eCon[k=1:horzLen+1],norm(itotal[k])<=e[k])
 
@@ -65,16 +68,17 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,relaxedMode=
 		objExpCon=0*sn[1:2]
 		for k=1:horzLen+1
 			for n=1:N
-				tt=[sqrt(evS.Qsi[n,1])*sn[(k-1)*(N)+n,1]-evS.Qsi[n,1]/sqrt(evS.Qsi[n,1]);sqrt(evS.Ri[n,1])*u[(k-1)*(N)+n,1]]
+				tt=[2*sqrt(evS.Qsi[n,1])*sn[(k-1)*(N)+n,1];2*sqrt(evS.Ri[n,1])*u[(k-1)*(N)+n,1]]
 				append!(objExpCon,tt)
 			end
 		end
+		append!(objExpCon,[t-1])
 
 		# objExpCon1 = [sqrt(evS.Qsi[n,1])*sn[(k-1)*(N)+n,1]-evS.Qsi[n,1]/sqrt(evS.Qsi[n,1])  for n=1:N for k=1:(horzLen+1)]
 		# objExpCon2 = [sqrt(evS.Ri[n,1])*u[(k-1)*(N)+n,1]  for n=1:N for k=1:(horzLen+1)]
 		# objExpCon=vcat(objExpCon1,objExpCon2)
 
-		@constraint(cModel,objCon,norm(objExpCon)<=t)
+		@constraint(cModel,objCon,norm(objExpCon)<=t+1)
     else
 		objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,1]+(u[n,1])^2*evS.Ri[n,1] for n=1:N)
 		for k=2:horzLen+1
@@ -140,15 +144,8 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,relaxedMode=
         uSum[k,1]=sum(uRaw[(k-1)*N+n,1] for n=1:N)
     end
 
-
-	if relaxedMode==2
-		objVal=getobjectivevalue(cModel)^2
-	else
-		objVal=getobjectivevalue(cModel)
-	end
-
     cSol=centralSolutionStruct(Xt=xtRaw,Un=uRaw,Sn=snRaw,
-                        Itotal=itotalRaw,uSum=uSum,objVal=objVal,
+                        Itotal=itotalRaw,uSum=uSum,objVal=getobjectivevalue(cModel),
                         lamTemp=lambdaTemp,lamCoupl=lambdaCurr,slackSn=slackSnRaw)
     return cSol
 end
