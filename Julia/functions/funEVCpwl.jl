@@ -419,7 +419,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     		dLogadmm.zSum[k,p]=sum(dLogadmm.Z[(k-1)*(S)+s,p] for s=1:S)
     		dLogadmm.couplConst[k,p]= dLogadmm.uSum[k,p] + iD[stepI+(k-1),1] - dLogadmm.zSum[k,p]
             #dLogadmm.Lam[k,p]=max.(prevLam[k,1]+ρADMMp/(S*(N))*(dLogadmm.couplConst[k,p]),0)
-    		dLogadmm.Lam[k,p]=dLogadmm.Lam[k,p]+ρADMMp/(S*(N))*(dLogadmm.couplConst[k,p])
+    		dLogadmm.Lam[k,p]=prevLam[k,1]+ρADMMp/(S*(N+1))*(dLogadmm.couplConst[k,p])
     	end
 
     	#calculate actual temperature from nonlinear model of XFRM
