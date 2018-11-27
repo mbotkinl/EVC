@@ -231,16 +231,6 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     		dCM.couplConst[p,1]=norm(dLog.couplConst[:,p],2)
     	end
 
-    	#calculate actual temperature from nonlinear model of XFRM
-    	itotal=zeros(horzLen+1,1)
-    	for k=1:horzLen+1
-    		itotal[k,1]=dLog.uSum[k,p] + evS.iD[stepI+(k-1),1]
-    	end
-    	dLog.Tactual[1,p]=evS.τP*xt0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
-    	for k=1:horzLen
-    		dLog.Tactual[k+1,p]=evS.τP*dLog.Tactual[k,p]+evS.γP*itotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
-    	end
-
     	if updateMethod=="fastAscent"
     		#fast ascent
     		if noTlimit==false
@@ -262,6 +252,17 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
 
         #dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP*dLog.couplConst[:,p],0)
         dLog.Lam[:,p]=prevLam[:,1]+alphaP*dLog.couplConst[:,p]
+
+
+        #calculate actual temperature from nonlinear model of XFRM
+    	itotal=zeros(horzLen+1,1)
+    	for k=1:horzLen+1
+    		itotal[k,1]=dLog.uSum[k,p] + evS.iD[stepI+(k-1),1]
+    	end
+    	dLog.Tactual[1,p]=evS.τP*xt0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
+    	for k=1:horzLen
+    		dLog.Tactual[k+1,p]=evS.τP*dLog.Tactual[k,p]+evS.γP*itotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
+    	end
 
     	#check convergence
     	objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
