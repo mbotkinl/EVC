@@ -3,7 +3,8 @@
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
 relaxString= "_R$(relaxedMode)"
-fname = "d_$(updateMethod)_NL_N$(N)"*relaxString
+errorString= if forecastError "_Error" else "" end
+fname = "d_$(updateMethod)_NL_N$(N)"*relaxString*errorString
 
 if loadResults
 	println("Reading in NL Dual Sim")
@@ -14,7 +15,7 @@ if loadResults
 	convIt=loadF["convIt"]
 else
 	println("Running NL Dual Sim")
-	timeT=@elapsed dLognl,dCMnl,convIt=nlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSolnl,relaxedMode,slack)
+	timeT=@elapsed dLognl,dCMnl,convIt=nlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSolnl,forecastError,relaxedMode,slack)
 	s=Symbol(@sprintf("dCMnl_%s",updateMethod))
 	v=Symbol(@sprintf("dCMnl"))
 	@eval(($s)=($v))

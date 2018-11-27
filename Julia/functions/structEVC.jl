@@ -120,6 +120,7 @@ end
     slackSn::Array=zeros(N,1)
 
     #extra model variables
+    Tactual::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
     uSum::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
     couplConst::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
 
@@ -157,8 +158,8 @@ end
     Xt::Array=zeros((horzLen+1),1)
     Sn::Array=zeros(N*(horzLen+1),1)
     Un::Array=zeros(N*(horzLen+1),1)
-    z::Array=zeros(S*(horzLen+1),1) #for PWL
-    Itotal::Array=zeros((horzLen+1),1) #for NL
+    z::Array=zeros(S*(horzLen+1),1) #for PWL only
+    Itotal::Array=zeros((horzLen+1),1)
     objVal::Float64=0
     lamTemp::Array=zeros((horzLen+1),1)
     lamCoupl::Array=zeros((horzLen+1),1)

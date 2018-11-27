@@ -2,7 +2,7 @@
 
 
 #central
-function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,slack::Bool)
+function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,forecastError::Bool,slack::Bool)
     #initialize with current states
     sn0=evS.s0
     xt0=evS.t0
@@ -85,7 +85,7 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,slack::Bool
     Tactual=zeros(horzLen+1,1)
     itotal=zeros(horzLen+1,1)
     for k=1:horzLen+1
-        itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + iD[stepI+(k-1),1]
+        itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + evS.iD[stepI+(k-1),1]
     end
     Tactual[1,1]=evS.τP*xt0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
     for k=1:horzLen
@@ -115,7 +115,7 @@ end
 
 #dual
 function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,evS::scenarioStruct,
-    cSol::centralSolutionStruct,slack::Bool)
+    cSol::centralSolutionStruct,forecastError::Bool,slack::Bool)
 
     #initialize
     sn0=evS.s0
@@ -234,7 +234,7 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
     	#calculate actual temperature from nonlinear model of XFRM
     	itotal=zeros(horzLen+1,1)
     	for k=1:horzLen+1
-    		itotal[k,1]=dLog.uSum[k,p] + iD[stepI+(k-1),1]
+    		itotal[k,1]=dLog.uSum[k,p] + evS.iD[stepI+(k-1),1]
     	end
     	dLog.Tactual[1,p]=evS.τP*xt0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
     	for k=1:horzLen
@@ -304,7 +304,8 @@ function pwlEVdual(N::Int,S::Int,horzLen::Int,maxIt::Int,updateMethod::String,ev
 end
 
 #ADMM
-function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolutionStruct,slack::Bool)
+function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolutionStruct,
+    forecastError::Bool,slack::Bool)
     #initialize
     sn0=evS.s0
     xt0=evS.t0
@@ -425,7 +426,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     	#calculate actual temperature from nonlinear model of XFRM
         itotal=zeros(horzLen+1,1)
         for k=1:horzLen+1
-            itotal[k,1]=dLogadmm.uSum[k,p] + iD[stepI+(k-1),1]
+            itotal[k,1]=dLogadmm.uSum[k,p] + evS.iD[stepI+(k-1),1]
         end
     	dLogadmm.Tactual[1,p]=evS.τP*xt0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1] #fix for mpc
     	for k=1:horzLen
@@ -484,7 +485,8 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 end
 
 #ALADIN
-function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolutionStruct,slack::Bool,eqForm::Bool)
+function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolutionStruct,
+    forecastError::Bool,slack::Bool,eqForm::Bool)
     #initialize
     sn0=evS.s0
     xt0=evS.t0
@@ -734,7 +736,7 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
         #calculate actual temperature from nonlinear model of XFRM
         itotal=zeros(horzLen+1,1)
         for k=1:horzLen+1
-            itotal[k,1]=dLogalad.uSum[k,p] + iD[stepI+(k-1),1]
+            itotal[k,1]=dLogalad.uSum[k,p] + evS.iD[stepI+(k-1),1]
         end
         dLogalad.Tactual[1,p]=evS.τP*xt0+evS.γP*dLogalad.zSum[1,p]^2+evS.ρP*evS.Tamb[stepI,1] #fix for mpc
         for k=1:horzLen

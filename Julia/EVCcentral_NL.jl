@@ -15,7 +15,8 @@ S=evS.S
 horzLen=evS.K1
 
 relaxString= "_R$(relaxedMode)"
-fname = "central_NL_N$(N)"*relaxString
+errorString= if forecastError "_Error" else "" end
+fname = "central_NL_N$(N)"*relaxString*errorString
 
 if loadResults
 	println("Reading in NL Central Sim")
@@ -24,7 +25,7 @@ if loadResults
 	cSolnl=loadF["solution"]
 else
 	println("Running NL Central Sim")
-	timeT=@elapsed cSolnl=nlEVcentral(N,S,horzLen,evS,relaxedMode,slack)
+	timeT=@elapsed cSolnl=nlEVcentral(N,S,horzLen,evS,forecastError,relaxedMode,slack)
 	if saveResults saveRun(path,fname,timeT, evS,cSolnl) end
 end
 

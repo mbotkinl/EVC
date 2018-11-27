@@ -7,7 +7,8 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 N=evS.N
 S=evS.S
 horzLen=evS.K1
-fname = "central_N$(N)"
+errorString= if forecastError "_Error" else "" end
+fname = "central_N$(N)"*errorString
 
 if loadResults
 	println("Reading in Central Sim")
@@ -16,7 +17,7 @@ if loadResults
 	cSol=loadF["solution"]
 else
 	println("Running Central Sim")
-	timeT=@elapsed cSol=pwlEVcentral(N,S,horzLen,evS,slack)
+	timeT=@elapsed cSol=pwlEVcentral(N,S,horzLen,evS,forecastError,slack)
 	if saveResults saveRun(path,fname,timeT, evS,cSol) end
 end
 

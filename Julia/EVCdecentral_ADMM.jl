@@ -7,7 +7,8 @@
 #current constraint is coupling
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
-fname = "dADMM_N$(N)"
+errorString= if forecastError "_Error" else "" end
+fname = "dADMM_N$(N)"*errorString
 
 if loadResults
 	println("Reading in ADMM Sim")
@@ -18,7 +19,7 @@ if loadResults
 	convIt=loadF["convIt"]
 else
 	println("Running ADMM Sim")
-	timeT=@elapsed dLogadmm,dCMadmm,convIt=pwlEVadmm(N,S,horzLen,maxIt,evS,cSol,slack)
+	timeT=@elapsed dLogadmm,dCMadmm,convIt=pwlEVadmm(N,S,horzLen,maxIt,evS,cSol,forecastError,slack)
 	if saveResults saveRun(path,fname,timeT, evS,dLogadmm, dCMadmm, convIt) end
 end
 

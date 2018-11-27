@@ -1,7 +1,8 @@
 #Micah Botkin-Levy
 #4/10/18
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
-fname = "d_$(updateMethod)_N$(N)"
+errorString= if forecastError "_Error" else "" end
+fname = "d_$(updateMethod)_N$(N)"*errorString
 
 if loadResults
 	println("Reading in Dual Decomp Sim")
@@ -12,7 +13,7 @@ if loadResults
 	convIt=loadF["convIt"]
 else
 	println("Running Dual Decomp Sim")
-	timeT=@elapsed dLog,dCM,convIt=pwlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSol,slack)
+	timeT=@elapsed dLog,dCM,convIt=pwlEVdual(N,S,horzLen,maxIt,updateMethod,evS,cSol,forecastError,slack)
 
 	s=Symbol(@sprintf("dCM_%s",updateMethod))
 	v=Symbol(@sprintf("dCM"))
