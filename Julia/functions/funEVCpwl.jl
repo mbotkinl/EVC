@@ -321,22 +321,23 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     convIt=maxIt
 
     #admm  initial parameters and guesses
-    #ρADMM=1    #for A
-    ρADMM=1e6 #for kA
-    ρDivRate=10
-
+    ρADMM=1e5 #for kA
+    ρDivRate=1
+    # ρADMM=5e5 #for kA
+    # ρDivRate=.9
+    maxRho=1e9
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+η*u[k+1]
     dCMadmm=convMetricsStruct()
     dLogadmm=itLogPWL()
 
     #initialize with guess
-    lambda0=1000*ones(horzLen+1,1)
-    vz0=-ones(S*(horzLen+1),1)
-    vu0=.01*ones(N*(horzLen+1),1)
-    #vz0=-zStar
-    #vu0=uStar
-    #lambda0=lamCurrStar
+    lambda0=2e3*ones(horzLen+1,1)
+    vz0=-evS.deltaI*ones(S*(horzLen+1),1)
+    vu0=.02*ones(N*(horzLen+1),1)
+    # vz0=-cSol.z
+    # vu0=cSol.Un
+    # lambda0=cSol.lamCoupl
 
     # dLogadmm.Lam[:,1]=lambda0
     # dLogadmm.Vz[:,1]=vz0
@@ -345,7 +346,6 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     prevVz=vz0
     prevVu=vu0
     ρADMMp = ρADMM
-
 
     for p in 1:maxIt
         #x minimization eq 7.66 in Bertsekas
@@ -420,7 +420,7 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     		dLogadmm.zSum[k,p]=sum(dLogadmm.Z[(k-1)*(S)+s,p] for s=1:S)
     		dLogadmm.couplConst[k,p]= dLogadmm.uSum[k,p] + iD[stepI+(k-1),1] - dLogadmm.zSum[k,p]
             #dLogadmm.Lam[k,p]=max.(prevLam[k,1]+ρADMMp/(S*(N))*(dLogadmm.couplConst[k,p]),0)
-    		dLogadmm.Lam[k,p]=prevLam[k,1]+ρADMMp/(S*(N+1))*(dLogadmm.couplConst[k,p])
+    		dLogadmm.Lam[k,p]=prevLam[k,1]+ρADMMp/(horzLen+1)*(dLogadmm.couplConst[k,p])
     	end
 
     	#calculate actual temperature from nonlinear model of XFRM
@@ -435,8 +435,8 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
 
         #v upate eq 7.67
         for k=1:horzLen+1
-            dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp
-            dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp
+            dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/(ρADMMp/1)
+            dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/(ρADMMp/1)
 
             # dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=min.(max.(dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp,evS.imin),evS.imax)
             # dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=max.(min.(-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(prevLam[k,1]-dLogadmm.Lam[k,p])/ρADMMp,0),-evS.deltaI)
