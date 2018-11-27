@@ -1,6 +1,12 @@
 # run PEM
 
-function pemEVC(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,slack::Bool)
+function pemEVC(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,forecastError::Bool, slack::Bool)
+	
+	if forecastError
+		iD=evS.iDnoise
+	else
+		iD=evS.iD
+	end
 
 	sn=zeros(horzLen+1,N)
 	un=zeros(horzLen+1,N)
@@ -96,8 +102,8 @@ function pemEVC(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,slack::Bool)
 		@variable(m,u[1:packLen,1:N],Bin)
 		@variable(m,Test[1:packLen])
 		@objective(m,Min,-sum(u))
-		@constraint(m,tempCon1,Test[1]>=evS.τP*prevT+evS.γP*(sum(u[1,n]*evS.imax[n] for n=1:N)+evS.iD[k])^2+evS.ρP*evS.Tamb[k])
-		@constraint(m,tempCon2[kk=2:packLen],Test[kk]>=evS.τP*Test[kk-1]+evS.γP*(sum(u[kk,n]*evS.imax[n] for n=1:N)+evS.iD[k+kk])^2+evS.ρP*evS.Tamb[k+kk])
+		@constraint(m,tempCon1,Test[1]>=evS.τP*prevT+evS.γP*(sum(u[1,n]*evS.imax[n] for n=1:N)+iD[k])^2+evS.ρP*evS.Tamb[k])
+		@constraint(m,tempCon2[kk=2:packLen],Test[kk]>=evS.τP*Test[kk-1]+evS.γP*(sum(u[kk,n]*evS.imax[n] for n=1:N)+iD[k+kk])^2+evS.ρP*evS.Tamb[k+kk])
 		@constraint(m,Test.<=evS.Tmax)
 		# @constraint(m,optOn[kk=1:packLen],sum(u[n,kk] for n in requiredInd[kk])==length(requiredInd[kk]))
 		@constraint(m,optOnC[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(abs(Req[k,requiredInd[nn]])))==abs(Req[k,requiredInd[nn]]))

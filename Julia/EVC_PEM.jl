@@ -17,7 +17,7 @@ if loadResults
 	pemSol=loadF["solution"]
 else
 	println("Running PEM Sim")
-	timeT=@elapsed pemSol,ratio=pemEVC(N,S,horzLen,evS,slack)
+	timeT=@elapsed pemSol,ratio=pemEVC(N,S,horzLen,evS,forecastError,slack)
 	timeT=timeT/horzLen
 	if saveResults saveRun(path,fname,timeT, evS,pemSol) end
 end
