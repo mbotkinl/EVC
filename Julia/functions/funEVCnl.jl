@@ -144,8 +144,19 @@ function nlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,forecastErro
         uSum[k,1]=sum(uRaw[(k-1)*N+n,1] for n=1:N)
     end
 
-    cSol=centralSolutionStruct(Xt=xtRaw,Un=uRaw,Sn=snRaw,
-                        Itotal=itotalRaw,uSum=uSum,objVal=getobjectivevalue(cModel),
+	#calculate actual temp
+    Tactual=zeros(horzLen+1,1)
+    itotal=zeros(horzLen+1,1)
+    for k=1:horzLen+1
+        itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + evS.iD[stepI+(k-1),1]
+    end
+    Tactual[1,1]=evS.τP*xt0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
+    for k=1:horzLen
+        Tactual[k+1,1]=evS.τP*Tactual[k,1]+evS.γP*itotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+(k-1),1]
+    end
+
+    cSol=centralSolutionStruct(Xt=xtRaw,Tactual=Tactual,Un=uRaw,Sn=snRaw,
+                        Itotal=itotal,uSum=uSum,objVal=getobjectivevalue(cModel),
                         lamTemp=lambdaTemp,lamCoupl=lambdaCurr,slackSn=slackSnRaw)
     return cSol
 end
