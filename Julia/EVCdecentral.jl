@@ -21,8 +21,6 @@ else
 	if saveResults saveRun(path,fname,timeT, evS,dLog, dCM, convIt) end
 end
 
-
-
 println("plotting....")
 snPlotd=zeros(horzLen+1,N)
 uPlotd=zeros(horzLen+1,N)
@@ -38,9 +36,9 @@ if drawFig savefig(p1d,path*"J_"*updateMethod*"_SOC.png") end
 pd2=plot(uPlotd,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,horzLen+1))
 if drawFig savefig(p2d,path*"J_"*updateMethod*"_Curr.png") end
 
-pd3=plot(1:horzLen+1,dLog.Tactual[:,convIt],label="Actual Temp",xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
-plot!(pd3,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
-if updateMethod=="dualAscent" plot!(pd3,1:horzLen+1,dLog.Xt[:,convIt],label="PWL Temp") end
+pd3=plot(1:horzLen+1,dLog.Tactual[:,convIt]*1000,label="Actual Temp",xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
+plot!(pd3,1:horzLen+1,evS.Tmax*ones(horzLen+1)*1000,label="XFRM Limit",line=(:dash,:red))
+if updateMethod=="dualAscent" plot!(pd3,1:horzLen+1,dLog.Xt[:,convIt]*1000,label="PWL Temp") end
 if drawFig savefig(pd3,path*"J_"*updateMethod*"_Temp.png") end
 
 if updateMethod=="fastAscent"

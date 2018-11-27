@@ -36,8 +36,8 @@ if drawFig==1 savefig(pd1NLadmm,path*"J_decentralNL_ADMM_SOC.png") end
 pd2NLadmm=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,horzLen+1))
 if drawFig==1 savefig(pd2NLadmm,path*"J_decentralNL_ADMM_Curr.png") end
 
-pd3NLadmm=plot(1:horzLen+1,dLognladmm.Xt[:,convIt],label="XFRM Temp",xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
-plot!(pd3NLadmm,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
+pd3NLadmm=plot(1:horzLen+1,dLognladmm.Xt[:,convIt]*1000,label="XFRM Temp",xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
+plot!(pd3NLadmm,1:horzLen+1,evS.Tmax*ones(horzLen+1)*1000,label="XFRM Limit",line=(:dash,:red))
 if drawFig==1 savefig(pd3NLadmm,path*"J_decentralNL_ADMM_Temp.png") end
 
 

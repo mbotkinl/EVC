@@ -36,8 +36,8 @@ if drawFig==1 savefig(pd1nl,path*"J_NL_"*updateMethod*"_SOC.png") end
 pd2nl=plot(uPlotd,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,horzLen+1))
 if drawFig==1 savefig(pd2nl,path*"J_NL_"*updateMethod*"_Curr.png") end
 
-pd3nl=plot(1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red),xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
-if updateMethod=="dualAscent" plot!(pd3nl,1:horzLen+1,dLognl.Xt[:,convIt],label="XFRM Temp") end
+pd3nl=plot(1:horzLen+1,evS.Tmax*ones(horzLen+1)*1000,label="XFRM Limit",line=(:dash,:red),xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
+if updateMethod=="dualAscent" plot!(pd3nl,1:horzLen+1,dLognl.Xt[:,convIt]*1000,label="XFRM Temp") end
 if drawFig==1 savefig(pd3nl,path*"J_NL_"*updateMethod*"_Temp.png") end
 
 

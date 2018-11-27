@@ -40,8 +40,8 @@ if drawFig==1 savefig(pd1aladNL,path*"J_decentralNL_ALADIN_SOC.png") end
 pd2aladNL=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,horzLen+1))
 if drawFig==1 savefig(pd2aladNL,path*"J_decentralNL_ALADIN_Curr.png") end
 
-pd3aladNL=plot(1:horzLen+1,dLognlalad.Xt[:,convIt],label="XFRM Temp",xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
-plot!(pd3aladNL,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
+pd3aladNL=plot(1:horzLen+1,dLognlalad.Xt[:,convIt]*1000,label="XFRM Temp",xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
+plot!(pd3aladNL,1:horzLen+1,evS.Tmax*ones(horzLen+1)*1000,label="XFRM Limit",line=(:dash,:red))
 if drawFig==1 savefig(pd3aladNL,path*"J_decentralNL_ALADIN_Temp.png") end
 
 pd4aladNL=plot(1:horzLen+1,hcat(cSolnl.lamCoupl,dLognlalad.Lam[:,convIt]),xlabel="Time",ylabel=raw"Lambda ($/kA)",

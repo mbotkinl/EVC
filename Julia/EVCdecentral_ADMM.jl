@@ -38,8 +38,8 @@ if drawFig savefig(pd1admm,path*"J_decentral_ADMM_SOC.png") end
 pd2admm=plot(uPlotd,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,horzLen+1))
 if drawFig savefig(pd2admm,path*"J_decentral_ADMM_Curr.png") end
 
-pd3admm=plot(1:horzLen+1,hcat(dLogadmm.Tactual[:,convIt],dLogadmm.Xt[:,convIt]),label=["Actual Temp" "PWL Temp"],xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
-plot!(pd3admm,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
+pd3admm=plot(1:horzLen+1,hcat(dLogadmm.Tactual[:,convIt],dLogadmm.Xt[:,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,horzLen+1),xlabel="Time",ylabel="Temp (K)")
+plot!(pd3admm,1:horzLen+1,evS.Tmax*ones(horzLen+1)*1000,label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(pd3admm,path*"J_decentral_ADMM_Temp.png") end
 
 pd4admm=plot(1:horzLen+1,hcat(cSol.lamCoupl,dLogadmm.Lam[:,convIt]),xlabel="Time",ylabel=raw"Lambda ($/kA)",
