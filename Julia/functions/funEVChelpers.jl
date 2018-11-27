@@ -29,6 +29,8 @@ function readRuns(path)
     files = filter(x->occursin("_",x), files) # avoid evScenario
     noLimFile = filter(x->occursin("noLimit",x), files)
     cFile = filter(x->occursin("central",x), files)
+    dFiles= setdiff(files,cFile)
+
     if length(cFile)>0
         cFile=setdiff(cFile,noLimFile)
         cRun=load(path*cFile[1])
@@ -42,7 +44,6 @@ function readRuns(path)
         noLim=Nothing
     end
 
-    dFiles= setdiff(files,[cFile noLimFile])
     runs=Dict{String,Any}()
     for ii=1:length(dFiles)
         runs[dFiles[ii]]=load(path*dFiles[ii])
@@ -125,11 +126,11 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     objPercPlot=plot(objPerc,xlabel="Iteration",ylabel="Objective Value Percentage Gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
 
     #Time plots
-    tempPlot=plot(1:Klen,cSol.Tactual,label="Central",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),xlabel="Time",ylabel="Temp (K)")
-    plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
-    plot!(tempPlot,T,labels=plotLabels,seriescolor=plotColors')
+    tempPlot=plot(1:Klen,cSol.Tactual*1000,label="Central",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),xlabel="Time",ylabel="Temp (K)")
+    plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen)*1000,label="XFRM Limit",line=(:dash,:red))
+    plot!(tempPlot,T*1000,labels=plotLabels,seriescolor=plotColors')
     if noLim !=nothing
-        plot!(tempPlot,1:Klen,noLim["solution"].Tactual,label="Uncoordinated")
+        plot!(tempPlot,1:Klen,noLim["solution"].Tactual*1000,label="Uncoordinated")
     end
 
     uSumPlot=plot(1:Klen,cSol.uSum,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,Klen),labels="Central",

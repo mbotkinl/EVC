@@ -39,8 +39,8 @@ if drawFig savefig(p1,path*"J_central_SOC.png") end
 p2=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(1,horzLen+1))
 if drawFig savefig(p2,path*"J_central_Curr.png") end
 
-p3=plot(1:horzLen+1,hcat(cSol.Xt,cSol.Tactual),label=["PWL Temp" "Actual Temp"],xlims=(1,horzLen+1),xlabel="Time",ylabel="Temp (K)")
-plot!(p3,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
+p3=plot(1:horzLen+1,hcat(cSol.Xt*1000,cSol.Tactual*1000),label=["PWL Temp" "Actual Temp"],xlims=(1,horzLen+1),xlabel="Time",ylabel="Temp (K)")
+plot!(p3,1:horzLen+1,evS.Tmax*ones(horzLen+1)*1000,label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(p3,path*"J_central_Temp.png") end
 
 p4b=plot(1:horzLen+1,cSol.lamTemp,xlabel="Time",ylabel=raw"Lambda ($/K)",xlims=(1,horzLen+1),legend=false)
