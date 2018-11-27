@@ -500,9 +500,9 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     stepI = 1
     epsilon = 1e-8
 
-    tolU=1e-4
+    tolU=1e-6
     tolS=1e-8
-    tolT=1e-4
+    tolT=1e-6
     tolZ=1e-6
 
     # tol=1e-6
@@ -523,51 +523,30 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     if eqForm
         println("Running Eq ALADIN")
         scalingF=1
-        σZ=scalingF*1e1
-        σT=scalingF
-        σU=ones(N,1)
-        σS=ones(N,1)/10#for kA
-        Hu=2*evS.Ri
-        Hs=2*evS.Qsi
-        # Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
-        # Hs=2*evS.Qsi *((1.5-2.5)*rand()+2.5)
-        Hz=0
-        Ht=0
-        # Hz=1e-6
-        # Ht=1e-6
-
-        ρALAD=1e3
-        ρRate=1.1
-        ρALADmax=1e9
-
-        μALAD=1e8
-        μRate=1
-        μALADmax=2e9
     else
         println("Running ineq ALADIN")
         scalingF=1e-4
-        σZ=1e2*scalingF
-        #σZ=1e4*scalingF #this doesnt work very sensitive!
-        σT=scalingF
-        σU=ones(N,1)
-        σS=ones(N,1)/10 #for kA
-        Hu=2*evS.Ri
-        Hs=2*evS.Qsi
-        # Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
-        # Hs=2*evS.Qsi *((1.5-2.5)*rand()+2.5)
-        Hz=0
-        Ht=0
-        # Hz=1e-6
-        # Ht=1e-6
-
-        ρALAD=1e3
-        ρRate=1.5
-        ρALADmax=1e6
-
-        μALAD=1e8
-        μRate=1
-        μALADmax=2e9
     end
+    σZ=scalingF*1e1
+    σT=scalingF
+    σU=ones(N,1)
+    σS=ones(N,1)/10#for kA
+    Hu=2*evS.Ri
+    Hs=2*evS.Qsi
+    # Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
+    # Hs=2*evS.Qsi *((1.5-2.5)*rand()+2.5)
+    Hz=0
+    Ht=0
+    # Hz=1e-6
+    # Ht=1e-6
+
+    ρALAD=1e3
+    ρRate=1.1
+    ρALADmax=4e5
+
+    μALAD=1e8
+    μRate=1
+    μALADmax=2e9
 
     dCMalad=convMetricsStruct()
     dLogalad=itLogPWL()
