@@ -119,11 +119,16 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     plotColors=get_color_palette(:auto, plot_color(:white), P)
 
     #Iteration plots
-    lamConvPlot=plot(lamConv,xlabel="Iteration",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
-    lamRMSEPlot=plot(lamRMSE,xlabel="Iteration",ylabel="Relative RMSE Lambda Gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors')
-    lamInfNormPlot=plot(lamInfNorm,xlabel="Iteration",ylabel="Max Lambda Gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
-    objNormPlot=plot(objConv,xlabel="Iteration",ylabel="Objective Value Magintude Gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
-    objPercPlot=plot(objPerc,xlabel="Iteration",ylabel="Objective Value Percentage Gap",labels=plotLabels,yscale=:log10,seriescolor=plotColors',legend=false)
+    lamConvPlot=plot(lamConv,xlabel="Iteration",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10,
+                    seriescolor=plotColors',legend=false,xlims=(0,numIt))
+    lamRMSEPlot=plot(lamRMSE,xlabel="Iteration",ylabel="Relative RMSE Lambda Gap",labels=plotLabels,yscale=:log10,
+                    seriescolor=plotColors',xlims=(0,numIt))
+    lamInfNormPlot=plot(lamInfNorm,xlabel="Iteration",ylabel="Max Lambda Gap",labels=plotLabels,yscale=:log10,
+                        seriescolor=plotColors',legend=false,xlims=(0,numIt))
+    objNormPlot=plot(objConv,xlabel="Iteration",ylabel="Objective Value Magintude Gap",labels=plotLabels,yscale=:log10,
+                    seriescolor=plotColors',legend=false,xlims=(0,numIt))
+    objPercPlot=plot(objPerc,xlabel="Iteration",ylabel="Objective Value Percentage Gap",labels=plotLabels,yscale=:log10,
+                    seriescolor=plotColors',legend=false,xlims=(0,numIt))
 
     #Time plots
     tempPlot=plot(1:Klen,cSol.Tactual*1000,label="Central",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),xlabel="Time",ylabel="Temp (K)")

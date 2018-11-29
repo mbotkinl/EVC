@@ -7,6 +7,7 @@
 println("Loading Packages...")
 using JuMP
 using Parameters
+using SharedArrays
 using Printf
 using Distributed
 using LinearAlgebra
@@ -19,11 +20,11 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 
 N=80
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\"
-datafile="n" #"mat" #"jld" #"n"
+datafile="jld2" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
 
 updateMethod="dualAscent" #dualAscent #fastAscent
-maxIt=100
+maxIt=20
 noTlimit=false
 forecastError=false
 relaxedMode=2
@@ -62,10 +63,10 @@ end
 
 #run comparison
 #path = clips()
-# path=path*"PWL\\"
+# path=path*"Relax\\"
 # cRun,runs, noLim=readRuns(path);
 # lowRes=true
-#pComp=compareRunsGraph(runs, cRun, noLim, saveResults,lowRes)
+# resPlot, convPlot=compareRunsGraph(runs, cRun, noLim, saveResults,lowRes)
 # cTable=compareRunsTable(runs)
 
 # @time runALADit(1)
