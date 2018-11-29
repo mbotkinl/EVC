@@ -135,3 +135,63 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false,path=pwd())
 
     return evScenario
 end
+
+function setupHubScenario(N;saveS=false,path=pwd())
+    #1 hub 3 vehicles
+    K=30
+    K1=10
+    K2=0
+    H=1
+    #eta= [.6;.7;.5]
+    ηP=.8
+    Ts=152.4
+
+    # PWL Parameters:
+    S=15
+    ItotalMax = 4  #kA
+    deltaI = ItotalMax/S
+
+    #action happens interval before
+    #hub information
+    K_arrive_pred=Array{Int64,2}(undef,N,H)
+    K_arrive_pred[:,1]=[1;3;10]
+    K_depart_pred=Array{Int64,2}(undef,N,H)
+    K_depart_pred[:,1]=[20;21;25]
+    K_arrive_actual=K_arrive_pred
+    K_depart_actual=K_depart_pred
+    Sn_depart_min=zeros(N,H)
+    Sn_depart_min[:,1]=[.8;.85;1]
+    Sn_arrive_pred=zeros(N,H)
+    Sn_arrive_pred[:,1]=[.5;.5;.5]
+    Sn_arrive_actual=Sn_arrive_pred
+    EVcap=zeros(N,H)
+    EVcap[:,1]=[1.0;1.0;1.0]
+    e0=zeros(H,1)
+    uMax=0.5*ones(H,1)
+
+    #system information
+    t0=.370
+    Tmax=.372
+    Tamb=.37*ones(K,1)
+    iD_pred=0*ones(K,1)
+    iD_actual=iD_pred
+    ItotalMax=4
+    τP=.89
+    γP=0.004623
+    ρP=1-τP
+
+    Q=1.0
+    R=0.1
+
+    hubS=scenarioHubStruct(N,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,uMax,ηP,τP,ρP,γP,e0,t0,
+                            Sn_depart_min,Sn_arrive_actual,Sn_arrive_pred,K_arrive_pred,K_depart_pred,
+                            K_arrive_actual,K_depart_actual,EVcap,iD_pred,iD_actual,Tamb,Q,R)
+
+    # evHubS=scenarioHubStruct(N,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,uMax,ηP,τP,ρP,γP,e0,t0,iD_pred,iD_actual,Tamb,Q,R)
+
+    if saveS==true
+        save(path*"HubscenarioN$(N).jld2","hubS",hubS)
+    end
+
+    return hubS
+end

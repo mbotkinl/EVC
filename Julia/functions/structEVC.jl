@@ -44,9 +44,56 @@ struct scenarioStruct
     Qsi::Array{Float64,2}
     Ri::Array{Float64,2}
     β::Array{Float64,2}
-
 end
 
+struct scenarioHubStruct
+    N::Int64
+    H::Int64
+    Ts::Float64
+
+    #horizon
+    K1::Int64
+    K2::Int64
+    K::Int64
+
+    #PWL
+    S::Int64
+    ItotalMax::Int64
+    deltaI::Float64
+
+    #limits
+    Tmax::Float64
+    uMax::Array{Float64,2}
+
+    #Discretization Paramters
+    ηP::Float64
+    τP::Float64
+    ρP::Float64
+    γP::Float64
+
+    #initial conditions
+    e0::Array{Float64,2}
+    t0::Float64
+
+    #hub conditions
+    Sn_depart_min::Array{Float64,2}
+    Sn_arrive_actual::Array{Float64,2}
+    Sn_arrive_pred::Array{Float64,2}
+    K_arrive_pred::Array{Int64,2}
+    K_depart_pred::Array{Int64,2}
+    K_arrive_actual::Array{Int64,2}
+    K_depart_actual::Array{Int64,2}
+    EVcap::Array{Float64,2}
+
+    #disturbances
+    iD_pred::Array{Float64,2}
+    iD_actual::Array{Float64,2}
+    Tamb::Array{Float64,2}
+
+    #User def penalty matrix
+    Q::Float64
+    R::Float64
+end
 
 #structures
 @with_kw struct convMetricsStruct
@@ -166,4 +213,13 @@ end
     zSum::Array=zeros(S*(horzLen+1),1)
     Tactual::Array=zeros((horzLen+1),1)
     slackSn::Array=zeros(N,1)
+end
+
+
+@with_kw struct centralHubSolutionStruct
+    E::Array=zeros(K,H) #row are time, column are hub
+    U::Array=zeros(K,H) #row are time, column are hub
+    T::Array=zeros(K,1) #row are time
+    Lam::Array=zeros(K,1) #row are time
+    objVal::Array=zeros(K,1)
 end

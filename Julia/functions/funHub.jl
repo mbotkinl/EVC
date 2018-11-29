@@ -1,0 +1,111 @@
+# hub functions
+
+
+function runHubCentralStep(stepI,hubS,cSol,silent)
+
+    global t0
+    global e0
+    H=hubS.H
+    K=hubS.K
+    N=hubS.N
+    @printf "time step %g of %g....\n" stepI K
+
+    horzLen=min(hubS.K1,K-stepI)
+
+    #prepare predicted values for optimization
+
+    #ηH=zeros(horzLen+1,1)
+    eMax=zeros(horzLen+1,H)
+    eDepart=zeros(horzLen+1,H)
+    eArrive_pred=zeros(horzLen+1,H)
+    eArrive_actual=zeros(horzLen+1,H)
+    slackMax=zeros(horzLen+1,H)
+    for (i,k) in enumerate(stepI:(stepI+horzLen))
+        depart=[n for n=1:N if k==hubS.K_depart_pred[n]]
+        if length(depart)!=0
+            eDepart[i] = sum(hubS.Sn_depart_min[n]*hubS.EVcap[n] for n in depart)
+            slackMax[i] = sum(hubS.EVcap[n]-hubS.Sn_depart_min[n]*hubS.EVcap[n] for n in depart)
+        end
+
+        arrive=[n for n=1:N if k==hubS.K_arrive_pred[n]]
+        if length(arrive)!=0
+            eArrive_pred[i] = sum(hubS.Sn_arrive_pred[n]*hubS.EVcap[n] for n in arrive)
+            eArrive_actual[i] = sum(hubS.Sn_arrive_actual[n]*hubS.EVcap[n] for n in arrive)
+        end
+
+        parked=[n for n=1:N  if hubS.K_arrive_pred[n]<=k<=hubS.K_depart_pred[n]]
+        if length(parked)!=0
+            #ηH[k]=mean(eta[n] for n in parked)
+            eMax[i]=sum(hubS.EVcap[n] for n in parked)
+        end
+    end
+
+    if silent
+        cModel = Model(solver = IpoptSolver(print_level=0))
+    else
+        cModel = Model(solver = IpoptSolver())
+    end
+
+    @variable(cModel,u[1:(horzLen+1)])
+    @variable(cModel,t[1:(horzLen+1)])
+    @variable(cModel,itotal[1:(horzLen+1)])
+    @variable(cModel,e[1:(horzLen+1)])
+    @variable(cModel,slackE[1:(horzLen+1)])
+
+    #objective
+    @objective(cModel,Min,sum(hubS.Q*(e[k]-eMax[k])^2+hubS.R*u[k]^2 for k=1:horzLen+1))
+
+    #transformer constraints
+    @constraint(cModel,upperTCon,t.<=hubS.Tmax)
+    @constraint(cModel,t.>=0)
+    @constraint(cModel,itotal.<=hubS.ItotalMax)
+    @constraint(cModel,itotal.>=0)
+    @NLconstraint(cModel,tempCon1,t[1,1]==hubS.τP*t0+hubS.γP*(itotal[1])^2+hubS.ρP*hubS.Tamb[stepI,1])
+    @NLconstraint(cModel,tempCon2[k=1:horzLen],t[k+1,1]==hubS.τP*t[k,1]+hubS.γP*(itotal[k+1])^2+hubS.ρP*hubS.Tamb[stepI+k,1])
+
+    #coupling constraint
+    @constraint(cModel,currCon[k=1:horzLen+1],0==-u[k,1]-hubS.iD_pred[stepI+(k-1)]+itotal[k,1])
+
+    #hub constraints
+    #@constraint(cModel,stateCon1,E[1,1]==E0+ηH[1]*u[1]-eDepart[1]+eArrive[1])
+    #@constraint(cModel,stateCon[k=1:horzLen],E[k+1]==E[k]+ηH[k]*u[k+1]-eDepart[k+1]+eArrive[k+1])
+    @constraint(cModel,stateCon1,e[1,1]==e0[1,1]+hubS.ηP*u[1]-(eDepart[1]+slackE[1])+eArrive_pred[1])
+    @constraint(cModel,stateCon[k=1:horzLen],e[k+1]==e[k]+hubS.ηP*u[k+1]-(eDepart[k+1]+slackE[k+1])+eArrive_pred[k+1])
+
+    @constraint(cModel,e.>=0)
+    @constraint(cModel,eMaxCon[k=1:horzLen+1],e[k]<=eMax[k])
+    @constraint(cModel,u.<=hubS.uMax)
+    @constraint(cModel,u.>=0)
+
+    @constraint(cModel,slackE.<=slackMax)
+    @constraint(cModel,slackE.>=0)
+
+    status=solve(cModel)
+    @assert status==:Optimal "Central Hub optimization not solved to optimality"
+
+    eRaw=getvalue(e)
+    uRaw=getvalue(u)
+    tRaw=getvalue(t)
+    lambdaCurr=-getdual(currCon)
+    extraE=getvalue(slackE)
+    #
+    # p1nl=plot(eRaw,xlabel="Time",ylabel="Hub Energy",legend=false,xlims=(1,horzLen+1))
+    # p2nl=plot(uRaw,xlabel="Time",ylabel="Hub Current (kA)",legend=false,xlims=(1,horzLen+1))
+    # p3nl=plot(1:horzLen+1,tRaw,label="XFRM Temp",xlims=(1,horzLen+1),xlabel="Time",ylabel="Temp (K)")
+    # plot!(p3nl,1:horzLen+1,Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
+    # p4nl=plot(1:horzLen+1,lambdaCurr,label="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,horzLen+1),legend=false)
+    #
+
+    #apply current and actual departures and arrivals
+    nextU=uRaw[1,:]
+    cSol.U[stepI,:]=nextU
+    cSol.Lam[stepI,1]=lambdaCurr[1,1]
+    cSol.E[stepI,:]=e0[1,:]+hubS.ηP*nextU-(eDepart[1,:]+extraE[1,:])+eArrive_actual[1,:]
+    cSol.T[stepI,1]=hubS.τP*t0+hubS.γP*(sum(nextU)+hubS.iD_actual[stepI,1])^2+hubS.ρP*hubS.Tamb[stepI,1]
+
+    # new states
+    t0=cSol.T[stepI,1]
+    e0=cSol.E[stepI,:]
+
+    return nothing
+end
