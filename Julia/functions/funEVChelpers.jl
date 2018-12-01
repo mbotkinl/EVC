@@ -1,6 +1,8 @@
 # helper functions for EVC code
 using DataFrames
 using FileIO
+using Dates
+
 # using Gadfly
 # using Cairo #for png output
 # using Fontconfig
@@ -116,42 +118,52 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     end
 
     plotLabels=permutedims(runNames)
-    plotColors=get_color_palette(:auto, plot_color(:white), P)
+    allColors=get_color_palette(:auto, plot_color(:white), P+1)
+    plotColors=allColors[1:P]'
+
+    stT1=Time(20,0)
+    endT1=Time(23,0)
+    stT2=Time(0,0)
+    endT2=Time(10,0)
+    Xlabels=vcat(collect(stT1:Dates.Second(round(evS.Ts)):endT1),collect(stT2:Dates.Second(round(evS.Ts)):endT2))
+    #Xlabels=vcat(collect(stT1:Dates.Minute(3):endT1),collect(stT2:Dates.Minute(3):endT2))
+    xticks=(1:40:Klen,Dates.format.(Xlabels[1:40:Klen],"HH:MM"))
 
     #Iteration plots
-    lamConvPlot=plot(lamConv,xlabel="Iteration",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10,
-                    seriescolor=plotColors',legend=false,xlims=(0,numIt))
-    lamRMSEPlot=plot(lamRMSE,xlabel="Iteration",ylabel="Relative RMSE Lambda Gap",labels=plotLabels,yscale=:log10,
-                    seriescolor=plotColors',xlims=(0,numIt))
-    lamInfNormPlot=plot(lamInfNorm,xlabel="Iteration",ylabel="Max Lambda Gap",labels=plotLabels,yscale=:log10,
-                        seriescolor=plotColors',legend=false,xlims=(0,numIt))
-    objNormPlot=plot(objConv,xlabel="Iteration",ylabel="Objective Value Magintude Gap",labels=plotLabels,yscale=:log10,
+    lamConvPlot=plot(lamConv,xlabel="",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10,
+                    seriescolor=plotColors,legend=false,xlims=(0,numIt))
+    lamRMSEPlot=plot(lamRMSE,xlabel="",ylabel="Relative RMSE Lambda Gap",labels=plotLabels,yscale=:log10,
+                    seriescolor=plotColors,xlims=(0,numIt))
+    lamInfNormPlot=plot(lamInfNorm,xlabel="",ylabel="Max Lambda Gap",labels=plotLabels,yscale=:log10,
+                        seriescolor=plotColors,legend=false,xlims=(0,numIt))
+    objNormPlot=plot(objConv,xlabel="",ylabel="Objective Value Magintude Gap",labels=plotLabels,yscale=:log10,
                     seriescolor=plotColors',legend=false,xlims=(0,numIt))
     objPercPlot=plot(objPerc,xlabel="Iteration",ylabel="Objective Value Percentage Gap",labels=plotLabels,yscale=:log10,
-                    seriescolor=plotColors',legend=false,xlims=(0,numIt))
+                    seriescolor=plotColors,legend=false,xlims=(0,numIt))
 
     #Time plots
-    tempPlot=plot(1:Klen,cSol.Tactual*1000,label="Central",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),xlabel="Time",ylabel="Temp (K)")
+    tempPlot=plot(1:Klen,cSol.Tactual*1000,label="",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),
+                    xlabel="",ylabel="Temp (K)",xticks=xticks)
     plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen)*1000,label="XFRM Limit",line=(:dash,:red))
-    plot!(tempPlot,T*1000,labels=plotLabels,seriescolor=plotColors')
+    plot!(tempPlot,T*1000,labels="",seriescolor=plotColors)
     if noLim !=nothing
-        plot!(tempPlot,1:Klen,noLim["solution"].Tactual*1000,label="Uncoordinated")
+        plot!(tempPlot,1:Klen,noLim["solution"].Tactual*1000,label="",seriescolor=allColors[P+1])
     end
 
-    uSumPlot=plot(1:Klen,cSol.uSum,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,Klen),labels="Central",
-                  seriescolor=:black,linewidth=4,linealpha=0.25)
-    plot!(uSumPlot,uSum,labels=plotLabels,seriescolor=plotColors',legend=false)
+    uSumPlot=plot(1:Klen,cSol.uSum,xlabel="",ylabel="Current Sum (kA)",xlims=(0,Klen),labels="Central",
+                  seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
+    plot!(uSumPlot,uSum,labels=plotLabels,seriescolor=plotColors,legend=false)
     if noLim !=nothing
-        plot!(uSumPlot,1:Klen,noLim["solution"].uSum,label="Uncoordinated")
+        plot!(uSumPlot,1:Klen,noLim["solution"].uSum,label="Uncoordinated",seriescolor=allColors[P+1])
     end
 
     iD=evS.iD[1:Klen].+10
-    loadPlot=plot(1:Klen,cSol.uSum+iD,xlabel="Time",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
-                  seriescolor=:black,linewidth=4,linealpha=0.25)
+    loadPlot=plot(1:Klen,cSol.uSum+iD,xlabel="",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
+                  seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
     plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash))
-    plot!(loadPlot,uSum.+iD,labels="",seriescolor=plotColors')
+    plot!(loadPlot,uSum.+iD,labels="",seriescolor=plotColors)
     if noLim !=nothing
-        plot!(loadPlot,1:Klen,noLim["solution"].uSum+iD,label="")
+        plot!(loadPlot,1:Klen,noLim["solution"].uSum+iD,label="",seriescolor=allColors[P+1])
     end
 
     target=zeros(Klen)
@@ -161,29 +173,31 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     end
 
     snSumCentral=[sum(cSol.Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# sum up across N
-    snSumPlot=plot(1:Klen,snSumCentral,xlabel="Time",ylabel="SOC Sum",xlims=(0,Klen),labels="",
-                   seriescolor=:black,linewidth=4,linealpha=0.25)
+    snSumPlot=plot(1:Klen,snSumCentral,xlabel="",ylabel="SOC Sum",xlims=(0,Klen),labels="",
+                   seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
     plot!(snSumPlot,1:Klen,target,label="SOC Target",line=(:dash))
-    plot!(snSumPlot,snSum,labels="",seriescolor=plotColors')
+    plot!(snSumPlot,snSum,labels="",seriescolor=plotColors)
     if noLim !=nothing
         snSumNoLim=[sum(noLim["solution"].Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# sum up across N
-        plot!(snSumPlot,1:Klen,snSumNoLim,label="")
+        plot!(snSumPlot,1:Klen,snSumNoLim,label="",seriescolor=allColors[P+1])
     end
 
 
     snAvgCentral=[mean(cSol.Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# mean across N
-    snAvgPlot=plot(1:Klen,snAvgCentral,xlabel="Time",ylabel="Avg.SOC",xlims=(0,Klen),labels=plotLabels,
-                   seriescolor=:black,linewidth=4,linealpha=0.25)
-    plot!(snAvgPlot,snAvg,labels=plotLabels,seriescolor=plotColors')
+    snAvgPlot=plot(1:Klen,snAvgCentral,xlabel="",ylabel="Avg.SOC",xlims=(0,Klen),labels=plotLabels,
+                   seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
+    plot!(snAvgPlot,snAvg,labels=plotLabels,seriescolor=plotColors)
     if noLim !=nothing
         snAvgNoLim=[mean(noLim["solution"].Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# sum up across N
-        plot!(snAvgPlot,1:Klen,snAvgNoLim,label="Uncoordinated")
+        plot!(snAvgPlot,1:Klen,snAvgNoLim,label="Uncoordinated",seriescolor=allColors[P+1])
     end
 
     lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),labels="Central",
-                   seriescolor=:black,linewidth=4,linealpha=0.25)
-    plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors',legend=false)
-
+                   seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
+    plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors)
+    if noLim !=nothing
+        plot!(lamPlot,1:Klen,noLim["solution"].lamCoupl,label="Uncoordinated",seriescolor=allColors[P+1])
+    end
     # R plot***
     Rmax=zeros(Klen,P)
     Ravg=zeros(Klen,P)
@@ -196,7 +210,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     end
 
 
-    Rmax=plot(Rmax,xlabel="Time",ylabel="R Max",xlims=(0,Klen),labels=plotLabels,seriescolor=plotColors',legend=false)
+    Rmax=plot(Rmax,xlabel="Time",ylabel="R Max",xlims=(0,Klen),labels=plotLabels,seriescolor=plotColors,legend=false)
 
 
     resPlot=plot(tempPlot,loadPlot,snSumPlot,lamPlot,layout=(4,1))
