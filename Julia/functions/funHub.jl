@@ -100,7 +100,9 @@ function runHubCentralStep(stepI,hubS,cSol,silent)
     nextU=uRaw[1,:]
     cSol.U[stepI,:]=nextU
     cSol.Lam[stepI,1]=lambdaCurr[1,1]
-    cSol.E[stepI,:]=e0[1,:]+hubS.ηP*nextU-(eDepart[1,:]+extraE[1,:])+eArrive_actual[1,:]
+    cSol.E_depart[stepI,:]=eDepart[1,:]+extraE[1,:]
+    cSol.E_arrive[stepI,:]=eArrive_actual[1,:]
+    cSol.E[stepI,:]=e0[1,:]+hubS.ηP*nextU-(cSol.E_depart[stepI,:])+cSol.E_arrive[stepI,:]
     cSol.T[stepI,1]=hubS.τP*t0+hubS.γP*(sum(nextU)+hubS.iD_actual[stepI,1])^2+hubS.ρP*hubS.Tamb[stepI,1]
 
     # new states

@@ -222,4 +222,7 @@ end
     T::Array=zeros(K,1) #row are time
     Lam::Array=zeros(K,1) #row are time
     objVal::Array=zeros(K,1)
+
+    E_depart::Array=zeros(K,H)
+    E_arrive::Array=zeros(K,H)
 end
