@@ -156,7 +156,7 @@ function setupHubScenario(N;saveS=false,path=pwd())
     K_arrive_pred=Array{Int64,2}(undef,N,H)
     K_arrive_pred[:,1]=[1;3;10]
     K_depart_pred=Array{Int64,2}(undef,N,H)
-    K_depart_pred[:,1]=[20;21;25]
+    K_depart_pred[:,1]=[20;22;25]
     K_arrive_actual=K_arrive_pred
     K_depart_actual=K_depart_pred
     Sn_depart_min=zeros(N,H)
