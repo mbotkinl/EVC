@@ -153,8 +153,8 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     # Discretization parameters:
     #Ts = Rh*C/9              # s, sampling time in seconds
     Ts=180
-    #ηP = ηP = Ts*Vac*a./b  # 1/kA, normalized battery sizes (0-1)
-    ηP=.8*ones(1,H)*(Ts)*Vac #Vh
+    #ηP = Ts*Vac*a./b  # 1/kA, normalized battery sizes (0-1)
+    ηP=0.8*ones(1,H)*(Ts/3600)*Vac #Vh
     τP = exp(- Ts/(Rh*C))
     ρP = 1 - τP            # no units, ambient-to-temp param: 1/RC
     γP = Rh*Rw/(Ntf)*ρP*1000^2/1000    # kK/kW, ohmic losses-to-temp parameter
@@ -168,7 +168,7 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
 
     # PWL Parameters:
     S=15
-    ItotalMax = 100  #kA
+    ItotalMax = 4  #kA
     deltaI = ItotalMax/S
 
     #action happens interval before
@@ -203,8 +203,8 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     iD_pred=0*ones(K,1)
     iD_actual=iD_pred
 
-    Q=1.0*ones(1,H)
-    R=0.1*ones(1,H)
+    Q=100*ones(1,H)
+    R=0.0001*ones(1,H)
 
     hubS=scenarioHubStruct(Nh,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imax,ηP,τP,ρP,γP,e0,t0,
                             Sn_depart_min,Sn_arrive_actual,Sn_arrive_pred,K_arrive_pred,K_depart_pred,

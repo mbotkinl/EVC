@@ -46,11 +46,11 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
 
     if silent
         #cModel = Model(solver = IpoptSolver(print_level=0))
-        cModel = Model(solver = GurobiSolver(OutputFlag=0,QCPDual=1))
+        #cModel = Model(solver = GurobiSolver(OutputFlag=0,QCPDual=1))
         cModel = Model(solver = GurobiSolver(OutputFlag=0))
     else
         #cModel = Model(solver = IpoptSolver())
-        cModel = Model(solver = GurobiSolver(QCPDual=1))
+        #cModel = Model(solver = GurobiSolver(QCPDual=1))
         cModel = Model(solver = GurobiSolver())
 
     end

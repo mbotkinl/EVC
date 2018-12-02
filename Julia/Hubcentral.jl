@@ -11,8 +11,8 @@ using Gurobi
 # check all indexing????
 #especially stepI +k for iD and Tamb
 
-H=3
-Nh=20
+H=4
+Nh=10
 Tmax=.393
 mode="PWL"
 silent=true
@@ -48,6 +48,9 @@ endT2=Time(10,0)
 Xlabels=vcat(collect(stT1:Dates.Second(round(hubS.Ts)):endT1),collect(stT2:Dates.Second(round(hubS.Ts)):endT2))
 #Xlabels=vcat(collect(stT1:Dates.Minute(3):endT1),collect(stT2:Dates.Minute(3):endT2))
 xticks=(1:40:K,Dates.format.(Xlabels[1:40:K],"HH:MM"))
+
+
+p1nl=plot(1:K,cSol.E,xlabel="Time",ylabel="Energy (kWh)",label="Hub Energy",xlims=(0,K),seriestype=:line)
 
 
 p1nl=plot(1:K,cSol.E,xlabel="Time",ylabel="Energy (kWh)",label="Hub Energy",xlims=(0,K),seriestype=:bar)
