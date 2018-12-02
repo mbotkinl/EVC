@@ -4,7 +4,7 @@
 #from Mads Almassakhi code
 
 #functions
-function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false,path=pwd())
+function setupScenario(N;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd())
 
     #model parameters
     a   = rand(N,1)*.1 .+ 0.8               # efficiency of Li-ion batts is ~80-90%
@@ -136,54 +136,77 @@ function setupScenario(N;Tmax=393,Dload_amplitude=0,saveS=false,path=pwd())
     return evScenario
 end
 
-function setupHubScenario(N;saveS=false,path=pwd())
-    #1 hub 3 vehicles
-    K=30
-    K1=10
-    K2=0
-    H=1
-    #eta= [.6;.7;.5]
-    ηP=.8
-    Ts=152.4
+function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd())
+    #model parameters
+    a   = rand(Nh,H)*.1 .+ 0.8               # efficiency of Li-ion batts is ~80-90%
+    b   = (6*rand(Nh,H).+12)*3.6e6           # battery capacity (12-18 kWh = 43.3-64.8 MJ)
+    imax = (10 .+ 16*rand(Nh,H))/1000             # kA, charging with 10-24 A
+
+    m   = 2000                             # transformer mass in kg
+    C   = 450*m                            # heat cap. thermal mass J/K ----- spec. heat cap. of C = {carbon steel, iron, veg. oil} = {490, 450, 1670} J/(kg*K)
+    Rh   = 1070e-4/(35*5*(m/7870)^(2/3))   # heat outflow resistance K/W : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
+    Rw  = 1                                # coil winding resistance --- ohms:
+    Vac = 240                              # PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
+    Vtf = 8320                             # distr-level transformer rms voltage --- V [used in inelastic kW -> kA conv]
+    Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
+
+    # Discretization parameters:
+    #Ts = Rh*C/9              # s, sampling time in seconds
+    Ts=180
+    #ηP = ηP = Ts*Vac*a./b  # 1/kA, normalized battery sizes (0-1)
+    ηP=.8*ones(1,H)*(Ts)*Vac #Vh
+    τP = exp(- Ts/(Rh*C))
+    ρP = 1 - τP            # no units, ambient-to-temp param: 1/RC
+    γP = Rh*Rw/(Ntf)*ρP*1000^2/1000    # kK/kW, ohmic losses-to-temp parameter
+
+    ## MPC Paramters
+    T1=12
+    T2=2
+    K1 = round(Int,T1*3600/Ts);            # Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
+    K2 = round(Int,T2*3600/Ts);             # Additional time instants past control horizon
+    K  = K1+K2;                        # Total horizon (8 PM to 10 AM)Qs  = 10;              % Stage and terminal penalty on charge difference with respect to 1 (states s)
 
     # PWL Parameters:
     S=15
-    ItotalMax = 4  #kA
+    ItotalMax = 100  #kA
     deltaI = ItotalMax/S
 
     #action happens interval before
     #hub information
-    K_arrive_pred=Array{Int64,2}(undef,N,H)
-    K_arrive_pred[:,1]=[1;3;10]
-    K_depart_pred=Array{Int64,2}(undef,N,H)
-    K_depart_pred[:,1]=[20;22;25]
+    arriveLast=round(Int,2*3600/Ts) #last arrival at 10PM
+    departFirst=round(Int,10*3600/Ts) #first departure at 6AM
+
+    K_arrive_pred=rand(1:arriveLast,Nh,H)
+    K_depart_pred=rand(departFirst:K,Nh,H)
+    # K_arrive_pred=Array{Int64,2}(undef,N,H)
+    # K_arrive_pred[:,1]=[1;3;10]
+    # K_depart_pred=Array{Int64,2}(undef,N,H)
+    # K_depart_pred[:,1]=[20;22;25]
     K_arrive_actual=K_arrive_pred
     K_depart_actual=K_depart_pred
-    Sn_depart_min=zeros(N,H)
-    Sn_depart_min[:,1]=[.8;.85;1]
-    Sn_arrive_pred=zeros(N,H)
-    Sn_arrive_pred[:,1]=[.5;.5;.5]
+    Sn_depart_min=1 .- 0.20*rand(Nh,H) #need 80-100%
+    Sn_arrive_pred=0.20*rand(Nh,H) #arrive with 0-20%
+    # Sn_depart_min=zeros(N,H)
+    # Sn_depart_min[:,1]=[.8;.85;1]
+    # Sn_arrive_pred=zeros(N,H)
+    # Sn_arrive_pred[:,1]=[.5;.5;.5]
     Sn_arrive_actual=Sn_arrive_pred
-    EVcap=zeros(N,H)
-    EVcap[:,1]=[1.0;1.0;1.0]
-    e0=zeros(H,1)
-    uMax=0.5*ones(H,1)
+    EVcap=b./3.6e6 #kWh
+    # EVcap=zeros(N,H)
+    # EVcap[:,1]=[1.0;1.0;1.0]
+    e0=zeros(H)
+    #uMax=sum(imax,dims=1)
 
     #system information
     t0=.370
-    Tmax=.372
     Tamb=.37*ones(K,1)
     iD_pred=0*ones(K,1)
     iD_actual=iD_pred
-    ItotalMax=4
-    τP=.89
-    γP=0.004623
-    ρP=1-τP
 
-    Q=1.0
-    R=0.1
+    Q=1.0*ones(1,H)
+    R=0.1*ones(1,H)
 
-    hubS=scenarioHubStruct(N,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,uMax,ηP,τP,ρP,γP,e0,t0,
+    hubS=scenarioHubStruct(Nh,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imax,ηP,τP,ρP,γP,e0,t0,
                             Sn_depart_min,Sn_arrive_actual,Sn_arrive_pred,K_arrive_pred,K_depart_pred,
                             K_arrive_actual,K_depart_actual,EVcap,iD_pred,iD_actual,Tamb,Q,R)
 

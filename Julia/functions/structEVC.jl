@@ -47,7 +47,7 @@ struct scenarioStruct
 end
 
 struct scenarioHubStruct
-    N::Int64
+    Nh::Int64
     H::Int64
     Ts::Float64
 
@@ -63,16 +63,16 @@ struct scenarioHubStruct
 
     #limits
     Tmax::Float64
-    uMax::Array{Float64,2}
+    imax::Array{Float64,2}
 
     #Discretization Paramters
-    ηP::Float64
+    ηP::Array{Float64,2}
     τP::Float64
     ρP::Float64
     γP::Float64
 
     #initial conditions
-    e0::Array{Float64,2}
+    e0::Array{Float64,1}
     t0::Float64
 
     #hub conditions
@@ -91,8 +91,8 @@ struct scenarioHubStruct
     Tamb::Array{Float64,2}
 
     #User def penalty matrix
-    Q::Float64
-    R::Float64
+    Q::Array{Float64,2}
+    R::Array{Float64,2}
 end
 
 #structures

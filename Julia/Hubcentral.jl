@@ -1,17 +1,20 @@
 #test hub model
 using JuMP
-using Ipopt
 using Statistics
 using Plots;pyplot()
 using Printf
 using Parameters
 using SharedArrays
+#using Ipopt
+using Gurobi
 
 # check all indexing????
 #especially stepI +k for iD and Tamb
-# fix for multiple hubs ????
 
-N=3
+H=3
+Nh=20
+Tmax=.393
+mode="PWL"
 silent=true
 saveS=false
 saveF=false
@@ -24,10 +27,10 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hubSimple\\"
 
 println("Creating Hub Scenario...")
-hubS=setupHubScenario(N,saveS=saveS,path=path)
+hubS=setupHubScenario(H,Nh,Tmax=Tmax,saveS=saveS,path=path)
 H=hubS.H
 K=hubS.K
-N=hubS.N
+Nh=hubS.Nh
 
 #initialize
 t0=hubS.t0
@@ -35,18 +38,16 @@ e0=hubS.e0
 cSol=centralHubSolutionStruct()
 
 for stepI=1:K
-    runHubCentralStep(stepI,hubS,cSol,silent)
+    runHubCentralStep(stepI,hubS,cSol,mode,silent)
 end
 
-
-
-# stT1=Time(20,0)
-# endT1=Time(23,0)
-# stT2=Time(0,0)
-# endT2=Time(10,0)
-# Xlabels=vcat(collect(stT1:Dates.Second(round(hubS.Ts)):endT1),collect(stT2:Dates.Second(round(hubS.Ts)):endT2))
-# #Xlabels=vcat(collect(stT1:Dates.Minute(3):endT1),collect(stT2:Dates.Minute(3):endT2))
-# xticks=(1:40:K,Dates.format.(Xlabels[1:40:K],"HH:MM"))
+stT1=Time(20,0)
+endT1=Time(23,0)
+stT2=Time(0,0)
+endT2=Time(10,0)
+Xlabels=vcat(collect(stT1:Dates.Second(round(hubS.Ts)):endT1),collect(stT2:Dates.Second(round(hubS.Ts)):endT2))
+#Xlabels=vcat(collect(stT1:Dates.Minute(3):endT1),collect(stT2:Dates.Minute(3):endT2))
+xticks=(1:40:K,Dates.format.(Xlabels[1:40:K],"HH:MM"))
 
 
 p1nl=plot(1:K,cSol.E,xlabel="Time",ylabel="Energy (kWh)",label="Hub Energy",xlims=(0,K),seriestype=:bar)
