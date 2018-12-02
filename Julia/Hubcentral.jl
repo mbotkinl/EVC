@@ -42,7 +42,7 @@ for stepI=1:K
 end
 
 stT1=Time(20,0)
-endT1=Time(23,0)
+endT1=Time(23,59)
 stT2=Time(0,0)
 endT2=Time(10,0)
 Xlabels=vcat(collect(stT1:Dates.Second(round(hubS.Ts)):endT1),collect(stT2:Dates.Second(round(hubS.Ts)):endT2))

@@ -122,7 +122,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     plotColors=allColors[1:P]'
 
     stT1=Time(20,0)
-    endT1=Time(23,0)
+    endT1=Time(23,59)
     stT2=Time(0,0)
     endT2=Time(10,0)
     Xlabels=vcat(collect(stT1:Dates.Second(round(evS.Ts)):endT1),collect(stT2:Dates.Second(round(evS.Ts)):endT2))
