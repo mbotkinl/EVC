@@ -164,7 +164,7 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     T2=2
     K1 = round(Int,T1*3600/Ts);            # Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
     K2 = round(Int,T2*3600/Ts);             # Additional time instants past control horizon
-    K  = K1+K2;                        # Total horizon (8 PM to 10 AM)Qs  = 10;              % Stage and terminal penalty on charge difference with respect to 1 (states s)
+    K  = K1+K2;                        # Total horizon (8 PM to 10 AM)
 
     # PWL Parameters:
     S=15
@@ -203,12 +203,14 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     iD_pred=0*ones(K,1)
     iD_actual=iD_pred
 
-    Q=100*ones(1,H)
-    R=0.0001*ones(1,H)
+    Qmag=1
+    Rmag=1e3
+    Rh=(Rmag*rand(1,H).+1)
+    Qh=(Qmag*rand(1,H).+.001)
 
     hubS=scenarioHubStruct(Nh,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imax,ηP,τP,ρP,γP,e0,t0,
                             Sn_depart_min,Sn_arrive_actual,Sn_arrive_pred,K_arrive_pred,K_depart_pred,
-                            K_arrive_actual,K_depart_actual,EVcap,iD_pred,iD_actual,Tamb,Q,R)
+                            K_arrive_actual,K_depart_actual,EVcap,iD_pred,iD_actual,Tamb,Qh,Rh)
 
     # evHubS=scenarioHubStruct(N,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,uMax,ηP,τP,ρP,γP,e0,t0,iD_pred,iD_actual,Tamb,Q,R)
 
