@@ -213,7 +213,7 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     # evHubS=scenarioHubStruct(N,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,uMax,ηP,τP,ρP,γP,e0,t0,iD_pred,iD_actual,Tamb,Q,R)
 
     if saveS==true
-        save(path*"HubscenarioN$(N).jld2","hubS",hubS)
+        save(path*"HubscenarioH$(H).jld2","hubS",hubS)
     end
 
     return hubS

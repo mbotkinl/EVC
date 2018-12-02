@@ -102,7 +102,10 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     @constraint(cModel,slackE.<=slackMax)
     @constraint(cModel,slackE.>=0)
 
-    status=solve(cModel)
+    TT = stdout # save original stdout stream
+    redirect_stdout()
+    status = solve(cModel)
+    redirect_stdout(TT)
     @assert status==:Optimal "Central Hub optimization not solved to optimality"
 
     eRaw=getvalue(e)

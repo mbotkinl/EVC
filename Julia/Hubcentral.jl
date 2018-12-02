@@ -12,8 +12,8 @@ using Gurobi
 #especially stepI +k for iD and Tamb
 
 H=4
-Nh=10
-Tmax=.393
+Nh=20
+Tmax=.450
 mode="PWL"
 silent=true
 saveS=false
@@ -24,7 +24,7 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funHub.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hubSimple\\"
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4\\"
 
 println("Creating Hub Scenario...")
 hubS=setupHubScenario(H,Nh,Tmax=Tmax,saveS=saveS,path=path)
