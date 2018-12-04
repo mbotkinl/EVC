@@ -152,7 +152,7 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
 
     # Discretization parameters:
     #Ts = Rh*C/9              # s, sampling time in seconds
-    Ts=180
+    Ts=180.0
     #ηP = Ts*Vac*a./b  # 1/kA, normalized battery sizes (0-1)
     ηP=0.8*ones(1,H)*(Ts/3600)*Vac #Vh
     τP = exp(- Ts/(Rh*C))
@@ -160,8 +160,8 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     γP = Rh*Rw/(Ntf)*ρP*1000^2/1000    # kK/kW, ohmic losses-to-temp parameter
 
     ## MPC Paramters
-    T1=12
-    T2=2
+    T1=6 #hours
+    T2=14-T1
     K1 = round(Int,T1*3600/Ts);            # Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
     K2 = round(Int,T2*3600/Ts);             # Additional time instants past control horizon
     K  = K1+K2;                        # Total horizon (8 PM to 10 AM)
@@ -171,7 +171,18 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     ItotalMax = 4  #kA
     deltaI = ItotalMax/S
 
-    #action happens interval before
+    #system information
+    t0=.370
+    Tamb=.37*ones(K,1)
+    iD_pred=0*ones(K,1)
+    iD_actual=iD_pred
+
+    Qmag=1
+    Rmag=1e3
+    Rh=(Rmag*rand(1,H).+1)
+    Qh=(Qmag*rand(1,H).+.001)
+
+    #action happens immediately afte interval before ends
     #hub information
     arriveLast=round(Int,2*3600/Ts) #last arrival at 10PM
     departFirst=round(Int,10*3600/Ts) #first departure at 6AM
@@ -197,22 +208,40 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     e0=zeros(H)
     #uMax=sum(imax,dims=1)
 
-    #system information
-    t0=.370
-    Tamb=.37*ones(K,1)
-    iD_pred=0*ones(K,1)
-    iD_actual=iD_pred
+    #prepare predicted values for optimization
+    eMax=zeros(K,H)
+    uMax=zeros(K,H)
+    eDepart_min=zeros(K,H)
+    eArrive_pred=zeros(K,H)
+    eArrive_actual=zeros(K,H)
+    slackMax=zeros(K,H)
+    for k =1:K
+        for h=1:H # find a way to do this without another loop
+            depart=[n for n=1:Nh if k==K_depart_pred[n,h]]
+            if length(depart)!=0
+                eDepart_min[k,h] = sum(Sn_depart_min[n,h]*EVcap[n,h] for n in depart)
+                slackMax[k,h] = sum(EVcap[n,h]-Sn_depart_min[n,h]*EVcap[n,h] for n in depart)
+            end
 
-    Qmag=1
-    Rmag=1e3
-    Rh=(Rmag*rand(1,H).+1)
-    Qh=(Qmag*rand(1,H).+.001)
+            # arrive=[n for n=1:Nh,h=1:H if k==hubS.K_arrive_pred[n,h]]
+            arrive=[n for n=1:Nh if k==K_arrive_pred[n,h]]
+            if length(arrive)!=0
+                eArrive_pred[k,h] = sum(Sn_arrive_pred[n,h]*EVcap[n,h] for n in arrive)
+                eArrive_actual[k,h] = sum(Sn_arrive_actual[n,h]*EVcap[n,h] for n in arrive)
+            end
 
-    hubS=scenarioHubStruct(Nh,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imax,ηP,τP,ρP,γP,e0,t0,
-                            Sn_depart_min,Sn_arrive_actual,Sn_arrive_pred,K_arrive_pred,K_depart_pred,
-                            K_arrive_actual,K_depart_actual,EVcap,iD_pred,iD_actual,Tamb,Qh,Rh)
+            parked=[n for n=1:Nh  if K_arrive_pred[n,h]<=k<K_depart_pred[n,h]]
+            if length(parked)!=0
+                #ηH[k]=mean(eta[n] for n in parked)
+                uMax[k,h]=sum(imax[n,h] for n in parked)
+                eMax[k,h]=sum(EVcap[n,h] for n in parked)
+            end
+        end
+    end
 
-    # evHubS=scenarioHubStruct(N,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,uMax,ηP,τP,ρP,γP,e0,t0,iD_pred,iD_actual,Tamb,Q,R)
+    hubS=scenarioHubStruct(Nh,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,ηP,τP,ρP,γP,e0,t0,iD_pred,iD_actual,Tamb,Qh,Rh,
+                            Sn_depart_min,Sn_arrive_actual,Sn_arrive_pred,K_arrive_pred,K_depart_pred,K_arrive_actual,
+                            K_depart_actual,EVcap,eMax,uMax,eDepart_min,eArrive_pred,eArrive_actual,slackMax)
 
     if saveS==true
         save(path*"HubscenarioH$(H).jld2","hubS",hubS)

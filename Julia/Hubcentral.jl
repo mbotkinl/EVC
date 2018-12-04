@@ -11,11 +11,11 @@ using Gurobi
 # check all indexing????
 #especially stepI +k for iD and Tamb
 
-
+datafile="n"
 mode="PWL"
 silent=true
-saveS=false
-saveF=false
+saveS=true
+saveF=true
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funHub.jl")
@@ -28,7 +28,6 @@ if datafile=="jld2"
 	println("Reading in Hub Scenario...")
 	loadF=load(path*file)
 	hubS=loadF["hubS"]
-
 else #create scenario
 	println("Creating Hub Scenario...")
 	H=4
@@ -61,12 +60,9 @@ endT1=Time(23,59)
 stT2=Time(0,0)
 endT2=Time(10,0)
 Xlabels=vcat(collect(stT1:Dates.Second(round(hubS.Ts)):endT1),collect(stT2:Dates.Second(round(hubS.Ts)):endT2))
-#Xlabels=vcat(collect(stT1:Dates.Minute(3):endT1),collect(stT2:Dates.Minute(3):endT2))
 xticks=(1:40:K,Dates.format.(Xlabels[1:40:K],"HH:MM"))
-
-
-
 hubLabels=permutedims(["Hub $(h)" for h=1:H])
+
 p1=plot(1:K,cSol.E,xlabel="",ylabel="Energy (kWh)",xlims=(0,K),seriestype=:line,labels=hubLabels,xticks=xticks)
 
 sumPlot=plot(1:K,sum(cSol.E,dims=2),xlabel="",ylabel="Energy (kWh)",label="Hub Energy",xlims=(0,K),seriestype=:bar,xticks=xticks)
@@ -82,6 +78,14 @@ plot!(p3,hubS.Tmax*ones(K)*1000,label="XFRM Limit",line=(:dash,:red),xticks=xtic
 
 p4=plot(cSol.Lam,label="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,K),legend=false,xticks=xticks)
 
+
+# epsilon=.01
+# compMin=cSol.E_depart.>=hubS.eDepart_min
+# all(compMin)
+# compDept=cSol.E_depart.-(hubS.eDepart_min.+hubS.slackMax)
+# testDept=abs.(compDept).<=epsilon
+# all(testDept)
+# findfirst(testDept.==false)
 
 h1=plot(p1,p2,p3,p4,layout=(4,1))
 lowRes=true

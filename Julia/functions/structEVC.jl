@@ -63,7 +63,6 @@ struct scenarioHubStruct
 
     #limits
     Tmax::Float64
-    imax::Array{Float64,2}
 
     #Discretization Paramters
     ηP::Array{Float64,2}
@@ -75,6 +74,15 @@ struct scenarioHubStruct
     e0::Array{Float64,1}
     t0::Float64
 
+    #disturbances
+    iD_pred::Array{Float64,2}
+    iD_actual::Array{Float64,2}
+    Tamb::Array{Float64,2}
+
+    #User def penalty matrix
+    Qh::Array{Float64,2}
+    Rh::Array{Float64,2}
+
     #hub conditions
     Sn_depart_min::Array{Float64,2}
     Sn_arrive_actual::Array{Float64,2}
@@ -85,14 +93,12 @@ struct scenarioHubStruct
     K_depart_actual::Array{Int64,2}
     EVcap::Array{Float64,2}
 
-    #disturbances
-    iD_pred::Array{Float64,2}
-    iD_actual::Array{Float64,2}
-    Tamb::Array{Float64,2}
-
-    #User def penalty matrix
-    Q::Array{Float64,2}
-    R::Array{Float64,2}
+    eMax::Array{Float64,2}
+    uMax::Array{Float64,2}
+    eDepart_min::Array{Float64,2}
+    eArrive_pred::Array{Float64,2}
+    eArrive_actual::Array{Float64,2}
+    slackMax::Array{Float64,2}
 end
 
 #structures

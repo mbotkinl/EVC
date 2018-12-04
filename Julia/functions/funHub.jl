@@ -11,38 +11,12 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
 
     horzLen=min(hubS.K1,K-stepI)
 
-    #prepare predicted values for optimization
-
-    #ηH=zeros(horzLen+1,1)
-    eMax=zeros(horzLen+1,H)
-    uMax=zeros(horzLen+1,H)
-    eDepart=zeros(horzLen+1,H)
-    eArrive_pred=zeros(horzLen+1,H)
-    eArrive_actual=zeros(horzLen+1,H)
-    slackMax=zeros(horzLen+1,H)
-    for (i,k) in enumerate(stepI:(stepI+horzLen))
-        for h=1:H # find a way to do this without another loop
-            depart=[n for n=1:Nh if k==hubS.K_depart_pred[n,h]]
-            if length(depart)!=0
-                eDepart[i,h] = sum(hubS.Sn_depart_min[n,h]*hubS.EVcap[n,h] for n in depart)
-                slackMax[i,h] = sum(hubS.EVcap[n,h]-hubS.Sn_depart_min[n,h]*hubS.EVcap[n,h] for n in depart)
-            end
-
-            # arrive=[n for n=1:Nh,h=1:H if k==hubS.K_arrive_pred[n,h]]
-            arrive=[n for n=1:Nh if k==hubS.K_arrive_pred[n,h]]
-            if length(arrive)!=0
-                eArrive_pred[i,h] = sum(hubS.Sn_arrive_pred[n,h]*hubS.EVcap[n,h] for n in arrive)
-                eArrive_actual[i,h] = sum(hubS.Sn_arrive_actual[n,h]*hubS.EVcap[n,h] for n in arrive)
-            end
-
-            parked=[n for n=1:Nh  if hubS.K_arrive_pred[n,h]<=k<=hubS.K_depart_pred[n,h]]
-            if length(parked)!=0
-                #ηH[k]=mean(eta[n] for n in parked)
-                uMax[i,h]=sum(hubS.imax[n,h] for n in parked)
-                eMax[i,h]=sum(hubS.EVcap[n,h] for n in parked)
-            end
-        end
-    end
+    eMax=hubS.eMax[stepI:(stepI+horzLen),:]
+    uMax=hubS.uMax[stepI:(stepI+horzLen),:]
+    eDepart_min=hubS.eDepart_min[stepI:(stepI+horzLen),:]
+    eArrive_pred=hubS.eArrive_pred[stepI:(stepI+horzLen),:]
+    eArrive_actual=hubS.eArrive_actual[stepI:(stepI+horzLen),:]
+    slackMax=hubS.slackMax[stepI:(stepI+horzLen),:]
 
     if silent
         #cModel = Model(solver = IpoptSolver(print_level=0))
@@ -61,7 +35,7 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     @variable(cModel,slackE[1:(horzLen+1),1:H])
 
     #objective
-    @objective(cModel,Min,sum(sum(hubS.Q[h]*(e[k,h]-eMax[k,h])^2+hubS.R[h]*u[k,h]^2 for k=1:horzLen+1) for h=1:H))
+    @objective(cModel,Min,sum(sum(hubS.Qh[h]*(e[k,h]-eMax[k,h])^2+hubS.Rh[h]*u[k,h]^2 for k=1:horzLen+1) for h=1:H))
 
     #transformer constraints
     @constraint(cModel,upperTCon,t.<=hubS.Tmax)
@@ -93,8 +67,8 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     end
 
     #hub constraints
-    @constraint(cModel,stateCon1[h=1:H],e[1,h]==e0[h]+hubS.ηP[h]*u[1,h]-(eDepart[1,h]+slackE[1,h])+eArrive_pred[1,h])
-    @constraint(cModel,stateCon[k=1:horzLen,h=1:H],e[k+1,h]==e[k,h]+hubS.ηP[h]*u[k+1,h]-(eDepart[k+1,h]+slackE[k+1,h])+eArrive_pred[k+1,h])
+    @constraint(cModel,stateCon1[h=1:H],e[1,h]==e0[h]+hubS.ηP[h]*u[1,h]-(eDepart_min[1,h]+slackE[1,h])+eArrive_pred[1,h])
+    @constraint(cModel,stateCon[k=1:horzLen,h=1:H],e[k+1,h]==e[k,h]+hubS.ηP[h]*u[k+1,h]-(eDepart_min[k+1,h]+slackE[k+1,h])+eArrive_pred[k+1,h])
     @constraint(cModel,e.>=0)
     @constraint(cModel,eMaxCon[k=1:horzLen+1,h=1:H],e[k,h]<=eMax[k,h])
     @constraint(cModel,uMaxCon,u.<=uMax)
@@ -127,7 +101,7 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     nextU=uRaw[1,:]
     cSol.U[stepI,:]=nextU
     cSol.Lam[stepI,1]=lambdaCurr[1,1]
-    cSol.E_depart[stepI,:]=eDepart[1,:]+extraE[1,:]
+    cSol.E_depart[stepI,:]=eDepart_min[1,:]+extraE[1,:]
     cSol.E_arrive[stepI,:]=eArrive_actual[1,:]
     cSol.E[stepI,:]=e0[:]+hubS.ηP[:].*nextU-(cSol.E_depart[stepI,:])+cSol.E_arrive[stepI,:]
     cSol.T[stepI,1]=hubS.τP*t0+hubS.γP*(sum(nextU)+hubS.iD_actual[stepI,1])^2+hubS.ρP*hubS.Tamb[stepI,1]
