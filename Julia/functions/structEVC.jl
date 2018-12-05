@@ -58,7 +58,7 @@ struct scenarioHubStruct
 
     #PWL
     S::Int64
-    ItotalMax::Int64
+    ItotalMax::Float64
     deltaI::Float64
 
     #limits
