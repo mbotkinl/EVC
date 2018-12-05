@@ -35,7 +35,7 @@ drawFig=false
 saveResults=false
 saveS=false
 loadResults=false
-#verbose=false
+silent=true
 
 if datafile=="jld2"
 	using FileIO
@@ -51,11 +51,12 @@ else #create scenario
 	println("Creating EV Scenario...")
 	Tmax=400/1000
 	Dload_amplitude=20
+	Dload_error=0
 
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
     if saveS using FileIO end
 	using Distributions
-	evS=setupScenario(N;Tmax=Tmax,Dload_amplitude=Dload_amplitude,saveS=saveS,path=path)
+	evS=setupScenario(N;Tmax=Tmax,Dload_amplitude=Dload_amplitude,Dload_error=Dload_error,saveS=saveS,path=path)
 end
 
 

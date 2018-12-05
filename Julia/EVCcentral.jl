@@ -3,12 +3,7 @@
 using Gurobi
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 
-#pull out a few key variables
-N=evS.N
-S=evS.S
-horzLen=evS.K1
-errorString= if forecastError "_Error" else "" end
-fname = "central_N$(N)"*errorString
+fname = "central_N$(N)"
 
 if loadResults
 	println("Reading in Central Sim")
@@ -16,35 +11,39 @@ if loadResults
 	evS=loadF["scenario"]
 	cSol=loadF["solution"]
 else
+	#initialize
+    t0=evS.t0
+    s0=evS.s0
+
 	println("Running Central Sim")
-	timeT=@elapsed cSol=pwlEVcentral(N,S,horzLen,evS,forecastError,slack)
+	timeT=@elapsed cSol=pwlEVcentral(evS,slack,silent)
 	if saveResults saveRun(path,fname,timeT, evS,cSol) end
 end
 
 
 println("plotting....")
-snPlot=zeros(horzLen+1,N)
-#xPlot2=zeros(horzLen+1,N)
-uPlot=zeros(horzLen+1,N)
-for ii= 1:N
-	snPlot[:,ii]=cSol.Sn[collect(ii:N:length(cSol.Sn))]
-	#xPlot2[:,ii]=(evS.Snmin[ii,1]-xPlot[:,ii])./(evS.Kn[ii,1]-(1:1:length(xPlot[:,ii])))
-    uPlot[:,ii]=cSol.Un[collect(ii:N:length(cSol.Un))]
-end
+# snPlot=zeros(horzLen+1,N)
+# #xPlot2=zeros(horzLen+1,N)
+# uPlot=zeros(horzLen+1,N)
+# for ii= 1:N
+# 	snPlot[:,ii]=cSol.Sn[collect(ii:N:length(cSol.Sn))]
+# 	#xPlot2[:,ii]=(evS.Snmin[ii,1]-xPlot[:,ii])./(evS.Kn[ii,1]-(1:1:length(xPlot[:,ii])))
+#     uPlot[:,ii]=cSol.Un[collect(ii:N:length(cSol.Un))]
+# end
 
 
-p1=plot(snPlot,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(1,horzLen+1))
+p1=plot(cSol.Sn,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(1,evS.K))
 if drawFig savefig(p1,path*"J_central_SOC.png") end
 
-p2=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(1,horzLen+1))
+p2=plot(cSol.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(1,evS.K))
 if drawFig savefig(p2,path*"J_central_Curr.png") end
 
-p3=plot(1:horzLen+1,hcat(cSol.Xt*1000,cSol.Tactual*1000),label=["PWL Temp" "Actual Temp"],xlims=(1,horzLen+1),xlabel="Time",ylabel="Temp (K)")
-plot!(p3,1:horzLen+1,evS.Tmax*ones(horzLen+1)*1000,label="XFRM Limit",line=(:dash,:red))
+p3=plot(hcat(cSol.T*1000,cSol.Tactual*1000),label=["PWL Temp" "Actual Temp"],xlims=(1,evS.K),xlabel="Time",ylabel="Temp (K)")
+plot!(p3,1:evS.K,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(p3,path*"J_central_Temp.png") end
 
-p4b=plot(1:horzLen+1,cSol.lamTemp,xlabel="Time",ylabel=raw"Lambda ($/K)",xlims=(1,horzLen+1),legend=false)
-p4=plot(1:horzLen+1,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,horzLen+1),legend=false)
+p4b=plot(cSol.lamTemp,xlabel="Time",ylabel=raw"Lambda ($/K)",xlims=(1,evS.K),legend=false)
+p4=plot(cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,evS.K),legend=false)
 if drawFig savefig(p4,path*"J_central_Lam.png") end
 
 fName="J_Central.png"

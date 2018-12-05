@@ -2,18 +2,17 @@
 
 
 #central
-function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,forecastError::Bool,slack::Bool)
+function runEVCCentralStep(stepI,evS,cSol,silent)
+
+    K=evS.K
+    N=evS.N
+    S=evS.S
+    horzLen=min(evS.K1,K-stepI)
+
     #initialize with current states
-    sn0=evS.s0
-    xt0=evS.t0
-    if forecastError
-        iD=evS.iDnoise
-    else
-        iD=evS.iD
-    end
+    global s0
+    global t0
 
-
-    stepI=1
     #desired SOC
     target=zeros(N*(horzLen+1),1);
     for ii=1:N
@@ -22,35 +21,36 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,forecastErr
        target[ind].=evS.Snmin[ii,1]
     end
 
-    println("setting up model")
-    #centralModel = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1,NumericFocus=3))
-    centralModel = Model(solver = GurobiSolver())
+    if !silent println("setting up model") end
+    if silent
+        centralModel = Model(solver = GurobiSolver(OutputFlag=0))
+    else
+        centralModel = Model(solver = GurobiSolver())
+        #centralModel = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1,NumericFocus=3))
+    end
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
     @variable(centralModel,u[1:N*(horzLen+1)])
     @variable(centralModel,sn[1:(N)*(horzLen+1)])
-    @variable(centralModel,xt[1:(horzLen+1)])
+    @variable(centralModel,t[1:(horzLen+1)])
     @variable(centralModel,z[1:evS.S*(horzLen+1)])
     if slack
         @variable(centralModel,slackSn[1:N])
     end
-    println("obj")
-
+    if !silent println("obj") end
     objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,1]+(u[n,1])^2*evS.Ri[n,1] for n=1:N)
     for k=2:horzLen+1
         append!(objExp,sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1]  for n=1:N))
     end
     if slack append!(objExp,sum(evS.β[n]*slackSn[n]^2 for n=1:N)) end
-
-    #objExp=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1]  for n=1:N) for k=1:horzLen+1)
-
     @objective(centralModel,Min,objExp)
-    println("constraints")
-    @constraint(centralModel,stateCon1,sn[1:N,1].==sn0[1:N,1]+evS.ηP[:,1].*u[1:N,1])
+
+    if !silent println("constraints") end
+    @constraint(centralModel,stateCon1,sn[1:N,1].==s0[1:N,1]+evS.ηP[:,1].*u[1:N,1])
     @constraint(centralModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+evS.ηP[n,1]*u[n+(k)*(N),1])
-    @constraint(centralModel,tempCon1,xt[1,1]==evS.τP*xt0+evS.γP*evS.deltaI*sum((2*s-1)*z[s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI,1])
-    @constraint(centralModel,tempCon2[k=1:horzLen],xt[k+1,1]==evS.τP*xt[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI+k,1])
-    @constraint(centralModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-iD[stepI+(k-1)]+sum(z[(k-1)*(S)+s] for s=1:S))
+    @constraint(centralModel,tempCon1,t[1,1]==evS.τP*t0+evS.γP*evS.deltaI*sum((2*s-1)*z[s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI,1])
+    @constraint(centralModel,tempCon2[k=1:horzLen],t[k+1,1]==evS.τP*t[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI+k,1])
+    @constraint(centralModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-evS.iD_pred[stepI+(k-1)]+sum(z[(k-1)*(S)+s] for s=1:S))
     @constraint(centralModel,sn.<=1)
     if slack
         @constraint(centralModel,sn.>=target.*(1-repeat(slackSn,horzLen+1,1)))
@@ -59,21 +59,24 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,forecastErr
         @constraint(centralModel,sn.>=target)
     end
     if noTlimit==false
-    	@constraint(centralModel,upperTCon,xt.<=evS.Tmax)
+    	@constraint(centralModel,upperTCon,t.<=evS.Tmax)
     end
-    @constraint(centralModel,xt.>=0)
+    @constraint(centralModel,t.>=0)
     @constraint(centralModel,upperCCon,u.<=repeat(evS.imax,horzLen+1,1))
     @constraint(centralModel,u.>=repeat(evS.imin,horzLen+1,1))
     @constraint(centralModel,z.>=0)
     @constraint(centralModel,z.<=evS.deltaI)
 
-    println("solving....")
-    statusM = solve(centralModel)
-    @assert statusM==:Optimal "Central optimization not solved to optimality"
+    if !silent println("solving....") end
+    TT = stdout # save original stdout stream
+    redirect_stdout()
+    status = solve(centralModel)
+    redirect_stdout(TT)
+    @assert status==:Optimal "Central optimization not solved to optimality"
 
     uRaw=getvalue(u)
     snRaw=getvalue(sn)
-    xtRaw=getvalue(xt)
+    tRaw=getvalue(t)
     zRaw=getvalue(z)
     if slack
         slackSnRaw=getvalue(slackSn)
@@ -85,11 +88,11 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,forecastErr
     Tactual=zeros(horzLen+1,1)
     itotal=zeros(horzLen+1,1)
     for k=1:horzLen+1
-        itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + evS.iD[stepI+(k-1),1]
+        itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + evS.iD_actual[stepI+(k-1),1]
     end
-    Tactual[1,1]=evS.τP*xt0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
+    Tactual[1,1]=evS.τP*t0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
     for k=1:horzLen
-        Tactual[k+1,1]=evS.τP*Tactual[k,1]+evS.γP*itotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+(k-1),1]
+        Tactual[k+1,1]=evS.τP*Tactual[k,1]+evS.γP*itotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]
     end
     lambdaCurr=-getdual(currCon)
     if noTlimit==false
@@ -105,11 +108,41 @@ function pwlEVcentral(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,forecastErr
         uSum[k,1]=sum(uRaw[(k-1)*N+n,1] for n=1:N)
     end
 
-    cSol=centralSolutionStruct(Xt=xtRaw,Un=uRaw,Sn=snRaw,z=zRaw,
-                        Itotal=itotal,uSum=uSum,zSum=zSum,
-                        objVal=getobjectivevalue(centralModel),
-                        lamTemp=lambdaUpperT,lamCoupl=lambdaCurr,
-                        Tactual=Tactual,slackSn=slackSnRaw)
+    cSol.T[stepI,1]=tRaw[1]
+    cSol.Un[stepI,:]=uRaw[1:N]
+    cSol.Sn[stepI,:]=snRaw[1:N]
+    cSol.Z[stepI,:]=zRaw[1:S]
+    cSol.uSum[stepI,1]=uSum[1]
+    cSol.zSum[stepI,1]=zSum[1]
+    cSol.Itotal[stepI,1]=itotal[1]
+    cSol.Tactual[stepI,1]=Tactual[1]
+    cSol.lamCoupl[stepI,1]=lambdaCurr[1]
+    cSol.lamTemp[stepI,1]=lambdaUpperT[1]
+
+    #cSol.objVal[1,1,stepI]=getobjectivevalue(centralModel)
+
+    # new states
+    t0=cSol.T[stepI,1]
+    s0=cSol.Sn[stepI,:]
+    return nothing
+end
+
+function pwlEVcentral(evS::scenarioStruct,slack::Bool,silent::Bool)
+
+    horzLen=evS.K1
+    K=evS.K
+    N=evS.N
+    S=evS.S
+    cSol=centralSolutionStruct(horzLen=horzLen,K=K,N=N,S=S)
+
+    for stepI=1:K
+        @printf "time step %g of %g....\n" stepI K
+        runEVCCentralStep(stepI,evS,cSol,silent)
+    end
+
+    objFun(sn,u)=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,1] for n=1:N) +sum((u[k,n])^2*evS.Ri[n,1] for n=1:N) for k=1:horzLen+1)
+    cSol.objVal[1,1]=objFun(cSol.Sn,cSol.Un)
+
     return cSol
 end
 

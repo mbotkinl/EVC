@@ -1,6 +1,5 @@
 
 
-
 #structures
 struct scenarioStruct
     N::Int
@@ -36,8 +35,8 @@ struct scenarioStruct
     Kn::Array{Int,2}
 
     #disturbances
-    iD::Array{Float64,2}
-    iDnoise::Array{Float64,2}
+    iD_pred::Array{Float64,2}
+    iD_actual::Array{Float64,2}
     Tamb::Array{Float64,2}
 
     #User def penalty matrix
@@ -206,21 +205,23 @@ end
 end
 
 @with_kw struct centralSolutionStruct
-
-    Xt::Array=zeros((horzLen+1),1)
-    Sn::Array=zeros(N*(horzLen+1),1)
-    Un::Array=zeros(N*(horzLen+1),1)
-    z::Array=zeros(S*(horzLen+1),1) #for PWL only
-    Itotal::Array=zeros((horzLen+1),1)
-    objVal::Float64=0
-    lamTemp::Array=zeros((horzLen+1),1)
-    lamCoupl::Array=zeros((horzLen+1),1)
-    uSum::Array=zeros(N*(horzLen+1),1)
-    zSum::Array=zeros(S*(horzLen+1),1)
-    Tactual::Array=zeros((horzLen+1),1)
-    slackSn::Array=zeros(N,1)
+    horzLen::Int
+    K::Int
+    N::Int
+    S::Int
+    T::Array=zeros(K,1)
+    Sn::Array=zeros(K,N)
+    Un::Array=zeros(K,N)
+    Z::Array=zeros(K,S) #for PWL only
+    Itotal::Array=zeros(K,1)
+    objVal::Array=zeros(1,1)
+    lamTemp::Array=zeros(K,1)
+    lamCoupl::Array=zeros(K,1)
+    uSum::Array=zeros(K,1)
+    zSum::Array=zeros(K,1)
+    Tactual::Array=zeros(K,1)
+    slackSn::Array=zeros(K,1)
 end
-
 
 @with_kw struct centralHubSolutionStruct
     E::Array=zeros(K,H) #row are time, column are hub
