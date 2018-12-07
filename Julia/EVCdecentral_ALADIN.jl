@@ -47,7 +47,6 @@ pd4alad=plot(hcat(cSol.lamCoupl,dSolalad.lamCoupl),xlabel="Time",ylabel=raw"Lamb
              xlims=(0,evS.K),labels=["Central" "ALADIN"])
 if drawFig savefig(pd4alad,path*"J_decentral_ALADIN_Lam.png") end
 
-
 aggU=plot(hcat(cSol.uSum,dSolalad.uSum),label=["Central" "ALAD"],
 			xlims=(0,evS.K),xlabel="Time",ylabel="PEV Current (kA)")
 
