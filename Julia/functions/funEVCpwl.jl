@@ -134,14 +134,22 @@ function pwlEVcentral(evS::scenarioStruct,slack::Bool,silent::Bool)
     K=evS.K
     N=evS.N
     S=evS.S
-    cSol=centralSolutionStruct(horzLen=horzLen,K=K,N=N,S=S)
+    cSol=solutionStruct(K=K,N=N,S=S)
+
+    # stepI=1
+    # using Profile
+    # Profile.clear()
+    # runEVCCentralStep(stepI,evS,cSol,silent)
+    # cSol=centralSolutionStruct(horzLen=horzLen,K=K,N=N,S=S)
+    # @profile  runEVCCentralStep(stepI,evS,cSol,silent)
+    # Juno.profiler()
 
     for stepI=1:K
-        @printf "time step %g of %g....\n" stepI K
+        @printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI K
         runEVCCentralStep(stepI,evS,cSol,silent)
     end
 
-    objFun(sn,u)=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,1] for n=1:N) +sum((u[k,n])^2*evS.Ri[n,1] for n=1:N) for k=1:horzLen+1)
+    objFun(sn,u)=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,1] for n=1:N) +sum((u[k,n])^2*evS.Ri[n,1] for n=1:N) for k=1:evS.K)
     cSol.objVal[1,1]=objFun(cSol.Sn,cSol.Un)
 
     return cSol
