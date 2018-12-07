@@ -30,8 +30,9 @@ function runEVCCentralStep(stepI,evS,cSol,silent)
     end
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
-    @variable(centralModel,u[1:N*(horzLen+1)])
+
     @variable(centralModel,sn[1:(N)*(horzLen+1)])
+    @variable(centralModel,u[1:(N)*(horzLen+1)])
     @variable(centralModel,t[1:(horzLen+1)])
     @variable(centralModel,z[1:evS.S*(horzLen+1)])
     if slack
@@ -108,7 +109,7 @@ function runEVCCentralStep(stepI,evS,cSol,silent)
         uSum[k,1]=sum(uRaw[(k-1)*N+n,1] for n=1:N)
     end
 
-    cSol.T[stepI,1]=tRaw[1]
+    cSol.Tpwl[stepI,1]=tRaw[1]
     cSol.Un[stepI,:]=uRaw[1:N]
     cSol.Sn[stepI,:]=snRaw[1:N]
     cSol.Z[stepI,:]=zRaw[1:S]
@@ -122,7 +123,7 @@ function runEVCCentralStep(stepI,evS,cSol,silent)
     #cSol.objVal[1,1,stepI]=getobjectivevalue(centralModel)
 
     # new states
-    t0=cSol.T[stepI,1]
+    t0=cSol.Tactual[stepI,1]
     s0=cSol.Sn[stepI,:]
     return nothing
 end

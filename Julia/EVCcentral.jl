@@ -2,7 +2,6 @@
 #4/8/18
 using Gurobi
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
-
 fname = "central_N$(N)"
 
 if loadResults
@@ -38,7 +37,7 @@ if drawFig savefig(p1,path*"J_central_SOC.png") end
 p2=plot(cSol.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(1,evS.K))
 if drawFig savefig(p2,path*"J_central_Curr.png") end
 
-p3=plot(hcat(cSol.T*1000,cSol.Tactual*1000),label=["PWL Temp" "Actual Temp"],xlims=(1,evS.K),xlabel="Time",ylabel="Temp (K)")
+p3=plot(hcat(cSol.Tpwl*1000,cSol.Tactual*1000),label=["PWL Temp" "Actual Temp"],xlims=(1,evS.K),xlabel="Time",ylabel="Temp (K)")
 plot!(p3,1:evS.K,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(p3,path*"J_central_Temp.png") end
 

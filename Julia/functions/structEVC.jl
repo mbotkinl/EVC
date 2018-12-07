@@ -204,12 +204,11 @@ end
     itUpdate::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 end
 
-@with_kw struct centralSolutionStruct
-    horzLen::Int
+@with_kw struct solutionStruct
     K::Int
     N::Int
     S::Int
-    T::Array=zeros(K,1)
+    Tpwl::Array=zeros(K,1)
     Sn::Array=zeros(K,N)
     Un::Array=zeros(K,N)
     Z::Array=zeros(K,S) #for PWL only
@@ -221,6 +220,7 @@ end
     zSum::Array=zeros(K,1)
     Tactual::Array=zeros(K,1)
     slackSn::Array=zeros(K,1)
+    convIt::Array=zeros(K,1)
 end
 
 @with_kw struct centralHubSolutionStruct

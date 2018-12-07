@@ -4,7 +4,7 @@
 #from Mads Almassakhi code
 
 #functions
-function setupScenario(N;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd())
+function setupScenario(N;Tmax=.393,Dload_amplitude=0,Dload_error=0,saveS=false,path=pwd())
 
     #model parameters
     a   = rand(N,1)*.1 .+ 0.8               # efficiency of Li-ion batts is ~80-90%
@@ -44,15 +44,11 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd())
     deltaI = ItotalMax/S
 
     ## MPC Paramters
-    # T1=0.16
-    # T2=1
     T1=12
-    T2=2
+    T2=14-T1
     K1 = round(Int,T1*3600/Ts);            # Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
     K2 = round(Int,T2*3600/Ts);             # Additional time instants past control horizon
-    K  = K1+K2;                        # Total horizon (8 PM to 10 AM)Qs  = 10;              % Stage and terminal penalty on charge difference with respect to 1 (states s)
-    #K=331
-    #K=199
+    K  = K1+K2;                        # Total horizon (8 PM to 10 AM)Qs  = 10;
 
     # Constraint parameters:
     #Tmax = 393                             # Short-term over-loading --> 120 C = 393 Kelvin
@@ -71,7 +67,7 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd())
     #SOCmin=ones(N,1)
     FullChargeTime_relative = .25*rand(N,1).+.75
     #FullChargeTime_relative=ones(N,1)
-    FullChargeTime = convert(Array{Int,2},round.(K1*FullChargeTime_relative))
+    FullChargeTime = convert(Array{Int,2},round.(K*FullChargeTime_relative))
     Snmin=round.(SOCmin,digits=4)
     Kn=FullChargeTime
 
@@ -94,16 +90,11 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd())
     FullinelasticDemand = 100*(200*(inelasticDemand.-minimum(inelasticDemand))/(maximum(inelasticDemand)-minimum(inelasticDemand)) .+ 600)/1000; # total non-EV demand (in kW) = N/PEVpenetration*inelasticDemandperHouse
     FullinelasticDemand = [FullinelasticDemand; FullinelasticDemand[length(FullinelasticDemand)]*ones(K2+1,1)]
     FullDload   = Dload_amplitude*FullinelasticDemand;    # peaks during mid-day
-    iD = FullDload/Vtf;                                     #background demand current
+    iD_pred = round.(FullDload/Vtf,digits=6);                                     #background demand current
 
-    noisePerc= .05
-    iDnoise = round.(iD+2*noisePerc*iD.*rand(length(iD),1).-iD*noisePerc,digits=6)
+    noisePerc= Dload_error
+    iD_actual = round.(iD_pred+2*noisePerc*iD_pred.*rand(length(iD_pred),1).-iD_pred*noisePerc,digits=6)
     Tamb    = Tamb_amplitude*ones(K+1,1);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
-    #ndisturbs = 2;
-    # w = zeros((K+1)*ndisturbs,1);
-    # for i=1:K+1
-    #     w[(i-1)*ndisturbs+1:i*ndisturbs,1]  = [iD[i,1]; FullTamb[i,1]];
-    # end
 
     # penalty matrix new (need to fix for k>Ki)
     Ru   = 0.1*1000^2;              # Stage and terminal penalty on local power flow (inputs u)
@@ -127,7 +118,7 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd())
 
 
     evScenario=scenarioStruct(N,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,
-                              ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD,iDnoise,Tamb,Qsi,Ri,β)
+                              ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD_pred,iD_actual,Tamb,Qsi,Ri,β)
 
     if saveS==true
         save(path*"EVCscenarioN$(N).jld2","evScenario",evScenario)
