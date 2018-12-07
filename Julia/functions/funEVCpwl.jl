@@ -187,13 +187,12 @@ function runEVDualIt(p,stepI,evS,dLog,dCM,dSol,cSol,silent)
         minAlpha=1e-6
     end
 
-    convChk = 1e-6
-
+    convChk = 1e-4
 
     #solve subproblem for each EV
     @sync @distributed for evInd=1:N
         target=zeros((horzLen+1),1)
-        target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1].=evS.Snmin[evInd,1]
+        target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
         evM=Model(solver = GurobiSolver(NumericFocus=1))
         @variable(evM,un[1:horzLen+1])
         @variable(evM,sn[1:horzLen+1])
@@ -454,13 +453,13 @@ function runEVADMMIt(p,stepI,evS,dLog,dCM,dSol,cSol,silent)
     ρDivRate=1
     maxRho=1e9
 
-    convChk = 1e-6
+    convChk = 1e-4
 
     #x minimization eq 7.66 in Bertsekas
     @sync @distributed for evInd=1:N
         evV=prevVu[collect(evInd:N:length(prevVu)),1]
         target=zeros((horzLen+1),1)
-        target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1].=evS.Snmin[evInd,1]
+        target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
         evM = Model(solver = GurobiSolver())
         @variable(evM,sn[1:(horzLen+1)])
         @variable(evM,u[1:(horzLen+1)])
@@ -1174,9 +1173,10 @@ function pwlEValad(maxIt::Int,evS::scenarioStruct,cSol::solutionStruct,slack::Bo
     dSol=solutionStruct(K=K,N=N,S=S)
 
     for stepI=1:K
-        @printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI K
+        @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
         try
             runEVALADStep(stepI,maxIt,evS,dSol,cSol,eqForm,silent)
+            @printf "convIt: %g\n" dSol.convIt[stepI,1]
         catch e
             @printf "error: %s" e
             break
