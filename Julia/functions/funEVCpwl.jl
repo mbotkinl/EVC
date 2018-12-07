@@ -527,47 +527,55 @@ function pwlEVadmm(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     return (dLogadmm,dCMadmm,convIt)
 end
 
-#ALADIN
-function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSol::centralSolutionStruct,
-    forecastError::Bool,slack::Bool,eqForm::Bool)
-    #initialize
-    sn0=evS.s0
-    xt0=evS.t0
-    if forecastError
-        iD=evS.iDnoise
-    else
-        iD=evS.iD
+function pwlEVadmm(maxIt::Int,evS::scenarioStruct,cSol::solutionStruct,slack::Bool)
+
+    horzLen=evS.K1
+    K=evS.K
+    N=evS.N
+    S=evS.S
+    dSol=solutionStruct(K=K,N=N,S=S)
+
+    for stepI=1:K
+        @printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI K
+        runEVADMMStep(stepI,maxIt,evS,dSol,cSol,silent)
     end
 
+    objFun(sn,u)=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,1] for n=1:N) +sum((u[k,n])^2*evS.Ri[n,1] for n=1:N) for k=1:evS.K)
+    dSol.objVal[1,1]=objFun(dSol.Sn,dSol.Un)
 
-    stepI = 1
-    epsilon = 1e-8
+    return dSol
+end
 
+#ALADIN
+function runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
+    K=evS.K
+    N=evS.N
+    S=evS.S
+    horzLen=min(evS.K1,K-stepI)
+
+    #initialize with current states
+    global s0
+    global t0
+    global prevLam
+    global prevVu
+    global prevVz
+    global prevVt
+    global prevVs
+    global ρALADp
+
+    #other parameters
+    epsilon = 1e-2
     tolU=1e-6
     tolS=1e-8
     tolT=1e-6
     tolZ=1e-6
 
-    # tol=1e-6
-    # tolU=tol
-    # tolS=tol
-    # tolT=tol
-    # tolZ=tol
-
-    convIt=maxIt
-
-    #ALADIN tuning and initial guess
-    #σU=ones(N,1)
-    #σS=ones(N,1)/10 #for kA
-    #σS=ones(N,1)*100 #for A
-    # σZ=1/N
-    # σT=1/10000 #for kA
-
+    #ALADIN tuning
     if eqForm
-        println("Running Eq ALADIN")
+        #println("Running Eq ALADIN")
         scalingF=1
     else
-        println("Running ineq ALADIN")
+        #println("Running ineq ALADIN")
         scalingF=1e-4
     end
     σZ=scalingF*1e1
@@ -583,314 +591,440 @@ function pwlEValad(N::Int,S::Int,horzLen::Int,maxIt::Int,evS::scenarioStruct,cSo
     # Hz=1e-6
     # Ht=1e-6
 
-    ρALAD=1e3
+    #ρALAD=1e3
     ρRate=1.1
     ρALADmax=4e5
 
-    μALAD=1e8
-    μRate=1
-    μALADmax=2e9
+    μALADp=1e8
+    # μALAD=1e8
+    # μRate=1
+    # μALADmax=2e9
 
-    dCMalad=convMetricsStruct()
-    dLogalad=itLogPWL()
-    convCheck=zeros(maxIt+1,1)
-
-    # lambda0=5*rand(Truncated(Normal(0), 0, 1), horzLen+1)
-    # vt0=Tmax*rand(Truncated(Normal(0), 0, 1), (horzLen+1))
-    # vz0=ItotalMax/1000*rand(Truncated(Normal(0), 0, 1), S*(horzLen+1))
-    # vu0=imax[1,1]*0.8*rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
-    # vs0=rand(Truncated(Normal(0), 0, 1), N*(horzLen+1))
-    lambda0=2e3*ones(horzLen+1,1)
-    vt0=evS.Tmax*ones(horzLen+1,1)
-    vz0=.01*ones(S*(horzLen+1),1)
-    vu0=.01*ones(N*(horzLen+1),1)
-    vs0=.5*ones(N*(horzLen+1),1)
-
-    # lambda0=lamCurrStar
-    # vt0=xtStar
-    # vz0=zStar
-    # vu0=uStar
-    # vs0=snStar
-
-    prevVu=vu0
-    prevVs=vs0
-    prevVz=vz0
-    prevVt=vt0
-    prevLam=lambda0
-    ρALADp=ρALAD
-    μALADp=μALAD
-
-    ΔY=zeros(1,maxIt+1)
-    for p=1:maxIt
-        #solve decoupled
-        @sync @distributed for evInd=1:N
-            ind=[evInd]
-            for k=1:horzLen
-                append!(ind,k*N+evInd)
-            end
-            evVu=prevVu[ind,1]
-            evVs=prevVs[ind,1]
-            #evV=zeros(horzLen+1,1)
-            target=zeros((horzLen+1),1)
-            target[(evS.Kn[evInd,1]-(stepI-1)):1:length(target),1].=evS.Snmin[evInd,1]
-            evM = Model(solver = GurobiSolver())
-            @variable(evM,sn[1:(horzLen+1)])
-            @variable(evM,u[1:(horzLen+1)])
-            if slack @variable(evM,slackSn) end
-            objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
-                                    prevLam[k,1]*(u[k,1])+
-                                    ρALADp/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
-                                    ρALADp/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)
-            if slack
-                append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
-            end
-            @objective(evM,Min,objExp)
-            @constraint(evM,sn[1,1]==sn0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
-            @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
-            @constraint(evM,socKappaMax,sn.<=1)
-            if slack
-                @constraint(evM,sn.>=target.*(1-slackSn))
-                @constraint(evM,slackSn>=0)
-            else
-                @constraint(evM,socKappaMin,sn.>=target)
-            end
-            @constraint(evM,curKappaMax,u.<=evS.imax[evInd,1])
-            @constraint(evM,curKappaMin,u.>=evS.imin[evInd,1])
-
-            TT = stdout # save original stdout stream
-            redirect_stdout()
-            statusEVM = solve(evM)
-            redirect_stdout(TT)
-            @assert statusEVM==:Optimal "ALAD EV NLP optimization not solved to optimality"
-
-    		# kappaMax=-getdual(curKappaMax)
-    		# kappaMin=-getdual(curKappaMin)
-            # socMax=-getdual(socKappaMax)
-            # socMin=-getdual(socKappaMin)
-            uVal=getvalue(u)
-            snVal=getvalue(sn)
-
-            cValMax=abs.(uVal.-evS.imax[evInd,1]).<tolU
-            cValMin=abs.(uVal.-evS.imin[evInd,1]).<tolU
-            dLogalad.Cuu[ind,p]=1cValMax
-            dLogalad.Cul[ind,p]=-1cValMin
-
-            cValMax=abs.(snVal.-1).<tolS
-            if slack
-                cValMin=abs.(snVal.-target*(1-getvalue(slackSn))).<tolS
-            else
-                cValMin=abs.(snVal.-target).<tolS
-            end
-            dLogalad.Csu[ind,p]=1cValMax
-            dLogalad.Csl[ind,p]=-1cValMin
-
-            dLogalad.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
-            dLogalad.Sn[ind,p]=snVal
-    		dLogalad.Un[ind,p]=uVal
-
-            # dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
-            # dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
-
-            dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,digits=4)
-            dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],digits=8)
-
-            #use convex ALADIN approach
-            #dLogalad.Gu[ind,p]=σU[evInd,1]*(evVu-uVal)-prevLam[:,1]
-            #dLogalad.Gs[ind,p]=σS[evInd,1]*(evVs-snVal)#-prevLam[:,1]
+    #solve decoupled
+    @sync @distributed for evInd=1:N
+        ind=[evInd]
+        for k=1:horzLen
+            append!(ind,k*N+evInd)
         end
-
-        #N+1 decoupled problem aka transformer current
-        tM = Model(solver = GurobiSolver(NumericFocus=3))
-        #tM = Model(solver = IpoptSolver())
-        @variable(tM,z[1:(S)*(horzLen+1)])
-        @variable(tM,xt[1:(horzLen+1)])
-        # objExp=sum( ρALADp/2*σT*(xt[k]-prevVt[k,1])^2 for k=1:(horzLen+1))
-        objExp=sum(-prevLam[k,1]*sum(z[(k-1)*(S)+s] for s=1:S)+
-                  ρALADp/2*σZ*(sum(z[(k-1)*(S)+s] for s=1:S)-sum(prevVz[(k-1)*(S)+s,1] for s=1:S))^2+
-                  ρALADp/2*σT*(xt[k]-prevVt[k,1])^2  for k=1:(horzLen+1))
-        @objective(tM,Min, objExp)
-        @constraint(tM,tempCon1,xt[1]-evS.τP*xt0-evS.γP*evS.deltaI*sum((2*s-1)*z[s] for s=1:S)-evS.ρP*evS.Tamb[stepI,1]==0)
-        @constraint(tM,tempCon2[k=1:horzLen],xt[k+1]-evS.τP*xt[k]-evS.γP*evS.deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)-evS.ρP*evS.Tamb[stepI+k,1]==0)
-        if noTlimit==false
-        	@constraint(tM,upperTCon,xt.<=evS.Tmax)
+        evVu=prevVu[ind,1]
+        evVs=prevVs[ind,1]
+        #evV=zeros(horzLen+1,1)
+        target=zeros((horzLen+1),1)
+        target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
+        evM = Model(solver = GurobiSolver())
+        @variable(evM,sn[1:(horzLen+1)])
+        @variable(evM,u[1:(horzLen+1)])
+        if slack @variable(evM,slackSn) end
+        objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
+                                prevLam[k,1]*(u[k,1])+
+                                ρALADp/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
+                                ρALADp/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)
+        if slack
+            append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
         end
-        @constraint(tM,lowerTCon,xt.>=0)
-        @constraint(tM,pwlKappaMin,z.>=0)
-        @constraint(tM,pwlKappaMax,z.<=evS.deltaI)
+        @objective(evM,Min,objExp)
+        @constraint(evM,sn[1,1]==s0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
+        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
+        @constraint(evM,socKappaMax,sn.<=1)
+        if slack
+            @constraint(evM,sn.>=target.*(1-slackSn))
+            @constraint(evM,slackSn>=0)
+        else
+            @constraint(evM,socKappaMin,sn.>=target)
+        end
+        @constraint(evM,curKappaMax,u.<=evS.imax[evInd,1])
+        @constraint(evM,curKappaMin,u.>=evS.imin[evInd,1])
+
         TT = stdout # save original stdout stream
         redirect_stdout()
-        statusTM = solve(tM)
+        statusEVM = solve(evM)
         redirect_stdout(TT)
-        @assert statusTM==:Optimal "ALAD XFRM NLP optimization not solved to optimality"
+        @assert statusEVM==:Optimal "ALAD EV NLP optimization not solved to optimality"
 
-    	#kappaMax=-getdual(pwlKappaMax)
-    	#kappaMin=-getdual(pwlKappaMin)
-        #tMax=-getdual(upperTCon)
-        #tMin=-getdual(lowerTCon)
-        #lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
-        zVal=getvalue(z)
-        xtVal=getvalue(xt)
+        # kappaMax=-getdual(curKappaMax)
+        # kappaMin=-getdual(curKappaMin)
+        # socMax=-getdual(socKappaMax)
+        # socMin=-getdual(socKappaMin)
+        uVal=getvalue(u)
+        snVal=getvalue(sn)
 
-        cValMax=abs.(zVal.-evS.deltaI).<tolZ
-        cValMin=abs.(zVal.-0).<tolZ
-        dLogalad.Czu[:,p]=1cValMax
-        dLogalad.Czl[:,p]=-1cValMin
+        cValMax=abs.(uVal.-evS.imax[evInd,1]).<tolU
+        cValMin=abs.(uVal.-evS.imin[evInd,1]).<tolU
+        dLogalad.Cuu[ind,p]=1cValMax
+        dLogalad.Cul[ind,p]=-1cValMin
 
-        cValMax=abs.(xtVal.-evS.Tmax).<tolT
-        cValMin=abs.(xtVal.-0).<tolT
-        dLogalad.Ctu[:,p]=1cValMax
-        dLogalad.Ctl[:,p]=-1cValMin
-
-        dLogalad.Xt[:,p]=xtVal
-        dLogalad.Z[:,p]=zVal
-        dLogalad.Gz[:,p].=0
-        dLogalad.Gt[:,p].=0
-
-        #dLogalad.Gz[:,p]=σZ*(prevVz-zVal)-repeat(-prevLam[:,1],inner=S)
-        #dLogalad.Gt[:,p]=σT*(prevVt-xtVal)
-
-        for k=1:horzLen+1
-            dLogalad.uSum[k,p]=sum(dLogalad.Un[(k-1)*N+n,p] for n=1:N)
-            dLogalad.zSum[k,p]=sum(dLogalad.Z[(k-1)*(S)+s,p] for s=1:S)
-            dLogalad.couplConst[k,p]=dLogalad.uSum[k,p] + iD[stepI+(k-1),1] - dLogalad.zSum[k,p]
-        end
-
-        #calculate actual temperature from nonlinear model of XFRM
-        itotal=zeros(horzLen+1,1)
-        for k=1:horzLen+1
-            itotal[k,1]=dLogalad.uSum[k,p] + evS.iD[stepI+(k-1),1]
-        end
-        dLogalad.Tactual[1,p]=evS.τP*xt0+evS.γP*dLogalad.zSum[1,p]^2+evS.ρP*evS.Tamb[stepI,1] #fix for mpc
-        for k=1:horzLen
-            dLogalad.Tactual[k+1,p]=evS.τP*dLogalad.Tactual[k,p]+evS.γP*dLogalad.zSum[k+1,p]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
-        end
-
-        #check for convergence
-        constGap=norm(dLogalad.couplConst[:,p],1)
-        cc=norm(vcat((prevVu[:,1]-dLogalad.Un[:,p]),(prevVz[:,1]-dLogalad.Z[:,p])),1)
-        #cc=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
-        objFun(sn,xt,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
-                        sum((xt[k,1]-1)^2*evS.Qsi[N+1,1]                 for k=1:horzLen+1) +
-                        sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-        dLogalad.objVal[1,p]=objFun(dLogalad.Sn[:,p],dLogalad.Xt[:,p],dLogalad.Un[:,p])
-        fGap= abs(dLogalad.objVal[1,p]-cSol.objVal)
-        snGap=norm((dLogalad.Sn[:,p]-cSol.Sn),2)
-        unGap=norm((dLogalad.Un[:,p]-cSol.Un),2)
-        dCMalad.obj[p,1]=fGap
-        dCMalad.sn[p,1]=snGap
-        dCMalad.un[p,1]=unGap
-        dCMalad.couplConst[p,1]=constGap
-        convCheck[p,1]=cc
-        if  constGap<=epsilon && cc<=epsilon
-            @printf "Converged after %g iterations\n" p
-            convIt=p
-            #break
+        cValMax=abs.(snVal.-1).<tolS
+        if slack
+            cValMin=abs.(snVal.-target*(1-getvalue(slackSn))).<tolS
         else
-            @printf "convCheck  %e after %g iterations\n" cc p
-            @printf "constGap   %e after %g iterations\n" constGap p
-            @printf "snGap      %e after %g iterations\n" snGap p
-            @printf("fGap       %e after %g iterations\n",fGap,p)
+            cValMin=abs.(snVal.-target).<tolS
         end
+        dLogalad.Csu[ind,p]=1cValMax
+        dLogalad.Csl[ind,p]=-1cValMin
 
-        #coupled QP
-        cM = Model(solver = GurobiSolver(NumericFocus=3))
-        @variable(cM,dUn[1:(N)*(horzLen+1)])
-        @variable(cM,dSn[1:(N)*(horzLen+1)])
-        @variable(cM,dZ[1:(S)*(horzLen+1)])
-        @variable(cM,dXt[1:(horzLen+1)])
-        @variable(cM,relaxS[1:(horzLen+1)])
+        dLogalad.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
+        dLogalad.Sn[ind,p]=snVal
+        dLogalad.Un[ind,p]=uVal
 
-        # coupledObj(deltaY,Hi,gi)=1/2*deltaY'*Hi*deltaY+gi'*deltaY
-    	# objExp=coupledObj(dZ,Hz,Gz[:,p+1])
-        # objExp=objExp+coupledObj(dXt,Ht,zeros(length(dXt)))
-    	# for n=1:N
-        #     objExp=objExp+coupledObj(dUn[collect(n:N:(N)*(horzLen+1)),1],Hu[n,1],Gu[collect(n:N:(N)*(horzLen+1)),p+1])+
-        #                   coupledObj(dSn[collect(n:N:(N)*(horzLen+1)),1],Hn[n,1],Gs[collect(n:N:(N)*(horzLen+1)),p+1])
-    	# end
+        # dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
+        # dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
 
-        objExp=sum(sum(0.5*dUn[(k-1)*N+n,1]^2*Hu[n,1]+dLogalad.Gu[(k-1)*N+n,p]*dUn[(k-1)*N+n,1] +
-                       0.5*dSn[(k-1)*N+n,1]^2*Hs[n,1]+dLogalad.Gs[(k-1)*N+n,p]*dSn[(k-1)*N+n,1] for n=1:N) +
-                   sum(0.5*dZ[(k-1)*(S)+s,1]^2*Hz for s=1:S)+
-                   0.5*dXt[k,1]^2*Ht   for k=1:(horzLen+1))
-        objExp=objExp+prevLam[:,1]'*relaxS+μALADp/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
-        objExp=objExp+dot(dLogalad.Gz[:,p],dZ)+dot(dLogalad.Gt[:,p],dXt)
+        dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,digits=4)
+        dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],digits=8)
 
-        @objective(cM,Min,objExp)
-
-        # Unp=dLogalad.Un[:,p]
-        # Zp=dLogalad.Z[:,p]
-        Unp=round.(dLogalad.Un[:,p],digits=8)
-        Zp=round.(dLogalad.Z[:,p],digits=8)
-        @constraint(cM,currCon[k=1:horzLen+1],sum(Unp[(k-1)*(N)+n,1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
-                                              sum(Zp[(k-1)*(S)+s,1]+dZ[(k-1)*(S)+s,1] for s=1:S)==
-                                              -iD[stepI+(k-1)]+relaxS[k,1])
-        #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
-        @constraint(cM,stateCon1[n=1:N],dSn[n,1]==evS.ηP[n,1]*dUn[n,1])
-        @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+evS.ηP[n,1]*dUn[n+(k)*(N),1])
-        @constraint(cM,tempCon1,dXt[1,1]==evS.γP*evS.deltaI*sum((2*s-1)*dZ[s,1] for s=1:S))
-        @constraint(cM,tempCon2[k=1:horzLen],dXt[k+1,1]==evS.τP*dXt[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*dZ[k*S+s,1] for s=1:S))
-
-
-        #active local constraints
-        if eqForm
-            @constraint(cM,dLogalad.Czu[:,p].*dZ.==0)
-            @constraint(cM,dLogalad.Cuu[:,p].*dUn.==0)
-            @constraint(cM,dLogalad.Csu[:,p].*dSn.==0)
-            @constraint(cM,dLogalad.Ctu[:,p].*dXt.==0)
-            @constraint(cM,dLogalad.Czl[:,p].*dZ.==0)
-            @constraint(cM,dLogalad.Cul[:,p].*dUn.==0)
-            @constraint(cM,dLogalad.Csl[:,p].*dSn.==0)
-            @constraint(cM,dLogalad.Ctl[:,p].*dXt.==0)
-        else
-            @constraint(cM,dLogalad.Czu[:,p].*dZ.<=0)
-            @constraint(cM,dLogalad.Cuu[:,p].*dUn.<=0)
-            @constraint(cM,dLogalad.Csu[:,p].*dSn.<=0)
-            @constraint(cM,dLogalad.Ctu[:,p].*dXt.<=0)
-            @constraint(cM,dLogalad.Czl[:,p].*dZ.<=0)
-            @constraint(cM,dLogalad.Cul[:,p].*dUn.<=0)
-            @constraint(cM,dLogalad.Csl[:,p].*dSn.<=0)
-            @constraint(cM,dLogalad.Ctl[:,p].*dXt.<=0)
-        end
-
-
-    	TT = stdout # save original stdout stream
-        redirect_stdout()
-        statusM = solve(cM)
-        redirect_stdout(TT)
-        @assert statusM==:Optimal "ALAD Central QP optimization not solved to optimality"
-
-        #update step
-        # Lam[:,p+1]=-getdual(currCon)
-        α1=1
-        α2=1
-        α3=1
-        #α3=1/ceil(p/2)
-
-        dLogalad.Lam[:,p]=prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1])
-        #dLogalad.Lam[:,p]=max.(prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1]),0)
-        dLogalad.Vu[:,p]=prevVu[:,1]+α1*(dLogalad.Un[:,p]-prevVu[:,1])+α2*getvalue(dUn)
-        dLogalad.Vz[:,p]=prevVz[:,1]+α1*(dLogalad.Z[:,p]-prevVz[:,1])+α2*getvalue(dZ)
-        dLogalad.Vs[:,p]=prevVs[:,1]+α1*(dLogalad.Sn[:,p]-prevVs[:,1])+α2*getvalue(dSn)
-        dLogalad.Vt[:,p]=prevVt[:,1]+α1*(dLogalad.Xt[:,p]-prevVt[:,1])+α2*getvalue(dXt)
-
-        dCMalad.lamIt[p,1]=norm(dLogalad.Lam[:,p]-prevLam[:,1],2)
-        dCMalad.lam[p,1]=norm(dLogalad.Lam[:,p]-cSol.lamCoupl,2)
-        @printf "lastGap    %e after %g iterations\n" dCMalad.lamIt[p,1] p
-        @printf "convLamGap %e after %g iterations\n\n" dCMalad.lam[p,1] p
-
-        dLogalad.itUpdate[1,p]=min(ρALADp*ρRate,ρALADmax) #increase ρ every iteration
-        μALADp=min(μALADp*μRate,μALADmax) #increase μ every iteration
-
-        ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dZ),getvalue(dSn),getvalue(dXt)),Inf)
-
-        #reset for next iteration
-        prevVu=dLogalad.Vu[:,p]
-        prevVs=dLogalad.Vs[:,p]
-        prevVz=dLogalad.Vz[:,p]
-        prevVt=dLogalad.Vt[:,p]
-        prevLam=dLogalad.Lam[:,p]
-        ρALADp=dLogalad.itUpdate[1,p]
+        #use convex ALADIN approach
+        #dLogalad.Gu[ind,p]=σU[evInd,1]*(evVu-uVal)-prevLam[:,1]
+        #dLogalad.Gs[ind,p]=σS[evInd,1]*(evVs-snVal)#-prevLam[:,1]
     end
 
-    return dLogalad,dCMalad,convIt,ΔY,convCheck
+    #N+1 decoupled problem aka transformer current
+    tM = Model(solver = GurobiSolver(NumericFocus=3))
+    #tM = Model(solver = IpoptSolver())
+    @variable(tM,z[1:(S)*(horzLen+1)])
+    @variable(tM,t[1:(horzLen+1)])
+    # objExp=sum( ρALADp/2*σT*(xt[k]-prevVt[k,1])^2 for k=1:(horzLen+1))
+    objExp=sum(-prevLam[k,1]*sum(z[(k-1)*(S)+s] for s=1:S)+
+              ρALADp/2*σZ*(sum(z[(k-1)*(S)+s] for s=1:S)-sum(prevVz[(k-1)*(S)+s,1] for s=1:S))^2+
+              ρALADp/2*σT*(t[k]-prevVt[k,1])^2  for k=1:(horzLen+1))
+    @objective(tM,Min, objExp)
+    @constraint(tM,tempCon1,t[1]-evS.τP*t0-evS.γP*evS.deltaI*sum((2*s-1)*z[s] for s=1:S)-evS.ρP*evS.Tamb[stepI,1]==0)
+    @constraint(tM,tempCon2[k=1:horzLen],t[k+1]-evS.τP*t[k]-evS.γP*evS.deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)-evS.ρP*evS.Tamb[stepI+k,1]==0)
+    if noTlimit==false
+        @constraint(tM,upperTCon,t.<=evS.Tmax)
+    end
+    @constraint(tM,lowerTCon,t.>=0)
+    @constraint(tM,pwlKappaMin,z.>=0)
+    @constraint(tM,pwlKappaMax,z.<=evS.deltaI)
+    TT = stdout # save original stdout stream
+    redirect_stdout()
+    statusTM = solve(tM)
+    redirect_stdout(TT)
+    @assert statusTM==:Optimal "ALAD XFRM NLP optimization not solved to optimality"
+
+    #kappaMax=-getdual(pwlKappaMax)
+    #kappaMin=-getdual(pwlKappaMin)
+    #tMax=-getdual(upperTCon)
+    #tMin=-getdual(lowerTCon)
+    #lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
+    zVal=getvalue(z)
+    tVal=getvalue(t)
+
+    cValMax=abs.(zVal.-evS.deltaI).<tolZ
+    cValMin=abs.(zVal.-0).<tolZ
+    dLogalad.Czu[:,p]=1cValMax
+    dLogalad.Czl[:,p]=-1cValMin
+
+    cValMax=abs.(tVal.-evS.Tmax).<tolT
+    cValMin=abs.(tVal.-0).<tolT
+    dLogalad.Ctu[:,p]=1cValMax
+    dLogalad.Ctl[:,p]=-1cValMin
+
+    dLogalad.Tpwl[:,p]=tVal
+    dLogalad.Z[:,p]=zVal
+    dLogalad.Gz[:,p].=0
+    dLogalad.Gt[:,p].=0
+
+    #dLogalad.Gz[:,p]=σZ*(prevVz-zVal)-repeat(-prevLam[:,1],inner=S)
+    #dLogalad.Gt[:,p]=σT*(prevVt-xtVal)
+
+    for k=1:horzLen+1
+        dLogalad.uSum[k,p]=sum(dLogalad.Un[(k-1)*N+n,p] for n=1:N)
+        dLogalad.zSum[k,p]=sum(dLogalad.Z[(k-1)*(S)+s,p] for s=1:S)
+        dLogalad.couplConst[k,p]=dLogalad.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLogalad.zSum[k,p]
+    end
+
+    #calculate actual temperature from nonlinear model of XFRM
+    for k=1:horzLen+1
+        dLogalad.Itotal[k,p]=dLogalad.uSum[k,p] + evS.iD_actual[stepI+(k-1),1]
+    end
+    dLogalad.Tactual[1,p]=evS.τP*t0+evS.γP*dLogalad.Itotal[1,p]^2+evS.ρP*evS.Tamb[stepI,1] #fix for mpc
+    for k=1:horzLen
+        dLogalad.Tactual[k+1,p]=evS.τP*dLogalad.Tactual[k,p]+evS.γP*dLogalad.Itotal[k,p]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
+    end
+
+    #check for convergence
+    constGap=norm(dLogalad.couplConst[:,p],1)
+    cc=norm(vcat(σU[1]*(prevVu[:,1]-dLogalad.Un[:,p]),σZ*(prevVz[:,1]-dLogalad.Z[:,p]),
+                 σT*(prevVt[:,1]-dLogalad.Tpwl[:,p]),σS[1]*(prevVs[:,1]-dLogalad.Sn[:,p])),1)
+    #cc=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
+    objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1] for n=1:N) +
+                     sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]       for n=1:N) for k=1:horzLen+1)
+    dLogalad.objVal[1,p]=objFun(dLogalad.Sn[:,p],dLogalad.Un[:,p])
+    #fGap= abs(dLogalad.objVal[1,p]-cSol.objVal[1,1])
+    #snGap=norm((dLogalad.Sn[:,p]-cSol.Sn),2)
+    #unGap=norm((dLogalad.Un[:,p]-cSol.Un),2)
+    #dCMalad.obj[p,1]=fGap
+    #dCMalad.sn[p,1]=snGap
+    #dCMalad.un[p,1]=unGap
+    dCMalad.couplConst[p,1]=constGap
+    #convCheck[p,1]=cc
+    if  constGap<=epsilon && cc<=epsilon
+        if !silent @printf "Converged after %g iterations\n" p end
+        convIt=p
+        #break
+        return true
+    else
+        if !silent
+            @printf "convCheck  %e after %g iterations\n" cc p
+            @printf "constGap   %e after %g iterations\n" constGap p
+            #@printf "snGap      %e after %g iterations\n" snGap p
+            #@printf("fGap       %e after %g iterations\n",fGap,p)
+        end
+    end
+
+    #coupled QP
+    cM = Model(solver = GurobiSolver(NumericFocus=3))
+    @variable(cM,dUn[1:(N)*(horzLen+1)])
+    @variable(cM,dSn[1:(N)*(horzLen+1)])
+    @variable(cM,dZ[1:(S)*(horzLen+1)])
+    @variable(cM,dT[1:(horzLen+1)])
+    @variable(cM,relaxS[1:(horzLen+1)])
+
+    # coupledObj(deltaY,Hi,gi)=1/2*deltaY'*Hi*deltaY+gi'*deltaY
+    # objExp=coupledObj(dZ,Hz,Gz[:,p+1])
+    # objExp=objExp+coupledObj(dXt,Ht,zeros(length(dXt)))
+    # for n=1:N
+    #     objExp=objExp+coupledObj(dUn[collect(n:N:(N)*(horzLen+1)),1],Hu[n,1],Gu[collect(n:N:(N)*(horzLen+1)),p+1])+
+    #                   coupledObj(dSn[collect(n:N:(N)*(horzLen+1)),1],Hn[n,1],Gs[collect(n:N:(N)*(horzLen+1)),p+1])
+    # end
+
+    objExp=sum(sum(0.5*dUn[(k-1)*N+n,1]^2*Hu[n,1]+dLogalad.Gu[(k-1)*N+n,p]*dUn[(k-1)*N+n,1] +
+                   0.5*dSn[(k-1)*N+n,1]^2*Hs[n,1]+dLogalad.Gs[(k-1)*N+n,p]*dSn[(k-1)*N+n,1] for n=1:N) +
+               sum(0.5*dZ[(k-1)*(S)+s,1]^2*Hz for s=1:S)+
+               0.5*dT[k,1]^2*Ht   for k=1:(horzLen+1))
+    objExp=objExp+prevLam[:,1]'*relaxS+μALADp/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
+    objExp=objExp+dot(dLogalad.Gz[:,p],dZ)+dot(dLogalad.Gt[:,p],dT)
+
+    @objective(cM,Min,objExp)
+
+    # Unp=dLogalad.Un[:,p]
+    # Zp=dLogalad.Z[:,p]
+    Unp=round.(dLogalad.Un[:,p],digits=8)
+    Zp=round.(dLogalad.Z[:,p],digits=8)
+    @constraint(cM,currCon[k=1:horzLen+1],sum(Unp[(k-1)*(N)+n,1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
+                                          sum(Zp[(k-1)*(S)+s,1]+dZ[(k-1)*(S)+s,1] for s=1:S)==
+                                          -evS.iD_pred[stepI+(k-1)]+relaxS[k,1])
+    #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
+    @constraint(cM,stateCon1[n=1:N],dSn[n,1]==evS.ηP[n,1]*dUn[n,1])
+    @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+evS.ηP[n,1]*dUn[n+(k)*(N),1])
+    @constraint(cM,tempCon1,dT[1,1]==evS.γP*evS.deltaI*sum((2*s-1)*dZ[s,1] for s=1:S))
+    @constraint(cM,tempCon2[k=1:horzLen],dT[k+1,1]==evS.τP*dT[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*dZ[k*S+s,1] for s=1:S))
+
+    #active local constraints
+    if eqForm
+        @constraint(cM,dLogalad.Czu[:,p].*dZ.==0)
+        @constraint(cM,dLogalad.Cuu[:,p].*dUn.==0)
+        @constraint(cM,dLogalad.Csu[:,p].*dSn.==0)
+        @constraint(cM,dLogalad.Ctu[:,p].*dT.==0)
+        @constraint(cM,dLogalad.Czl[:,p].*dZ.==0)
+        @constraint(cM,dLogalad.Cul[:,p].*dUn.==0)
+        @constraint(cM,dLogalad.Csl[:,p].*dSn.==0)
+        @constraint(cM,dLogalad.Ctl[:,p].*dT.==0)
+    else
+        @constraint(cM,dLogalad.Czu[:,p].*dZ.<=0)
+        @constraint(cM,dLogalad.Cuu[:,p].*dUn.<=0)
+        @constraint(cM,dLogalad.Csu[:,p].*dSn.<=0)
+        @constraint(cM,dLogalad.Ctu[:,p].*dT.<=0)
+        @constraint(cM,dLogalad.Czl[:,p].*dZ.<=0)
+        @constraint(cM,dLogalad.Cul[:,p].*dUn.<=0)
+        @constraint(cM,dLogalad.Csl[:,p].*dSn.<=0)
+        @constraint(cM,dLogalad.Ctl[:,p].*dT.<=0)
+    end
+
+
+    TT = stdout # save original stdout stream
+    redirect_stdout()
+    statusM = solve(cM)
+    redirect_stdout(TT)
+    @assert statusM==:Optimal "ALAD Central QP optimization not solved to optimality"
+
+    #update step
+    # Lam[:,p+1]=-getdual(currCon)
+    α1=1
+    α2=1
+    α3=1
+    #α3=1/ceil(p/2)
+
+    dLogalad.Lam[:,p]=prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1])
+    #dLogalad.Lam[:,p]=max.(prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1]),0)
+    dLogalad.Vu[:,p]=prevVu[:,1]+α1*(dLogalad.Un[:,p]-prevVu[:,1])+α2*getvalue(dUn)
+    dLogalad.Vz[:,p]=prevVz[:,1]+α1*(dLogalad.Z[:,p]-prevVz[:,1])+α2*getvalue(dZ)
+    dLogalad.Vs[:,p]=prevVs[:,1]+α1*(dLogalad.Sn[:,p]-prevVs[:,1])+α2*getvalue(dSn)
+    dLogalad.Vt[:,p]=prevVt[:,1]+α1*(dLogalad.Tpwl[:,p]-prevVt[:,1])+α2*getvalue(dT)
+
+    dCMalad.lamIt[p,1]=norm(dLogalad.Lam[:,p]-prevLam[:,1],2)
+    dCMalad.lam[p,1]=norm(dLogalad.Lam[:,p]-cSol.lamCoupl[stepI:(horzLen+stepI)],2)
+    if !silent
+        @printf "lastGap    %e after %g iterations\n" dCMalad.lamIt[p,1] p
+        @printf "convLamGap %e after %g iterations\n\n" dCMalad.lam[p,1] p
+    end
+
+    dLogalad.itUpdate[1,p]=min(ρALADp*ρRate,ρALADmax) #increase ρ every iteration
+    #μALADp=min(μALADp*μRate,μALADmax) #increase μ every iteration
+    #ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dZ),getvalue(dSn),getvalue(dT)),Inf)
+
+    #reset for next iteration
+    prevVu=dLogalad.Vu[:,p]
+    prevVs=dLogalad.Vs[:,p]
+    prevVz=dLogalad.Vz[:,p]
+    prevVt=dLogalad.Vt[:,p]
+    prevLam=dLogalad.Lam[:,p]
+    ρALADp=dLogalad.itUpdate[1,p]
+    return false
+end
+
+function runEVALADStep(stepI,maxIt,evS,dSol,cSol,eqForm,silent)
+    K=evS.K
+    N=evS.N
+    S=evS.S
+    horzLen=min(evS.K1,K-stepI)
+
+    #convCheck=zeros(maxIt+1,1)
+    #ΔY=zeros(1,maxIt+1)
+
+    dCMalad=convMetricsStruct()
+    dLogalad=itLogPWL(horzLen=horzLen,N=N,S=S)
+    for p=1:maxIt
+        cFlag=runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
+        global convIt=p
+        if cFlag
+            break
+        end
+    end
+
+    # xPlot=zeros(horzLen+1,N)
+    # uPlot=zeros(horzLen+1,N)
+    # for ii= 1:N
+    # 	xPlot[:,ii]=dLogalad.Sn[collect(ii:N:length(dLogalad.Sn[:,convIt])),convIt]
+    #     uPlot[:,ii]=dLogalad.Un[collect(ii:N:length(dLogalad.Un[:,convIt])),convIt]
+    # end
+    #
+    # plot(uPlot)
+    # plot(xPlot)
+    # pd3alad=plot(hcat(dLogalad.Tactual[:,convIt],dLogalad.Tpwl[:,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
+    # plot!(pd3alad,1:horzLen+1,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
+    #
+    # #convergence plots
+    # halfCI=Int(floor(convIt/2))
+    # if halfCI>0
+    #     CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
+    #                    range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
+    # else
+    #     CList=colorant"red";
+    # end
+    # uSumPlotalad=plot(dLogalad.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
+    # plot!(uSumPlotalad,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+    #
+    # zSumPlotalad=plot(dLogalad.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
+    # plot!(zSumPlotalad,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+    #
+    # constPlotalad2=plot(dLogalad.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+    #
+    # lamPlotalad=plot(dLogalad.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
+    # plot!(lamPlotalad,cSol.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
+    #
+    # activeSet=zeros(convIt,1)
+    # setChanges=zeros(convIt,1)
+    # for ii=2:convIt
+    #     activeSet[ii,1]=sum(abs.(dLogalad.Csu[:,ii]))+sum(abs.(dLogalad.Ctu[:,ii]))+
+    #               		sum(abs.(dLogalad.Cuu[:,ii]))+sum(abs.(dLogalad.Czu[:,ii]))+
+    # 					sum(abs.(dLogalad.Csl[:,ii]))+sum(abs.(dLogalad.Ctl[:,ii]))+
+    # 				    sum(abs.(dLogalad.Cul[:,ii]))+sum(abs.(dLogalad.Czl[:,ii]))
+    #     setChanges[ii,1]=sum(abs.(dLogalad.Csu[:,ii]-dLogalad.Csu[:,ii-1]))+sum(abs.(dLogalad.Ctu[:,ii]-dLogalad.Ctu[:,ii-1]))+
+    #                      sum(abs.(dLogalad.Cuu[:,ii]-dLogalad.Cuu[:,ii-1]))+sum(abs.(dLogalad.Czu[:,ii]-dLogalad.Czu[:,ii-1]))+
+    # 					 sum(abs.(dLogalad.Csl[:,ii]-dLogalad.Csl[:,ii-1]))+sum(abs.(dLogalad.Ctl[:,ii]-dLogalad.Ctl[:,ii-1]))+
+    # 				     sum(abs.(dLogalad.Cul[:,ii]-dLogalad.Cul[:,ii-1]))+sum(abs.(dLogalad.Czl[:,ii]-dLogalad.Czl[:,ii-1]))
+    # end
+    #
+    # activeSetPlot=plot(2:convIt,activeSet[2:convIt],xlabel="Iteration",ylabel="Total Active inequality constraints",
+    #                    legend=false,xlims=(2,convIt))
+    # setChangesPlot=plot(2:convIt,setChanges[2:convIt],xlabel="Iteration",ylabel="Changes in Active inequality constraints",
+    #                   legend=false,xlims=(2,convIt))
+    # #solChangesplot=plot(2:convIt,hcat(ΔY[2:convIt],convCheck[2:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
+    #
+    # fPlotalad=plot(dCMalad.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # convItPlotalad=plot(dCMalad.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false) #,yscale=:log10
+    # convPlotalad=plot(dCMalad.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # constPlotalad=plot(dCMalad.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
+
+    #save current state and update for next timeSteps
+    dSol.Tpwl[stepI,1]=dLogalad.Tpwl[1,convIt]
+    dSol.Un[stepI,:]=dLogalad.Un[1:N,convIt]
+    dSol.Sn[stepI,:]=dLogalad.Sn[1:N,convIt]
+    dSol.Z[stepI,:]=dLogalad.Z[1:S,convIt]
+    dSol.uSum[stepI,1]=dLogalad.uSum[1,convIt]
+    dSol.zSum[stepI,1]=dLogalad.zSum[1,convIt]
+    dSol.Itotal[stepI,1]=dLogalad.Itotal[1,convIt]
+    dSol.Tactual[stepI,1]=dLogalad.Tactual[1,convIt]
+    dSol.convIt[stepI,1]=convIt
+
+    # new states
+    global t0=dSol.Tactual[stepI,1]
+    global s0=dSol.Sn[stepI,:]
+
+    #function getAttr()
+    #clean this up
+    if convIt==1
+        dSol.lamCoupl[stepI,1]=prevLam[1,1]
+        if stepI+horzLen==evS.K
+            newLam=prevLam[2:horzLen+1,1]
+            newVu=prevVu[(N+1):(N*(horzLen+1)),1]
+            newVz=prevVz[(S+1):(S*(horzLen+1)),1]
+            newVt=prevVt[2:horzLen+1,1]
+            newVs=prevVs[(N+1):(N*(horzLen+1)),1]
+        else
+            newLam=vcat(prevLam[2:horzLen+1,1],prevLam[horzLen+1,1])
+            newVu=vcat(prevVu[(N+1):(N*(horzLen+1)),1],prevVu[((N*horzLen)+1):(N*(horzLen+1)),1])
+            newVz=vcat(prevVz[(S+1):(S*(horzLen+1)),1],prevVz[((S*horzLen)+1):(S*(horzLen+1)),1])
+            newVt=vcat(prevVt[2:horzLen+1,1],prevVt[horzLen+1,1])
+            newVs=vcat(prevVs[(N+1):(N*(horzLen+1)),1],prevVs[((N*horzLen)+1):(N*(horzLen+1)),1])
+        end
+    else
+        dSol.lamCoupl[stepI,1]=dLogalad.Lam[1,convIt-1]
+        if stepI+horzLen==evS.K
+            newLam=dLogalad.Lam[2:horzLen+1,convIt-1]
+            newVu=dLogalad.Vu[(N+1):(N*(horzLen+1)),convIt-1]
+            newVz=dLogalad.Vz[(S+1):(S*(horzLen+1)),convIt-1]
+            newVt=dLogalad.Vt[2:horzLen+1,convIt-1]
+            newVs=dLogalad.Vs[(N+1):(N*(horzLen+1)),convIt-1]
+        else
+            newLam=vcat(dLogalad.Lam[2:horzLen+1,convIt-1],dLogalad.Lam[horzLen+1,convIt-1])
+            newVu=vcat(dLogalad.Vu[(N+1):(N*(horzLen+1)),convIt-1],dLogalad.Vu[((N*horzLen)+1):(N*(horzLen+1)),convIt-1])
+            newVz=vcat(dLogalad.Vz[(S+1):(S*(horzLen+1)),convIt-1],dLogalad.Vz[((S*horzLen)+1):(S*(horzLen+1)),convIt-1])
+            newVt=vcat(dLogalad.Vt[2:horzLen+1,convIt-1],dLogalad.Vt[horzLen+1,convIt-1])
+            newVs=vcat(dLogalad.Vs[(N+1):(N*(horzLen+1)),convIt-1],dLogalad.Vs[((N*horzLen)+1):(N*(horzLen+1)),convIt-1])
+        end
+    end
+
+    global prevLam=newLam
+    global prevVu=newVu
+    global prevVz=newVz
+    global prevVt=newVt
+    global prevVs=newVs
+
+    return nothing
+end
+
+function pwlEValad(maxIt::Int,evS::scenarioStruct,cSol::solutionStruct,slack::Bool,eqForm::Bool,silent::Bool)
+
+    horzLen=evS.K1
+    K=evS.K
+    N=evS.N
+    S=evS.S
+    dSol=solutionStruct(K=K,N=N,S=S)
+
+    for stepI=1:K
+        @printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI K
+        try
+            runEVALADStep(stepI,maxIt,evS,dSol,cSol,eqForm,silent)
+        catch e
+            @printf "error: %s" e
+            break
+        end
+    end
+
+    objFun(sn,u)=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,1] for n=1:N) +sum((u[k,n])^2*evS.Ri[n,1] for n=1:N) for k=1:evS.K)
+    dSol.objVal[1,1]=objFun(dSol.Sn,dSol.Un)
+
+    return dSol
 end
