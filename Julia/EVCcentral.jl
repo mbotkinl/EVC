@@ -21,15 +21,6 @@ end
 
 
 println("plotting....")
-# snPlot=zeros(horzLen+1,N)
-# #xPlot2=zeros(horzLen+1,N)
-# uPlot=zeros(horzLen+1,N)
-# for ii= 1:N
-# 	snPlot[:,ii]=cSol.Sn[collect(ii:N:length(cSol.Sn))]
-# 	#xPlot2[:,ii]=(evS.Snmin[ii,1]-xPlot[:,ii])./(evS.Kn[ii,1]-(1:1:length(xPlot[:,ii])))
-#     uPlot[:,ii]=cSol.Un[collect(ii:N:length(cSol.Un))]
-# end
-
 
 p1=plot(cSol.Sn,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(1,evS.K))
 if drawFig savefig(p1,path*"J_central_SOC.png") end

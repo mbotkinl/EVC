@@ -18,9 +18,9 @@ else
 
 	println("Running Dual Decomp Sim")
 	timeT=@elapsed dSol=pwlEVdual(maxIt,updateMethod,evS,cSol,slack,silent)
-	s=Symbol(@sprintf("dCM_%s",updateMethod))
-	v=Symbol(@sprintf("dCM"))
-	@eval(($s)=($v))
+	# s=Symbol(@sprintf("dCM_%s",updateMethod))
+	# v=Symbol(@sprintf("dCM"))
+	# @eval(($s)=($v))
 	if saveResults saveRun(path,fname,timeT, evS,dSol) end
 end
 
@@ -43,11 +43,11 @@ else
 	lamLabel=raw"Lambda ($/kA)"
 end
 
-pd4=plot(hcat(cSol.lamCoupl,dSol.lamCoupl[:,1]),xlabel="Time",ylabel=lamLabel,xlims=(0,horzLen+1),labels=["Central" "ALADIN"])
+pd4=plot(hcat(cSol.lamCoupl,dSol.lamCoupl[:,1]),xlabel="Time",ylabel=lamLabel,xlims=(0,evS.K),labels=["Central" "ALADIN"])
 if drawFig savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 
 #compare central and decentral current agg
-aggU=plot(hcat(cSol.uSum,dSol.uSUm),label=["Central" "Decentral"],
+aggU=plot(hcat(cSol.uSum,dSol.uSum),label=["Central" "Decentral"],
 			xlims=(0,evS.K),xlabel="Time",ylabel="PEV Current (kA)")
 
 checkDesiredStates(dSol.Sn,evS.Kn,evS.Snmin)

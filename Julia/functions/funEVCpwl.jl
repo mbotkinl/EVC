@@ -311,7 +311,7 @@ function runEVDualIt(p,stepI,evS,dLog,dCM,dSol,cSol,silent)
     dCM.lamIt[p,1]=itGap
     dCM.lam[p,1]=convGap
     if(itGap <= convChk )
-        @printf "Converged after %g iterations\n" p
+        if !silent @printf "Converged after %g iterations\n" p end
         convIt=p
         return true
     else
@@ -435,7 +435,7 @@ function pwlEVdual(maxIt::Int,updateMethod::String,evS::scenarioStruct,cSol::sol
 end
 
 #ADMM
-function runEVADMMIt(p,stepI,evS,dLog,dCM,dSol,cSol,silent)
+function runEVADMMIt(p,stepI,evS,dLogadmm,dCMadmm,dSol,cSol,silent)
 
     K=evS.K
     N=evS.N
@@ -569,7 +569,7 @@ function runEVADMMIt(p,stepI,evS,dLog,dCM,dSol,cSol,silent)
     dCMadmm.lamIt[p,1]=itGap
     dCMadmm.lam[p,1]=convGap
     if(convGap <= convChk )
-        @printf "Converged after %g iterations\n" p
+        if !silent @printf "Converged after %g iterations\n" p end
         convIt=p
         return true
     else

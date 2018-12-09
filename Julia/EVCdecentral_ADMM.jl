@@ -43,7 +43,7 @@ pd3admm=plot(hcat(dSoladmm.Tactual[:,1],dSoladmm.Tpwl[:,1])*1000,label=["Actual 
 plot!(pd3admm,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(pd3admm,path*"J_decentral_ADMM_Temp.png") end
 
-pd4admm=plot(hcat(cSol.lamCoupl,dSoladmm.Lam[:,1]),xlabel="Time",ylabel=raw"Lambda ($/kA)",
+pd4admm=plot(hcat(cSol.lamCoupl,dSoladmm.lamCoupl),xlabel="Time",ylabel=raw"Lambda ($/kA)",
              xlims=(0,evS.K),labels=["Central" "ADMM"])
 if drawFig savefig(pd4admm,path*"J_decentral_ADMM_Lam.png") end
 
@@ -54,4 +54,4 @@ aggU=plot(hcat(cSol.uSum,dSoladmm.uSum),label=["Central" "ADMM"],
 			xlims=(0,evS.K),xlabel="Time",ylabel="PEV Current (kA)")
 
 
-checkDesiredStates(dLogadmm.Sn,evS.Kn,evS.Snmin)
+checkDesiredStates(dSoladmm.Sn,evS.Kn,evS.Snmin)
