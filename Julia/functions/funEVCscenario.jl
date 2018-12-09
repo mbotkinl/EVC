@@ -21,7 +21,8 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,Dload_error=0,saveS=false,p
     Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
 
     # Discretization parameters:
-    Ts = Rh*C/9              # s, sampling time in seconds
+    #Ts = Rh*C/9              # s, sampling time in seconds
+    Ts=180
     ηP = Ts*Vac*a./b*1000  # 1/kA, normalized battery sizes (0-1)
     #ηP = Ts*Vac*a./b  # 1/A, normalized battery sizes (0-1)
 
@@ -39,7 +40,7 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,Dload_error=0,saveS=false,p
     #S = 3;
     S=15
     #ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
-    ItotalMax = 4  #kA
+    ItotalMax =  4 #kA
     #ItotalMax = 4000  #A
     deltaI = ItotalMax/S
 
@@ -76,25 +77,20 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,Dload_error=0,saveS=false,p
     #Dload_amplitude = 85 #kWatts?
     #Dload_amplitude = 75000 #Watts?
     #Dload_amplitude = 0
-    Tamb_amplitude  = 370/1000   # assume hot night in summer (30 C) 363K
+    Tamb_amplitude  = 303/1000   # assume hot night in summer (30 C) 303K
 
     # Disturbance scenario:
-    #FullinelasticDemand = [normpdf(0,linspace(0,8,round((K1-1)/2)),3) normpdf(0,linspace(-8,0,round(K1/2)),3)]; # let demand per household be peaking at 8PM and 8 PM with nadir inbetween
-    #FullinelasticDemand = 100*(200*(FullinelasticDemand-min(FullinelasticDemand))/range(FullinelasticDemand) + 600)/1000; # total non-EV demand (in kW) = N/PEVpenetration*inelasticDemandperHouse
-    #FullinelasticDemand = [FullinelasticDemand'; FullinelasticDemand(end)*ones(K2+1,1)];
-    #inelasticDemand = [normpdf(0,linspace(0,8,round(K/2)),3) normpdf(0,linspace(-8,0,round(K/2)),3)]; # let demand per household be peaking at 8PM and 8 PM with nadir inbetween
-
-    dist = [range(0,stop=8,length=Int(round(K1/2)));range(-8,stop=0,length=Int(K1-round(K1/2)))]
+    #dist = [range(0,stop=8,length=Int(round(K/2)));range(8,stop=0,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
+    dist = [range(-1,stop=10,length=Int(round(K/2)));range(-10,stop=-1,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
     d = Normal(0,3)
     inelasticDemand = pdf.(d,dist)
     FullinelasticDemand = 100*(200*(inelasticDemand.-minimum(inelasticDemand))/(maximum(inelasticDemand)-minimum(inelasticDemand)) .+ 600)/1000; # total non-EV demand (in kW) = N/PEVpenetration*inelasticDemandperHouse
-    FullinelasticDemand = [FullinelasticDemand; FullinelasticDemand[length(FullinelasticDemand)]*ones(K2+1,1)]
-    FullDload   = Dload_amplitude*FullinelasticDemand;    # peaks during mid-day
+    #FullinelasticDemand = [FullinelasticDemand; FullinelasticDemand[length(FullinelasticDemand)]*ones(K2+1,1)]
+    FullDload   = Dload_amplitude.*reshape(FullinelasticDemand,(K,1));    # peaks during mid-day
     iD_pred = round.(FullDload/Vtf,digits=6);                                     #background demand current
-
-    noisePerc= Dload_error
+    noisePerc= Dload_error/Dload_amplitude
     iD_actual = round.(iD_pred+2*noisePerc*iD_pred.*rand(length(iD_pred),1).-iD_pred*noisePerc,digits=6)
-    Tamb    = Tamb_amplitude*ones(K+1,1);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
+    Tamb    = Tamb_amplitude*ones(K+1,1).-0.1*pdf.(d,range(-10,stop=10,length=K+1));             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
 
     # penalty matrix new (need to fix for k>Ki)
     Ru   = 0.1*1000^2;              # Stage and terminal penalty on local power flow (inputs u)
