@@ -114,11 +114,14 @@ end
 end
 
 @with_kw struct itLogPWL
+    horzLen::Int
+    N::Int
+    S::Int
     # objective value
     objVal::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 
     #model variables
-    Xt::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
+    Tpwl::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
     Sn::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
     Un::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
     Z::Array{Float64}=zeros(S*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
@@ -126,6 +129,7 @@ end
 
     #extra model variables
     Tactual::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
+    Itotal::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
     uSum::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
     zSum::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
     couplConst::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
