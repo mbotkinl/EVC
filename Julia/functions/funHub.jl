@@ -1,5 +1,7 @@
 # hub functions
 
+
+#Central
 function runHubCentralStep(stepI,hubS,cSol,mode,silent)
 
     global t0
@@ -7,8 +9,6 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     H=hubS.H
     K=hubS.K
     Nh=hubS.Nh
-    @printf "time step %g of %g....\n" stepI K
-
     horzLen=min(hubS.K1,K-stepI)
 
     eMax=hubS.eMax[stepI:(stepI+horzLen),:]
@@ -87,15 +87,24 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     tRaw=getvalue(t)
     lambdaCurr=-getdual(currCon)
     extraE=getvalue(slackE)
-    #
-    # p1nl=plot(eRaw,xlabel="Time",ylabel="Hub Energy",legend=false,xlims=(1,horzLen+1))
-    # p2nl=plot(uRaw,xlabel="Time",ylabel="Hub Current (kA)",legend=false,xlims=(1,horzLen+1))
-    # p3nl=plot(1:horzLen+1,tRaw,label="XFRM Temp",xlims=(1,horzLen+1),xlabel="Time",ylabel="Temp (K)")
-    # plot!(p3nl,1:horzLen+1,Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
-    # p4nl=plot(1:horzLen+1,lambdaCurr,label="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,horzLen+1),legend=false)
-    #
-    # plot(sum(eMax,dims=2),label="max")
-    # plot!(sum(eRaw,dims=2),label="e")
+
+    p1nl=plot(eRaw,xlabel="Time",ylabel="Energy",xlims=(1,horzLen+1),label="hub energy")
+    plot!(p1nl,eMax,label="hub max")
+    plot!(p1nl,eMax*.8,label="minimum departure")
+
+    p2nl=plot(uRaw,xlabel="Time",ylabel="Hub Current (kA)",legend=false,xlims=(1,horzLen+1))
+    plot!(p2nl,uMax)
+
+    p3nl=plot(1:horzLen+1,tRaw,label="XFRM Temp",xlims=(1,horzLen+1),xlabel="Time",ylabel="Temp (K)")
+    plot!(p3nl,1:horzLen+1,Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
+    p4nl=plot(1:horzLen+1,lambdaCurr,label="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,horzLen+1),legend=false)
+
+    plot(sum(eMax,dims=2),label="max")
+    plot!(sum(eRaw,dims=2),label="e")
+    plot(eDepart_min,label="min")
+    plot!(eDepart_min+extraE,label="actual")
+    plot!(eDepart_min+slackMax,label="max")
+
 
     #apply current and actual departures and arrivals
     nextU=uRaw[1,:]
@@ -112,3 +121,28 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
 
     return nothing
 end
+
+function hubCentral(hubS::scenarioHubStruct,mode::String,silent::Bool)
+    H=hubS.H
+    K=hubS.K
+    Nh=hubS.Nh
+    cSol=centralHubSolutionStruct(K=K,H=H)
+
+    for stepI=1:K
+        @printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI K
+        try
+            runHubCentralStep(stepI,hubS,cSol,mode,silent)
+        catch e
+            @printf "error: %s" e
+            break
+        end
+    end
+
+    objFun(e,u)=sum(sum((e[k,h]-hubS.eMax[k,h])^2*hubS.Qh[1,h] for h=1:H) +sum((u[k,h])^2*hubS.Rh[1,h] for h=1:H) for k=1:K)
+    cSol.objVal[1,1]=objFun(cSol.E,cSol.U)
+
+    return cSol
+end
+
+
+#ALADIN

@@ -228,6 +228,8 @@ end
 end
 
 @with_kw struct centralHubSolutionStruct
+    K::Int
+    H::Int
     E::Array=zeros(K,H) #row are time, column are hub
     U::Array=zeros(K,H) #row are time, column are hub
     T::Array=zeros(K,1) #row are time
