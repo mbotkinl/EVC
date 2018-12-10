@@ -161,71 +161,44 @@ function pwlEVcentral(evS::scenarioStruct,slack::Bool,silent::Bool)
 end
 
 #dual
-function runEVDualIt(p,stepI,evS,dLog,dCM,dSol,cSol,silent)
-    K=evS.K
-    N=evS.N
-    S=evS.S
-    horzLen=min(evS.K1,K-stepI)
-
-    #initialize with current states
-    global s0
-    global t0
-    global prevLam
-
-
-    if updateMethod=="fastAscent"
-        #alpha0 = 0.1  #for A
-        alpha0 = 5e4 #for kA
-        alphaDivRate=2
-        minAlpha=1e-6
+function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL)
+    target=zeros((horzLen+1),1)
+    target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
+    evM=Model(solver = GurobiSolver(NumericFocus=1))
+    @variable(evM,un[1:horzLen+1])
+    @variable(evM,sn[1:horzLen+1])
+    if slack @variable(evM,slackSn) end
+    objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(un[k,1])^2*evS.Ri[evInd,1]+prevLam[k,1]*un[k,1] for k=1:horzLen+1)
+    if slack
+        append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
+    end
+    @objective(evM,Min,objExp)
+    @constraint(evM,sn[1,1]==s0[evInd,1]+evS.ηP[evInd,1]*un[1,1]) #fix for MPC loop
+    @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*un[k+1,1]) #check K+1
+    @constraint(evM,sn.<=1)
+    if slack
+        @constraint(evM,sn.>=target.*(1-slackSn))
+        @constraint(evM,slackSn>=0)
     else
-        #alpha0 = 3e-3 #for A
-        # alpha = 3e4 #for kA
-        # alphaDivRate=4
-        alpha0 = 5e3 #for kA
-        alphaDivRate=2
-        minAlpha=1e-6
+        @constraint(evM,sn.>=target)
     end
+    @constraint(evM,un.<=evS.imax[evInd,1])
+    @constraint(evM,un.>=evS.imin[evInd,1])
 
-    convChk = 1e-4
+    TT = stdout # save original stdout stream
+    redirect_stdout()
+    statusEVM = solve(evM)
+    redirect_stdout(TT)
 
-    #solve subproblem for each EV
-    @sync @distributed for evInd=1:N
-        target=zeros((horzLen+1),1)
-        target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
-        evM=Model(solver = GurobiSolver(NumericFocus=1))
-        @variable(evM,un[1:horzLen+1])
-        @variable(evM,sn[1:horzLen+1])
-        if slack @variable(evM,slackSn) end
-        objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(un[k,1])^2*evS.Ri[evInd,1]+prevLam[k,1]*un[k,1] for k=1:horzLen+1)
-        if slack
-            append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
-        end
-        @objective(evM,Min,objExp)
-        @constraint(evM,sn[1,1]==s0[evInd,1]+evS.ηP[evInd,1]*un[1,1]) #fix for MPC loop
-        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*un[k+1,1]) #check K+1
-        @constraint(evM,sn.<=1)
-        if slack
-            @constraint(evM,sn.>=target.*(1-slackSn))
-            @constraint(evM,slackSn>=0)
-        else
-            @constraint(evM,sn.>=target)
-        end
-        @constraint(evM,un.<=evS.imax[evInd,1])
-        @constraint(evM,un.>=evS.imin[evInd,1])
+    @assert statusEVM==:Optimal "EV NLP optimization not solved to optimality"
 
-        TT = stdout # save original stdout stream
-        redirect_stdout()
-        statusEVM = solve(evM)
-        redirect_stdout(TT)
+    dLog.Sn[collect(evInd:N:N*(horzLen+1)),p]=getvalue(sn) #solved state goes in next time slot
+    dLog.Un[collect(evInd:N:N*(horzLen+1)),p]=getvalue(un) #current go
+    dLog.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
+    return nothing
+end
 
-        @assert statusEVM==:Optimal "EV NLP optimization not solved to optimality"
-
-        dLog.Sn[collect(evInd:N:N*(horzLen+1)),p]=getvalue(sn) #solved state goes in next time slot
-        dLog.Un[collect(evInd:N:N*(horzLen+1)),p]=getvalue(un) #current go
-        dLog.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
-    end
-
+function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,dCM::convMetricsStruct)
     if updateMethod=="dualAscent"
         #solve coordinator problem
         #coorM=Model(solver = GurobiSolver(Presolve=0,NumericFocus=1))
@@ -274,7 +247,44 @@ function runEVDualIt(p,stepI,evS,dLog,dCM,dSol,cSol,silent)
             #gradL[k,1]=.5*gradL[k,1]+.2*gradL[k+1,1]+.2*gradL[k+2,1]+.1*gradL[k+3,1]+.1*gradL[k+4,1]
         end
     end
+    return nothing
+end
 
+function runEVDualIt(p,stepI,evS,dLog,dCM,dSol,cSol,silent)
+    K=evS.K
+    N=evS.N
+    S=evS.S
+    horzLen=min(evS.K1,K-stepI)
+
+    #initialize with current states
+    global s0
+    global t0
+    global prevLam
+
+
+    if updateMethod=="fastAscent"
+        #alpha0 = 0.1  #for A
+        alpha0 = 5e4 #for kA
+        alphaDivRate=2
+        minAlpha=1e-6
+    else
+        #alpha0 = 3e-3 #for A
+        # alpha = 3e4 #for kA
+        # alphaDivRate=4
+        alpha0 = 5e3 #for kA
+        alphaDivRate=2
+        minAlpha=1e-6
+    end
+
+    convChk = 1e-4
+
+    #solve subproblem for each EV
+    @sync @distributed for evInd=1:N
+        localEVDual(evInd,p,stepI,evS,dLog)
+    end
+
+    localXFRMDual(p,stepI,evS,dLog,dCM)
+    
     #update lambda
     alphaP= max(alpha0/ceil(p/alphaDivRate),minAlpha)
     dLog.itUpdate[1,p]=alphaP
@@ -435,64 +445,45 @@ function pwlEVdual(maxIt::Int,updateMethod::String,evS::scenarioStruct,cSol::sol
 end
 
 #ADMM
-function runEVADMMIt(p,stepI,evS,dLogadmm,dCMadmm,dSol,cSol,silent)
-
-    K=evS.K
-    N=evS.N
-    S=evS.S
-    horzLen=min(evS.K1,K-stepI)
-
-    #initialize with current states
-    global s0
-    global t0
-    global prevLam
-    global prevVu
-    global prevVz
-    global ρADMMp
-
-    ρDivRate=1
-    maxRho=1e9
-
-    convChk = 1e-4
-
-    #x minimization eq 7.66 in Bertsekas
-    @sync @distributed for evInd=1:N
-        evV=prevVu[collect(evInd:N:length(prevVu)),1]
-        target=zeros((horzLen+1),1)
-        target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
-        evM = Model(solver = GurobiSolver())
-        @variable(evM,sn[1:(horzLen+1)])
-        @variable(evM,u[1:(horzLen+1)])
-        if slack @variable(evM,slackSn) end
-        objExp= sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
-                                prevLam[k,1]*(u[k,1]-evV[k,1])+
-                                ρADMMp/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1)
-        if slack
-            append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
-        end
-        @objective(evM,Min,objExp)
-        @constraint(evM,sn[1,1]==s0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
-        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
-        @constraint(evM,sn.<=1)
-        if slack
-            @constraint(evM,sn.>=target.*(1-slackSn))
-            @constraint(evM,slackSn>=0)
-        else
-            @constraint(evM,sn.>=target)
-        end
-        @constraint(evM,u.<=evS.imax[evInd,1])
-        @constraint(evM,u.>=evS.imin[evInd,1])
-        TT = stdout # save original stdout stream
-        redirect_stdout()
-        statusEVM = solve(evM)
-        redirect_stdout(TT)
-        @assert statusEVM==:Optimal "ADMM EV NLP optimization not solved to optimality"
-
-        dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=getvalue(sn)
-        dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=getvalue(u)
-        dLogadmm.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
+function localEVADMM(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL)
+    evV=prevVu[collect(evInd:N:length(prevVu)),1]
+    target=zeros((horzLen+1),1)
+    target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
+    evM = Model(solver = GurobiSolver())
+    @variable(evM,sn[1:(horzLen+1)])
+    @variable(evM,u[1:(horzLen+1)])
+    if slack @variable(evM,slackSn) end
+    objExp= sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
+                            prevLam[k,1]*(u[k,1]-evV[k,1])+
+                            ρADMMp/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1)
+    if slack
+        append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
     end
+    @objective(evM,Min,objExp)
+    @constraint(evM,sn[1,1]==s0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
+    @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
+    @constraint(evM,sn.<=1)
+    if slack
+        @constraint(evM,sn.>=target.*(1-slackSn))
+        @constraint(evM,slackSn>=0)
+    else
+        @constraint(evM,sn.>=target)
+    end
+    @constraint(evM,u.<=evS.imax[evInd,1])
+    @constraint(evM,u.>=evS.imin[evInd,1])
+    TT = stdout # save original stdout stream
+    redirect_stdout()
+    statusEVM = solve(evM)
+    redirect_stdout(TT)
+    @assert statusEVM==:Optimal "ADMM EV NLP optimization not solved to optimality"
 
+    dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=getvalue(sn)
+    dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=getvalue(u)
+    dLogadmm.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
+    return nothing
+end
+
+function localXFRMADMM(p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL)
     #N+1 decoupled problem aka transformer current
     tM = Model(solver = GurobiSolver())
     @variable(tM,z[1:(S)*(horzLen+1)])
@@ -520,6 +511,35 @@ function runEVADMMIt(p,stepI,evS,dLogadmm,dCMadmm,dSol,cSol,silent)
 
     dLogadmm.Tpwl[:,p]=getvalue(t)
     dLogadmm.Z[:,p]=getvalue(z)
+    return nothing
+end
+
+function runEVADMMIt(p,stepI,evS,dLogadmm,dCMadmm,dSol,cSol,silent)
+
+    K=evS.K
+    N=evS.N
+    S=evS.S
+    horzLen=min(evS.K1,K-stepI)
+
+    #initialize with current states
+    global s0
+    global t0
+    global prevLam
+    global prevVu
+    global prevVz
+    global ρADMMp
+
+    ρDivRate=1
+    maxRho=1e9
+
+    convChk = 1e-4
+
+    #x minimization eq 7.66 in Bertsekas
+    @sync @distributed for evInd=1:N
+        localEVADMM(evInd,p,stepI,evS,dLogadmm)
+    end
+
+    localXFRMADMM(p,stepI,evS,dLogadmm)
 
     #lambda update eq 7.68
     for k=1:horzLen+1
@@ -581,6 +601,8 @@ function runEVADMMIt(p,stepI,evS,dLogadmm,dCMadmm,dSol,cSol,silent)
             #@printf "unGap    %e after %g iterations\n" unGap p
             #@printf("fGap     %e after %g iterations\n\n",fGap,p)
         end
+
+        #update iterate variables
         prevLam=dLogadmm.Lam[:,p]
         prevVz=dLogadmm.Vz[:,p]
         prevVu=dLogadmm.Vu[:,p]
@@ -706,135 +728,92 @@ function pwlEVadmm(maxIt::Int,evS::scenarioStruct,cSol::solutionStruct,slack::Bo
 end
 
 #ALADIN
-function runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
-    K=evS.K
-    N=evS.N
-    S=evS.S
-    horzLen=min(evS.K1,K-stepI)
+function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Array{Float64,2},evS::scenarioStruct,dLogalad::itLogPWL)
 
-    #initialize with current states
-    global s0
-    global t0
-    global prevLam
-    global prevVu
-    global prevVz
-    global prevVt
-    global prevVs
-    global ρALADp
-
-    #other parameters
-    epsilon = 1e-4
     tolU=1e-6
     tolS=1e-8
+
+    #@printf "%g" evInd
+    ind=[evInd]
+    for k=1:horzLen
+        append!(ind,k*N+evInd)
+    end
+    evVu=prevVu[ind,1]
+    evVs=prevVs[ind,1]
+    #evV=zeros(horzLen+1,1)
+    target=zeros((horzLen+1),1)
+    target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
+    evM = Model(solver = GurobiSolver(TimeLimit=120))
+    @variable(evM,sn[1:(horzLen+1)])
+    @variable(evM,u[1:(horzLen+1)])
+    if slack @variable(evM,slackSn) end
+    objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
+                            prevLam[k,1]*(u[k,1])+
+                            ρALADp/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
+                            ρALADp/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)
+    if slack
+        append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
+    end
+    @objective(evM,Min,objExp)
+    @constraint(evM,sn[1,1]==s0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
+    @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
+    @constraint(evM,socKappaMax,sn.<=1)
+    if slack
+        @constraint(evM,sn.>=target.*(1-slackSn))
+        @constraint(evM,slackSn>=0)
+    else
+        @constraint(evM,socKappaMin,sn.>=target)
+    end
+    @constraint(evM,curKappaMax,u.<=evS.imax[evInd,1])
+    @constraint(evM,curKappaMin,u.>=evS.imin[evInd,1])
+
+    TT = stdout # save original stdout stream
+    redirect_stdout()
+    statusEVM = solve(evM)
+    redirect_stdout(TT)
+    @assert statusEVM==:Optimal "ALAD EV NLP optimization not solved to optimality"
+    #@printf "s"
+
+    # kappaMax=-getdual(curKappaMax)
+    # kappaMin=-getdual(curKappaMin)
+    # socMax=-getdual(socKappaMax)
+    # socMin=-getdual(socKappaMin)
+    uVal=getvalue(u)
+    snVal=getvalue(sn)
+
+    cValMax=abs.(uVal.-evS.imax[evInd,1]).<tolU
+    cValMin=abs.(uVal.-evS.imin[evInd,1]).<tolU
+    dLogalad.Cuu[ind,p]=1cValMax
+    dLogalad.Cul[ind,p]=-1cValMin
+
+    cValMax=abs.(snVal.-1).<tolS
+    if slack
+        cValMin=abs.(snVal.-target*(1-getvalue(slackSn))).<tolS
+    else
+        cValMin=abs.(snVal.-target).<tolS
+    end
+    dLogalad.Csu[ind,p]=1cValMax
+    dLogalad.Csl[ind,p]=-1cValMin
+
+    dLogalad.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
+    dLogalad.Sn[ind,p]=snVal
+    dLogalad.Un[ind,p]=uVal
+
+    # dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
+    # dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
+
+    dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,digits=4)
+    dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],digits=8)
+
+    #use convex ALADIN approach
+    #dLogalad.Gu[ind,p]=σU[evInd,1]*(evVu-uVal)-prevLam[:,1]
+    #dLogalad.Gs[ind,p]=σS[evInd,1]*(evVs-snVal)#-prevLam[:,1]
+    return nothing
+end
+
+function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenarioStruct,dLogalad::itLogPWL)
     tolT=1e-6
     tolZ=1e-6
-
-    #ALADIN tuning
-    if eqForm
-        #println("Running Eq ALADIN")
-        scalingF=1
-    else
-        #println("Running ineq ALADIN")
-        scalingF=1e-4
-    end
-    σZ=scalingF*1e1
-    σT=scalingF
-    σU=ones(N,1)
-    σS=ones(N,1)/10#for kA
-    Hu=2*evS.Ri
-    Hs=2*evS.Qsi
-    # Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
-    # Hs=2*evS.Qsi *((1.5-2.5)*rand()+2.5)
-    Hz=0
-    Ht=0
-    # Hz=1e-6
-    # Ht=1e-6
-
-    #ρALAD=1e3
-    ρRate=1.1
-    ρALADmax=4e5
-
-    μALADp=1e8
-    # μALAD=1e8
-    # μRate=1
-    # μALADmax=2e9
-
-    #solve decoupled
-    @sync @distributed for evInd=1:N
-        ind=[evInd]
-        for k=1:horzLen
-            append!(ind,k*N+evInd)
-        end
-        evVu=prevVu[ind,1]
-        evVs=prevVs[ind,1]
-        #evV=zeros(horzLen+1,1)
-        target=zeros((horzLen+1),1)
-        target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
-        evM = Model(solver = GurobiSolver())
-        @variable(evM,sn[1:(horzLen+1)])
-        @variable(evM,u[1:(horzLen+1)])
-        if slack @variable(evM,slackSn) end
-        objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
-                                prevLam[k,1]*(u[k,1])+
-                                ρALADp/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
-                                ρALADp/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)
-        if slack
-            append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
-        end
-        @objective(evM,Min,objExp)
-        @constraint(evM,sn[1,1]==s0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
-        @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
-        @constraint(evM,socKappaMax,sn.<=1)
-        if slack
-            @constraint(evM,sn.>=target.*(1-slackSn))
-            @constraint(evM,slackSn>=0)
-        else
-            @constraint(evM,socKappaMin,sn.>=target)
-        end
-        @constraint(evM,curKappaMax,u.<=evS.imax[evInd,1])
-        @constraint(evM,curKappaMin,u.>=evS.imin[evInd,1])
-
-        TT = stdout # save original stdout stream
-        redirect_stdout()
-        statusEVM = solve(evM)
-        redirect_stdout(TT)
-        @assert statusEVM==:Optimal "ALAD EV NLP optimization not solved to optimality"
-
-        # kappaMax=-getdual(curKappaMax)
-        # kappaMin=-getdual(curKappaMin)
-        # socMax=-getdual(socKappaMax)
-        # socMin=-getdual(socKappaMin)
-        uVal=getvalue(u)
-        snVal=getvalue(sn)
-
-        cValMax=abs.(uVal.-evS.imax[evInd,1]).<tolU
-        cValMin=abs.(uVal.-evS.imin[evInd,1]).<tolU
-        dLogalad.Cuu[ind,p]=1cValMax
-        dLogalad.Cul[ind,p]=-1cValMin
-
-        cValMax=abs.(snVal.-1).<tolS
-        if slack
-            cValMin=abs.(snVal.-target*(1-getvalue(slackSn))).<tolS
-        else
-            cValMin=abs.(snVal.-target).<tolS
-        end
-        dLogalad.Csu[ind,p]=1cValMax
-        dLogalad.Csl[ind,p]=-1cValMin
-
-        dLogalad.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
-        dLogalad.Sn[ind,p]=snVal
-        dLogalad.Un[ind,p]=uVal
-
-        # dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
-        # dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
-
-        dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,digits=4)
-        dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],digits=8)
-
-        #use convex ALADIN approach
-        #dLogalad.Gu[ind,p]=σU[evInd,1]*(evVu-uVal)-prevLam[:,1]
-        #dLogalad.Gs[ind,p]=σS[evInd,1]*(evVs-snVal)#-prevLam[:,1]
-    end
 
     #N+1 decoupled problem aka transformer current
     tM = Model(solver = GurobiSolver(NumericFocus=3))
@@ -885,51 +864,21 @@ function runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
 
     #dLogalad.Gz[:,p]=σZ*(prevVz-zVal)-repeat(-prevLam[:,1],inner=S)
     #dLogalad.Gt[:,p]=σT*(prevVt-xtVal)
+    return nothing
+end
 
-    for k=1:horzLen+1
-        dLogalad.uSum[k,p]=sum(dLogalad.Un[(k-1)*N+n,p] for n=1:N)
-        dLogalad.zSum[k,p]=sum(dLogalad.Z[(k-1)*(S)+s,p] for s=1:S)
-        dLogalad.couplConst[k,p]=dLogalad.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLogalad.zSum[k,p]
-    end
+function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,dLogalad::itLogPWL,dCMalad::convMetricsStruct)
 
-    #calculate actual temperature from nonlinear model of XFRM
-    for k=1:horzLen+1
-        dLogalad.Itotal[k,p]=dLogalad.uSum[k,p] + evS.iD_actual[stepI+(k-1),1]
-    end
-    dLogalad.Tactual[1,p]=evS.τP*t0+evS.γP*dLogalad.Itotal[1,p]^2+evS.ρP*evS.Tamb[stepI,1] #fix for mpc
-    for k=1:horzLen
-        dLogalad.Tactual[k+1,p]=evS.τP*dLogalad.Tactual[k,p]+evS.γP*dLogalad.Itotal[k,p]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
-    end
-
-    #check for convergence
-    constGap=norm(dLogalad.couplConst[:,p],1)
-    cc=norm(vcat(σU[1]*(prevVu[:,1]-dLogalad.Un[:,p]),σZ*(prevVz[:,1]-dLogalad.Z[:,p]),
-                 σT*(prevVt[:,1]-dLogalad.Tpwl[:,p]),σS[1]*(prevVs[:,1]-dLogalad.Sn[:,p])),1)
-    #cc=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
-    objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1] for n=1:N) +
-                     sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]       for n=1:N) for k=1:horzLen+1)
-    dLogalad.objVal[1,p]=objFun(dLogalad.Sn[:,p],dLogalad.Un[:,p])
-    #fGap= abs(dLogalad.objVal[1,p]-cSol.objVal[1,1])
-    #snGap=norm((dLogalad.Sn[:,p]-cSol.Sn),2)
-    #unGap=norm((dLogalad.Un[:,p]-cSol.Un),2)
-    #dCMalad.obj[p,1]=fGap
-    #dCMalad.sn[p,1]=snGap
-    #dCMalad.un[p,1]=unGap
-    dCMalad.couplConst[p,1]=constGap
-    #convCheck[p,1]=cc
-    if  constGap<=epsilon && cc<=epsilon
-        if !silent @printf "Converged after %g iterations\n" p end
-        convIt=p
-        #break
-        return true
-    else
-        if !silent
-            @printf "convCheck  %e after %g iterations\n" cc p
-            @printf "constGap   %e after %g iterations\n" constGap p
-            #@printf "snGap      %e after %g iterations\n" snGap p
-            #@printf("fGap       %e after %g iterations\n",fGap,p)
-        end
-    end
+    Hu=2*evS.Ri
+    Hs=2*evS.Qsi
+    # Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
+    # Hs=2*evS.Qsi *((1.5-2.5)*rand()+2.5)
+    Hz=0
+    Ht=0
+    # Hz=1e-6
+    # Ht=1e-6
+    ρRate=1.1
+    ρALADmax=4e5
 
     #coupled QP
     cM = Model(solver = GurobiSolver(NumericFocus=3))
@@ -996,6 +945,7 @@ function runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
     statusM = solve(cM)
     redirect_stdout(TT)
     @assert statusM==:Optimal "ALAD Central QP optimization not solved to optimality"
+    @printf "4"
 
     #update step
     # Lam[:,p+1]=-getdual(currCon)
@@ -1021,6 +971,103 @@ function runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
     dLogalad.itUpdate[1,p]=min(ρALADp*ρRate,ρALADmax) #increase ρ every iteration
     #μALADp=min(μALADp*μRate,μALADmax) #increase μ every iteration
     #ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dZ),getvalue(dSn),getvalue(dT)),Inf)
+    return nothing
+end
+
+function runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
+    K=evS.K
+    N=evS.N
+    S=evS.S
+    horzLen=min(evS.K1,K-stepI)
+
+    #initialize with current states
+    global s0
+    global t0
+    global prevLam
+    global prevVu
+    global prevVz
+    global prevVt
+    global prevVs
+    global ρALADp
+
+    #other parameters
+    epsilon = 1e-3
+
+    #ALADIN tuning
+    if eqForm
+        #println("Running Eq ALADIN")
+        scalingF=1
+    else
+        #println("Running ineq ALADIN")
+        scalingF=1e-4
+    end
+    σZ=scalingF*1e1
+    σT=scalingF
+    σU=ones(N,1)
+    σS=ones(N,1)/10#for kA
+
+    μALADp=1e8
+    # μALAD=1e8
+    # μRate=1
+    # μALADmax=2e9
+
+    @printf "1"
+    #solve decoupled
+    @sync @distributed for evInd=1:N
+    #for evInd=1:N
+        localEVALAD(evInd,p,stepI,σU,σS,evS,dLogalad)
+    end
+    @printf "2"
+
+    localXFRMALAD(p,stepI,σZ,σT,evS,dLogalad)
+
+    for k=1:horzLen+1
+        dLogalad.uSum[k,p]=sum(dLogalad.Un[(k-1)*N+n,p] for n=1:N)
+        dLogalad.zSum[k,p]=sum(dLogalad.Z[(k-1)*(S)+s,p] for s=1:S)
+        dLogalad.couplConst[k,p]=dLogalad.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLogalad.zSum[k,p]
+    end
+
+    #calculate actual temperature from nonlinear model of XFRM
+    for k=1:horzLen+1
+        dLogalad.Itotal[k,p]=dLogalad.uSum[k,p] + evS.iD_actual[stepI+(k-1),1]
+    end
+    dLogalad.Tactual[1,p]=evS.τP*t0+evS.γP*dLogalad.Itotal[1,p]^2+evS.ρP*evS.Tamb[stepI,1] #fix for mpc
+    for k=1:horzLen
+        dLogalad.Tactual[k+1,p]=evS.τP*dLogalad.Tactual[k,p]+evS.γP*dLogalad.Itotal[k,p]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
+    end
+
+    #check for convergence
+    constGap=norm(dLogalad.couplConst[:,p],1)
+    cc=norm(vcat(σU[1]*(prevVu[:,1]-dLogalad.Un[:,p]),σZ*(prevVz[:,1]-dLogalad.Z[:,p]),
+                 σT*(prevVt[:,1]-dLogalad.Tpwl[:,p]),σS[1]*(prevVs[:,1]-dLogalad.Sn[:,p])),1)
+    #cc=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
+    objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1] for n=1:N) +
+                     sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]       for n=1:N) for k=1:horzLen+1)
+    dLogalad.objVal[1,p]=objFun(dLogalad.Sn[:,p],dLogalad.Un[:,p])
+    #fGap= abs(dLogalad.objVal[1,p]-cSol.objVal[1,1])
+    #snGap=norm((dLogalad.Sn[:,p]-cSol.Sn),2)
+    #unGap=norm((dLogalad.Un[:,p]-cSol.Un),2)
+    #dCMalad.obj[p,1]=fGap
+    #dCMalad.sn[p,1]=snGap
+    #dCMalad.un[p,1]=unGap
+    dCMalad.couplConst[p,1]=constGap
+    #convCheck[p,1]=cc
+    if  constGap<=epsilon && cc<=epsilon
+        if !silent @printf "Converged after %g iterations\n" p end
+        convIt=p
+        #break
+        return true
+    else
+        if !silent
+            @printf "convCheck  %e after %g iterations\n" cc p
+            @printf "constGap   %e after %g iterations\n" constGap p
+            #@printf "snGap      %e after %g iterations\n" snGap p
+            #@printf("fGap       %e after %g iterations\n",fGap,p)
+        end
+    end
+    @printf "3"
+
+    coordALAD(p,stepI,μALADp,evS,dLogalad,dCMalad)
 
     #reset for next iteration
     prevVu=dLogalad.Vu[:,p]
@@ -1029,6 +1076,8 @@ function runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
     prevVt=dLogalad.Vt[:,p]
     prevLam=dLogalad.Lam[:,p]
     ρALADp=dLogalad.itUpdate[1,p]
+    @printf "5..."
+
     return false
 end
 
@@ -1044,6 +1093,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,cSol,eqForm,silent)
     dCMalad=convMetricsStruct()
     dLogalad=itLogPWL(horzLen=horzLen,N=N,S=S)
     for p=1:maxIt
+        @printf "%git" p
         cFlag=runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
         global convIt=p
         if cFlag
