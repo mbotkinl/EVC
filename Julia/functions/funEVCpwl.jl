@@ -164,7 +164,7 @@ end
 function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL)
     N=evS.N
     S=evS.S
-    horzLen=min(evS.K1,K-stepI)
+    horzLen=min(evS.K1,evS.K-stepI)
 
     target=zeros((horzLen+1),1)
     target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
@@ -205,7 +205,7 @@ end
 function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,dCM::convMetricsStruct)
     N=evS.N
     S=evS.S
-    horzLen=min(evS.K1,K-stepI)
+    horzLen=min(evS.K1,evS.K-stepI)
 
     if updateMethod=="dualAscent"
         #solve coordinator problem
@@ -456,7 +456,7 @@ end
 function localEVADMM(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL)
     N=evS.N
     S=evS.S
-    horzLen=min(evS.K1,K-stepI)
+    horzLen=min(evS.K1,evS.K-stepI)
 
     evV=prevVu[collect(evInd:N:length(prevVu)),1]
     target=zeros((horzLen+1),1)
@@ -498,7 +498,7 @@ end
 function localXFRMADMM(p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL)
     N=evS.N
     S=evS.S
-    horzLen=min(evS.K1,K-stepI)
+    horzLen=min(evS.K1,evS.K-stepI)
 
     #N+1 decoupled problem aka transformer current
     tM = Model(solver = GurobiSolver())
@@ -747,7 +747,7 @@ end
 function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Array{Float64,2},evS::scenarioStruct,dLogalad::itLogPWL)
     N=evS.N
     S=evS.S
-    horzLen=min(evS.K1,K-stepI)
+    horzLen=min(evS.K1,evS.K-stepI)
 
     tolU=1e-6
     tolS=1e-8
@@ -833,7 +833,7 @@ end
 function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenarioStruct,dLogalad::itLogPWL)
     N=evS.N
     S=evS.S
-    horzLen=min(evS.K1,K-stepI)
+    horzLen=min(evS.K1,evS.K-stepI)
 
     tolT=1e-6
     tolZ=1e-6
@@ -893,7 +893,7 @@ end
 function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,dLogalad::itLogPWL,dCMalad::convMetricsStruct)
     N=evS.N
     S=evS.S
-    horzLen=min(evS.K1,K-stepI)
+    horzLen=min(evS.K1,evS.K-stepI)
 
     Hu=2*evS.Ri
     Hs=2*evS.Qsi
