@@ -162,6 +162,10 @@ end
 
 #dual
 function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL)
+    N=evS.N
+    S=evS.S
+    horzLen=min(evS.K1,K-stepI)
+
     target=zeros((horzLen+1),1)
     target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
     evM=Model(solver = GurobiSolver(NumericFocus=1))
@@ -199,6 +203,10 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
 end
 
 function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,dCM::convMetricsStruct)
+    N=evS.N
+    S=evS.S
+    horzLen=min(evS.K1,K-stepI)
+
     if updateMethod=="dualAscent"
         #solve coordinator problem
         #coorM=Model(solver = GurobiSolver(Presolve=0,NumericFocus=1))
@@ -284,7 +292,7 @@ function runEVDualIt(p,stepI,evS,dLog,dCM,dSol,cSol,silent)
     end
 
     localXFRMDual(p,stepI,evS,dLog,dCM)
-    
+
     #update lambda
     alphaP= max(alpha0/ceil(p/alphaDivRate),minAlpha)
     dLog.itUpdate[1,p]=alphaP
@@ -446,6 +454,10 @@ end
 
 #ADMM
 function localEVADMM(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL)
+    N=evS.N
+    S=evS.S
+    horzLen=min(evS.K1,K-stepI)
+
     evV=prevVu[collect(evInd:N:length(prevVu)),1]
     target=zeros((horzLen+1),1)
     target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
@@ -484,6 +496,10 @@ function localEVADMM(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::
 end
 
 function localXFRMADMM(p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL)
+    N=evS.N
+    S=evS.S
+    horzLen=min(evS.K1,K-stepI)
+
     #N+1 decoupled problem aka transformer current
     tM = Model(solver = GurobiSolver())
     @variable(tM,z[1:(S)*(horzLen+1)])
@@ -729,6 +745,9 @@ end
 
 #ALADIN
 function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Array{Float64,2},evS::scenarioStruct,dLogalad::itLogPWL)
+    N=evS.N
+    S=evS.S
+    horzLen=min(evS.K1,K-stepI)
 
     tolU=1e-6
     tolS=1e-8
@@ -812,6 +831,10 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
 end
 
 function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenarioStruct,dLogalad::itLogPWL)
+    N=evS.N
+    S=evS.S
+    horzLen=min(evS.K1,K-stepI)
+
     tolT=1e-6
     tolZ=1e-6
 
@@ -868,6 +891,9 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenario
 end
 
 function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,dLogalad::itLogPWL,dCMalad::convMetricsStruct)
+    N=evS.N
+    S=evS.S
+    horzLen=min(evS.K1,K-stepI)
 
     Hu=2*evS.Ri
     Hs=2*evS.Qsi
