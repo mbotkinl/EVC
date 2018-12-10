@@ -1,51 +1,20 @@
-#test hub model
-using JuMP
-using Statistics
-using Plots;pyplot()
-using Printf
-using Parameters
-using SharedArrays
-#using Ipopt
 using Gurobi
-
-# check all indexing????
-#especially stepI +k for iD and Tamb
-H=1
-datafile="n"
-mode="PWL"
-silent=true
-saveS=false
-saveF=false
-
-include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funHub.jl")
-include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
+fname = "central_H$(H)"
 
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hubTest\\"
-file="HubscenarioH$(H).jld2"
-if datafile=="jld2"
-	using FileIO
-	println("Reading in Hub Scenario...")
-	loadF=load(path*file)
-	hubS=loadF["hubS"]
-else #create scenario
-	println("Creating Hub Scenario...")
-	Nh=40
-	Tmax=.393
-	#Dload_amplitude=20
+if loadResults
+	println("Reading in Central Sim")
+	loadF=load(path*fname*".jld2")
+	hubS=loadF["scenario"]
+	cSol=loadF["solution"]
+else
+	#initialize
+	t0=hubS.t0
+	e0=hubS.e0
 
-	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
-    if saveS using FileIO end
-	using Distributions
-	hubS=setupHubScenario(H,Nh,Tmax=Tmax,saveS=saveS,path=path)
+	timeT=@elapsed cSol=hubCentral(hubS,mode,silent)
+	if saveResults saveRun(path,fname,timeT, hubS,cSol) end
 end
-
-
-#initialize
-t0=hubS.t0
-e0=hubS.e0
-
-timeT=@elapsed cSol=hubCentral(hubS,mode,silent)
 
 stT1=Time(20,0)
 endT1=Time(23,59)
@@ -56,8 +25,7 @@ xticks=(1:40:hubS.K,Dates.format.(Xlabels[1:40:hubS.K],"HH:MM"))
 hubLabels=permutedims(["Hub $(h)" for h=1:hubS.H])
 
 p1=plot(cSol.E,xlabel="",ylabel="Energy (kWh)",seriestype=:line,labels=hubLabels,xticks=xticks)
-plot!(hubS.eMax,label="Hub Max")
-
+plot!(hubS.eMax,label="Hub Max",line=(:dash))
 
 sumPlot=plot(sum(cSol.E,dims=2),xlabel="",ylabel="Energy (kWh)",label="Hub Energy",seriestype=:bar,xticks=xticks)
 plot!(sumPlot,sum(cSol.E_depart,dims=2),label="Depart Energy",seriestype=:scatter,markersize=10)
