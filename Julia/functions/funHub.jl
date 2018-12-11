@@ -407,11 +407,11 @@ end
 
 
 #ALADIN
-function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Array{Float64,2},hubS::scenarioHubStruct,dLogalad::hubItLogPWL)
+function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Array{Float64,2},σD::Array{Float64,2},hubS::scenarioHubStruct,dLogalad::hubItLogPWL)
     horzLen=min(hubS.K1,hubS.K-stepI)
 
     tolU=1e-6
-    tolE=1e-6
+    tolE=1e-2
 
     eMax=hubS.eMax[stepI:(stepI+horzLen),hubInd]
     uMax=hubS.uMax[stepI:(stepI+horzLen),hubInd]
@@ -428,7 +428,7 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     objExp=sum((e[k,1]-eMax[k,1])^2*hubS.Qh[1,hubInd]+(u[k,1])^2*hubS.Rh[1,hubInd]+
                             prevLam[k,1]*(u[k,1])+
                             ρALADp/2*(u[k,1]-prevVu[k,hubInd])*σU[hubInd,1]*(u[k,1]-prevVu[k,hubInd])+
-                            ρALADp/2*(eΔ[k,1]-prevVd[k,hubInd])*σE[hubInd,1]*(eΔ[k,1]-prevVd[k,hubInd])+
+                            ρALADp/2*(eΔ[k,1]-prevVd[k,hubInd])*σD[hubInd,1]*(eΔ[k,1]-prevVd[k,hubInd])+
                             ρALADp/2*(e[k,1]-prevVe[k,hubInd])*σE[hubInd,1]*(e[k,1]-prevVe[k,hubInd]) for k=1:horzLen+1)
 
     @objective(hubM,Min,objExp)
@@ -683,10 +683,11 @@ function runEVALADIt(p,stepI,hubS,dLogalad,dSol,cSol,mode,eqForm,silent)
         #println("Running ineq ALADIN")
         scalingF=1e-4
     end
-    σZ=scalingF*1e1
+    σZ=scalingF
     σT=scalingF
     σU=ones(H,1)
-    σE=ones(H,1)/10#for kA
+    σE=ones(H,1)/1e3
+    σD=ones(H,1)/1e1
 
     μALADp=1e8
     # μALAD=1e8
@@ -695,7 +696,7 @@ function runEVALADIt(p,stepI,hubS,dLogalad,dSol,cSol,mode,eqForm,silent)
 
     #solve decoupled
     @sync @distributed for hubInd=1:H
-        localEVALAD(hubInd,p,stepI,σU,σE,hubS,dLogalad)
+        localEVALAD(hubInd,p,stepI,σU,σE,σD,hubS,dLogalad)
     end
 
     localXFRMALAD(p,stepI,σZ,σT,hubS,dLogalad,mode)
@@ -772,17 +773,10 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
             break
         end
     end
-
-    # xPlot=zeros(horzLen+1,N)
-    # uPlot=zeros(horzLen+1,N)
-    # for ii= 1:N
-    # 	xPlot[:,ii]=dLogalad.Sn[collect(ii:N:length(dLogalad.Sn[:,convIt])),convIt]
-    #     uPlot[:,ii]=dLogalad.Un[collect(ii:N:length(dLogalad.Un[:,convIt])),convIt]
-    # end
-    #
-    # plot(uPlot)
-    # plot(xPlot)
-    # pd3alad=plot(hcat(dLogalad.Tactual[:,convIt],dLogalad.Tpwl[:,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")
+    # 
+    # plot(dLogalad.U[:,:,convIt])
+    # plot(dLogalad.E[:,:,convIt])
+    # pd3alad=plot(hcat(dLogalad.Tactual[:,1,convIt],dLogalad.Tpwl[:,1,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")
     # plot!(pd3alad,1:horzLen+1,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red))
     #
     # #convergence plots
@@ -793,28 +787,29 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     # else
     #     CList=colorant"red";
     # end
-    # uSumPlotalad=plot(dLogalad.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
+    # uSumPlotalad=plot(dLogalad.uSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
     # plot!(uSumPlotalad,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
     #
-    # zSumPlotalad=plot(dLogalad.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
+    # zSumPlotalad=plot(dLogalad.zSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
     # plot!(zSumPlotalad,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
     #
-    # constPlotalad2=plot(dLogalad.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+    # constPlotalad2=plot(dLogalad.couplConst[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
     #
-    # lamPlotalad=plot(dLogalad.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
-    # plot!(lamPlotalad,cSol.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
+    # lamPlotalad=plot(dLogalad.Lam[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
+    # plot!(lamPlotalad,cSol.Lam,seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # activeSet=zeros(convIt,1)
     # setChanges=zeros(convIt,1)
     # for ii=2:convIt
-    #     activeSet[ii,1]=sum(abs.(dLogalad.Csu[:,ii]))+sum(abs.(dLogalad.Ctu[:,ii]))+
-    #               		sum(abs.(dLogalad.Cuu[:,ii]))+sum(abs.(dLogalad.Czu[:,ii]))+
-    # 					sum(abs.(dLogalad.Csl[:,ii]))+sum(abs.(dLogalad.Ctl[:,ii]))+
-    # 				    sum(abs.(dLogalad.Cul[:,ii]))+sum(abs.(dLogalad.Czl[:,ii]))
-    #     setChanges[ii,1]=sum(abs.(dLogalad.Csu[:,ii]-dLogalad.Csu[:,ii-1]))+sum(abs.(dLogalad.Ctu[:,ii]-dLogalad.Ctu[:,ii-1]))+
-    #                      sum(abs.(dLogalad.Cuu[:,ii]-dLogalad.Cuu[:,ii-1]))+sum(abs.(dLogalad.Czu[:,ii]-dLogalad.Czu[:,ii-1]))+
-    # 					 sum(abs.(dLogalad.Csl[:,ii]-dLogalad.Csl[:,ii-1]))+sum(abs.(dLogalad.Ctl[:,ii]-dLogalad.Ctl[:,ii-1]))+
-    # 				     sum(abs.(dLogalad.Cul[:,ii]-dLogalad.Cul[:,ii-1]))+sum(abs.(dLogalad.Czl[:,ii]-dLogalad.Czl[:,ii-1]))
+    #     activeSet[ii,1]=sum(abs.(dLogalad.Ceu[:,:,ii]))+sum(abs.(dLogalad.Ctu[:,:,ii]))+sum(abs.(dLogalad.Cdu[:,:,ii]))+
+    #               		sum(abs.(dLogalad.Cuu[:,:,ii]))+sum(abs.(dLogalad.Czu[:,:,ii]))+
+    # 					sum(abs.(dLogalad.Cel[:,:,ii]))+sum(abs.(dLogalad.Ctl[:,:,ii]))+sum(abs.(dLogalad.Cdl[:,:,ii]))+
+    # 				    sum(abs.(dLogalad.Cul[:,:,ii]))+sum(abs.(dLogalad.Czl[:,:,ii]))
+    #     setChanges[ii,1]=sum(abs.(dLogalad.Ceu[:,:,ii]-dLogalad.Ceu[:,:,ii-1]))+sum(abs.(dLogalad.Ctu[:,:,ii]-dLogalad.Ctu[:,:,ii-1]))+
+    #                      sum(abs.(dLogalad.Cuu[:,:,ii]-dLogalad.Cuu[:,:,ii-1]))+sum(abs.(dLogalad.Czu[:,:,ii]-dLogalad.Czu[:,:,ii-1]))+
+    # 					 sum(abs.(dLogalad.Cel[:,:,ii]-dLogalad.Cel[:,:,ii-1]))+sum(abs.(dLogalad.Ctl[:,:,ii]-dLogalad.Ctl[:,:,ii-1]))+
+    #                      sum(abs.(dLogalad.Cdu[:,:,ii]-dLogalad.Cdu[:,:,ii-1]))+sum(abs.(dLogalad.Cdl[:,:,ii]-dLogalad.Cdl[:,:,ii-1]))+
+    # 				     sum(abs.(dLogalad.Cul[:,:,ii]-dLogalad.Cul[:,:,ii-1]))+sum(abs.(dLogalad.Czl[:,:,ii]-dLogalad.Czl[:,:,ii-1]))
     # end
     #
     # activeSetPlot=plot(2:convIt,activeSet[2:convIt],xlabel="Iteration",ylabel="Total Active inequality constraints",

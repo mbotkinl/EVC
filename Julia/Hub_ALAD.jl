@@ -11,35 +11,39 @@ if loadResults
 else
 	t0=hubS.t0
 	e0=hubS.e0
-	prevLam=2e3*ones(hubS.K1+1,1)
+	prevLam=5e5*ones(hubS.K1+1,1)
     prevVt=hubS.Tmax*ones(hubS.K1+1,1)
-    prevVz=.01*ones((hubS.K1+1),hubS.S)
-    prevVu=.01*ones((hubS.K1+1),hubS.H)
-    prevVe=ones((hubS.K1+1),hubS.H)
-	prevVd=ones((hubS.K1+1),hubS.H)
+    prevVz=hubS.deltaI*ones((hubS.K1+1),hubS.S)
+    prevVu=repeat(maximum(hubS.uMax,dims=1),outer=[(hubS.K1+1),1])
+    prevVe=repeat(maximum(hubS.eMax,dims=1),outer=[(hubS.K1+1),1])
+	prevVd=repeat(maximum(hubS.slackMax,dims=1),outer=[(hubS.K1+1),1])
 	ρALADp = 1e3
 
 	println("Running ALAD Sim")
 	timeT=@elapsed dSolalad=hubALAD(maxIt,hubS,cSol,mode,eqForm,silent)
-	if saveResults saveRun(path,fname,timeT, evS, dSolalad) end
+	if saveResults saveRun(path,fname,timeT, hubS, dSolalad) end
 end
-#
-# println("plotting....")
-# pd1alad=plot(dSolalad.Sn,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,evS.K),ylims=(0,1))
-# if drawFig savefig(pd1alad,path*"J_decentral_ALADIN_SOC.png") end
-#
-# pd2alad=plot(dSolalad.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,evS.K))
-# if drawFig savefig(pd2alad,path*"J_decentral_ALADIN_Curr.png") end
-#
-# pd3alad=plot(hcat(dSolalad.Tactual[:,1],dSolalad.Tpwl[:,1])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
-# plot!(pd3alad,1:evS.K,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
-# if drawFig savefig(pd3alad,path*"J_decentral_ALADIN_Temp.png") end
-#
-# pd4alad=plot(hcat(cSol.lamCoupl,dSolalad.lamCoupl),xlabel="Time",ylabel=raw"Lambda ($/kA)",
-#              xlims=(0,evS.K),labels=["Central" "ALADIN"])
-# if drawFig savefig(pd4alad,path*"J_decentral_ALADIN_Lam.png") end
-#
-# aggU=plot(hcat(cSol.uSum,dSolalad.uSum),label=["Central" "ALAD"],
-# 			xlims=(0,evS.K),xlabel="Time",ylabel="PEV Current (kA)")
-#
-# checkDesiredStates(dSolalad.Sn,evS.Kn,evS.Snmin)
+
+stT1=Time(20,0)
+endT1=Time(23,59)
+stT2=Time(0,0)
+endT2=Time(10,0)
+Xlabels=vcat(collect(stT1:Dates.Second(round(hubS.Ts)):endT1),collect(stT2:Dates.Second(round(hubS.Ts)):endT2))
+xticks=(1:40:hubS.K,Dates.format.(Xlabels[1:40:hubS.K],"HH:MM"))
+hubLabels=permutedims(["Hub $(h)" for h=1:hubS.H])
+
+p1=plot(dSolalad.E,xlabel="",ylabel="Energy (kWh)",seriestype=:line,labels=hubLabels,xticks=xticks)
+plot!(hubS.eMax,label="Hub Max",line=(:dash))
+
+p2=plot(dSolalad.U,xlabel="",ylabel="Hub Current (kA)",legend=false,xticks=xticks)
+
+p3=plot(dSolalad.Tactual*1000,label="XFRM Temp",xlabel="",ylabel="Temp (K)")
+plot!(p3,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red),xticks=xticks)
+
+p4=plot(dSolalad.Lam,label="Time",ylabel=raw"Lambda ($/kA)",legend=false,xticks=xticks)
+
+
+aggU=plot(hcat(cSol.uSum,dSolalad.uSum),label=["Central" "ALAD"],
+			xlims=(0,hubS.K),xlabel="Time",ylabel="PEV Current (kA)")
+
+#checkDesiredStates(dSolalad.Sn,evS.Kn,evS.Snmin)
