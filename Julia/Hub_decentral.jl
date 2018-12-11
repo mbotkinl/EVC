@@ -3,16 +3,16 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 fname = "dDual_H$(H)"
 
 if loadResults
-	println("Reading in ALAD Sim")
+	println("Reading in Dual Hub Sim")
 	loadF=load(path*fname*".jld2")
 	hubS=loadF["scenario"]
 	dSol=loadF["solution"]
 else
 	t0=hubS.t0
 	e0=hubS.e0
-	prevLam=2e5*ones(hubS.K1+1,1)
+	prevLam=ones(hubS.K1+1,1)
 
-	println("Running ALAD Sim")
+	println("Running Dual Hub Sim")
 	timeT=@elapsed dSol=hubDual(maxIt,hubS,cSol,mode,silent)
 	if saveResults saveRun(path,fname,timeT, evS, dSolalad) end
 end

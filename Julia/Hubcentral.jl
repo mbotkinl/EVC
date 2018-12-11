@@ -24,17 +24,17 @@ Xlabels=vcat(collect(stT1:Dates.Second(round(hubS.Ts)):endT1),collect(stT2:Dates
 xticks=(1:40:hubS.K,Dates.format.(Xlabels[1:40:hubS.K],"HH:MM"))
 hubLabels=permutedims(["Hub $(h)" for h=1:hubS.H])
 
-p1=plot(cSol.E,xlabel="",ylabel="Energy (kWh)",seriestype=:line,labels=hubLabels,xticks=xticks)
+p1=plot(cSol.E,xlabel="",ylabel="Energy (MWh)",seriestype=:line,labels=hubLabels,xticks=xticks)
 plot!(hubS.eMax,label="Hub Max",line=(:dash))
 
-sumPlot=plot(sum(cSol.E,dims=2),xlabel="",ylabel="Energy (kWh)",label="Hub Energy",seriestype=:bar,xticks=xticks)
+sumPlot=plot(sum(cSol.E,dims=2),xlabel="",ylabel="Energy (MWh)",label="Hub Energy",seriestype=:bar,xticks=xticks)
 plot!(sumPlot,sum(cSol.E_depart,dims=2),label="Depart Energy",seriestype=:scatter,markersize=10)
 plot!(sumPlot,sum(cSol.E_arrive,dims=2),label="Arrive Energy",seriestype=:scatter,markersize=10)
 plot!(twinx(),sum(cSol.U,dims=2),label="Hub Current",seriestype=:line,seriescolor=:red,legend=false,ylabel="Current (kA)",xticks=xticks)
 
 p2=plot(cSol.U,xlabel="",ylabel="Hub Current (kA)",legend=false,xticks=xticks)
 
-p3=plot(cSol.Tactual*1000,label="XFRM Temp",xlabel="",ylabel="Temp (K)")
+p3=plot(hcat(cSol.Tactual*1000,cSol.Tactual*1000),label=["Actual Temp" "PWL Temp"],xlabel="",ylabel="Temp (K)")
 plot!(p3,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 
 p4=plot(cSol.Lam,label="Time",ylabel=raw"Lambda ($/kA)",legend=false,xticks=xticks)

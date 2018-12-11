@@ -140,8 +140,8 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     # Discretization parameters:
     #Ts = Rh*C/9              # s, sampling time in seconds
     Ts=180.0
-    #ηP = Ts*Vac*a./b  # 1/kA, normalized battery sizes (0-1)
-    ηP=a*(Ts/3600)*Vac #Vh
+    #ηP=a*(Ts/3600)*Vac #Vh
+    ηP=a*(Ts/3600)*Vac/1e3 #kVh
     τP = exp(- Ts/(Rh*C))
     ρP = 1 - τP            # no units, ambient-to-temp param: 1/RC
     γP = Rh*Rw/(Ntf)*ρP*1000^2/1000    # kK/kW, ohmic losses-to-temp parameter
@@ -167,8 +167,8 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     iD_actual=iD_pred
 
     Qmag=1
-    Rmag=1e3
-    Rh=(Rmag*rand(1,H).+1)
+    Rmag=1
+    Rh=(Rmag*rand(1,H).+.001)
     Qh=(Qmag*rand(1,H).+.001)
 
     #action happens immediately afte interval before ends
@@ -187,7 +187,8 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     Sn_arrive_pred=0.20*rand(Nh,H) #arrive with 0-20%
     #Sn_arrive_pred=.8*ones(Nh,H)
     Sn_arrive_actual=Sn_arrive_pred
-    EVcap=b./3.6e6 #kWh
+    #EVcap=b./3.6e6 #kWh
+    EVcap=b./3.6e6/1e3 #MWh
     e0=zeros(H)
     #e0=[sum(Sn_arrive_actual[n,h]*EVcap[n,h] for n in findall(x->x==0,K_arrive_actual[:,h])) for h=1:H]
 

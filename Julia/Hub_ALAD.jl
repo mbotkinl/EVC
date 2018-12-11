@@ -11,13 +11,13 @@ if loadResults
 else
 	t0=hubS.t0
 	e0=hubS.e0
-	prevLam=5e5*ones(hubS.K1+1,1)
+	prevLam=ones(hubS.K1+1,1)
     prevVt=hubS.Tmax*ones(hubS.K1+1,1)
     prevVz=hubS.deltaI*ones((hubS.K1+1),hubS.S)
     prevVu=repeat(maximum(hubS.uMax,dims=1),outer=[(hubS.K1+1),1])
     prevVe=repeat(maximum(hubS.eMax,dims=1),outer=[(hubS.K1+1),1])
 	prevVd=repeat(maximum(hubS.slackMax,dims=1),outer=[(hubS.K1+1),1])
-	ρALADp = 1e3
+	ρALADp = 1e-2
 
 	println("Running ALAD Sim")
 	timeT=@elapsed dSolalad=hubALAD(maxIt,hubS,cSol,mode,eqForm,silent)
@@ -32,7 +32,7 @@ Xlabels=vcat(collect(stT1:Dates.Second(round(hubS.Ts)):endT1),collect(stT2:Dates
 xticks=(1:40:hubS.K,Dates.format.(Xlabels[1:40:hubS.K],"HH:MM"))
 hubLabels=permutedims(["Hub $(h)" for h=1:hubS.H])
 
-p1=plot(dSolalad.E,xlabel="",ylabel="Energy (kWh)",seriestype=:line,labels=hubLabels,xticks=xticks)
+p1=plot(dSolalad.E,xlabel="",ylabel="Energy (MWh)",seriestype=:line,labels=hubLabels,xticks=xticks)
 plot!(hubS.eMax,label="Hub Max",line=(:dash))
 
 p2=plot(dSolalad.U,xlabel="",ylabel="Hub Current (kA)",legend=false,xticks=xticks)

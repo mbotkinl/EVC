@@ -12,8 +12,8 @@ using Gurobi
 
 # check all indexing????
 #especially stepI +k for iD and Tamb
-H=4
-maxIt=1000
+H=1
+maxIt=30
 datafile="n"
 mode="PWL"
 silent=true
@@ -34,7 +34,7 @@ if datafile=="jld2"
 	hubS=loadF["hubS"]
 else #create scenario
 	println("Creating Hub Scenario...")
-	Nh=40
+	Nh=3
 	Tmax=.393
 	#Dload_amplitude=20
 

@@ -180,8 +180,8 @@ function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog:
     redirect_stdout(TT)
     @assert statusM==:Optimal "Hub optimization not solved to optimality"
 
-    dLog.U[:,hubInd,p]=getvalue(u)
-    dLog.E[:,hubInd,p]=getvalue(e)
+    dLog.U[:,hubInd,p]=round.(getvalue(u),digits=6)
+    dLog.E[:,hubInd,p]=round.(getvalue(e),digits=2)
     return nothing
 end
 
@@ -222,8 +222,8 @@ function localXFRMDual(p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogP
     redirect_stdout(TT)
     @assert statusC==:Optimal "Dual Ascent XFRM optimization not solved to optimality"
 
-     dLog.Tpwl[:,1,p]=getvalue(t)
-     dLog.Z[:,:,p]=getvalue(z)
+     dLog.Tpwl[:,1,p]=round.(getvalue(t),digits=6)
+     dLog.Z[:,:,p]=round.(getvalue(z),digits=6)
 
     return nothing
 end
@@ -236,9 +236,10 @@ function runHubDualIt(p,stepI,hubS,dLog,dSol,cSol,mode,silent)
 
     H=hubS.H
     K=hubS.K
+    S=hubS.S
     horzLen=min(hubS.K1,K-stepI)
 
-    alpha0 = 5e5 #for kA
+    alpha0 = 1 #for kA
     alphaDivRate=2
     minAlpha=1e-6
     convChk = 1e-4
@@ -260,11 +261,11 @@ function runHubDualIt(p,stepI,hubS,dLog,dSol,cSol,mode,silent)
 
     #update lambda
     alphaP= max(alpha0/ceil(p/alphaDivRate),minAlpha)
-    #dLog.itUpdate[1,p]=alphaP
+    dLog.itUpdate[1,1,p]=alphaP
     #alphaP= alphaP*alphaRate
 
     #dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP*dLog.couplConst[:,p],0)
-    dLog.Lam[:,1,p]=prevLam[:,1]+alphaP*dLog.couplConst[:,1,p]
+    dLog.Lam[:,1,p]=round.(prevLam[:,1]+alphaP*dLog.couplConst[:,1,p],digits=4)
 
     #calculate actual temperature from nonlinear model of XFRM
     for k=1:horzLen+1
@@ -319,20 +320,28 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
         end
     end
 
+    #
+    # plot(dLog.U[:,:,convIt])
+    # plot(dLog.E[:,:,convIt])
+    # pd3alad=plot(hcat(dLog.Tactual[:,1,convIt],dLog.Tpwl[:,1,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")
+    # plot!(pd3alad,1:horzLen+1,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red))
+    #
     # # convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
     #                range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
     #
-    # uSumPlotd=plot(dLog.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
-    # plot!(uSumPlotd,1:horzLen+1,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+    # uSumPlotd=plot(dLog.uSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
+    # plot!(uSumPlotd,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # # uSumPlotd=plot(dLog.uSum[:,1:convIt],palette=:greens,line_z=(1:convIt)',legend=false,colorbar=:right,colorbar_title="Iteration",
     # #      xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1))
     # # plot!(uSumPlotd,1:horzLen+1,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     #
-    # zSumPlotd=plot(dLog.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
+    # #tPlotd=plot(dLog.Tactual[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
+    #
+    # zSumPlotd=plot(dLog.zSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
     # plot!(zSumPlotd,1:horzLen+1,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # lamPlotd=plot(dLog.Lam[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
@@ -340,14 +349,14 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     #
     # #plot(dLog.Lam[:,1:convIt],color=:RdYlBu,line_z=(1:convIt)')
     #
-    # constPlot2=plot(dLog.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+    # constPlot2=plot(dLog.couplConst[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
     #
     # #convergence metric plots
     # fPlot=plot(1:convIt,dCM.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convItPlot=plot(1:convIt,dCM.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convPlot=plot(1:convIt,dCM.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(2,convIt),legend=false,yscale=:log10)
     # constPlot=plot(1:convIt,dCM.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(2,convIt),legend=false,yscale=:log10)
-    #
+
 
     #save current state and update for next timeSteps
     dSol.Tpwl[stepI,1]=dLog.Tpwl[1,1,convIt]
@@ -387,7 +396,7 @@ function hubDual(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
     Nh=hubS.Nh
     dSol=hubSolutionStruct(K=K,H=H)
 
-    for stepI=1:K
+    for stepI=1:36
         @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
         try
             runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
@@ -411,7 +420,7 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     horzLen=min(hubS.K1,hubS.K-stepI)
 
     tolU=1e-6
-    tolE=1e-2
+    tolE=1e-4
 
     eMax=hubS.eMax[stepI:(stepI+horzLen),hubInd]
     uMax=hubS.uMax[stepI:(stepI+horzLen),hubInd]
@@ -469,8 +478,8 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     dLogalad.Cdl[:,hubInd,p]=-1cValMin
 
     #dLogalad.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
-    dLogalad.E[:,hubInd,p]=eVal
-    dLogalad.U[:,hubInd,p]=uVal
+    dLogalad.E[:,hubInd,p]=round.(eVal,digits=6)
+    dLogalad.U[:,hubInd,p]=round.(uVal,digits=6)
 
     dLogalad.Gu[:,hubInd,p]=round.(2*hubS.Rh[hubInd]*uVal,digits=4)
     dLogalad.Ge[:,hubInd,p]=round.(2*hubS.Qh[hubInd]*eVal.-2*hubS.Qh[hubInd]*eMax,digits=4)
@@ -482,7 +491,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenari
     S=hubS.S
     horzLen=min(hubS.K1,hubS.K-stepI)
 
-    tolT=1e-6
+    tolT=1e-4
     tolZ=1e-6
 
     #N+1 decoupled problem aka transformer current
@@ -540,8 +549,8 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenari
     dLogalad.Ctu[:,:,p]=1cValMax
     dLogalad.Ctl[:,:,p]=-1cValMin
 
-    dLogalad.Tpwl[:,:,p]=tVal
-    dLogalad.Z[:,:,p]=zVal
+    dLogalad.Tpwl[:,:,p]=round.(tVal,digits=6)
+    dLogalad.Z[:,:,p]=round.(zVal,digits=6)
     dLogalad.Gz[:,:,p].=0
     dLogalad.Gt[:,:,p].=0
 
@@ -634,13 +643,13 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
     α3=1
     #α3=1/ceil(p/2)
 
-    dLogalad.Lam[:,1,p]=prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1])
+    dLogalad.Lam[:,1,p]=round.(prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1]),digits=6)
     #dLogalad.Lam[:,p]=max.(prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1]),0)
-    dLogalad.Vu[:,:,p]=prevVu[:,:,1]+α1*(dLogalad.U[:,:,p]-prevVu[:,:,1])+α2*getvalue(dU)
-    dLogalad.Vz[:,:,p]=prevVz[:,:,1]+α1*(dLogalad.Z[:,:,p]-prevVz[:,:,1])+α2*getvalue(dZ)
-    dLogalad.Ve[:,:,p]=prevVe[:,:,1]+α1*(dLogalad.E[:,:,p]-prevVe[:,:,1])+α2*getvalue(dE)
-    dLogalad.Vd[:,:,p]=prevVd[:,:,1]+α1*(dLogalad.Vd[:,:,p]-prevVd[:,:,1])+α2*getvalue(dEΔ)
-    dLogalad.Vt[:,:,p]=prevVt[:,:,1]+α1*(dLogalad.Tpwl[:,:,p]-prevVt[:,:,1])+α2*getvalue(dT)
+    dLogalad.Vu[:,:,p]=round.(prevVu[:,:,1]+α1*(dLogalad.U[:,:,p]-prevVu[:,:,1])+α2*getvalue(dU),digits=6)
+    dLogalad.Vz[:,:,p]=round.(prevVz[:,:,1]+α1*(dLogalad.Z[:,:,p]-prevVz[:,:,1])+α2*getvalue(dZ),digits=6)
+    dLogalad.Ve[:,:,p]=round.(prevVe[:,:,1]+α1*(dLogalad.E[:,:,p]-prevVe[:,:,1])+α2*getvalue(dE),digits=6)
+    dLogalad.Vd[:,:,p]=round.(prevVd[:,:,1]+α1*(dLogalad.Vd[:,:,p]-prevVd[:,:,1])+α2*getvalue(dEΔ),digits=6)
+    dLogalad.Vt[:,:,p]=round.(prevVt[:,:,1]+α1*(dLogalad.Tpwl[:,:,p]-prevVt[:,:,1])+α2*getvalue(dT),digits=6)
 
     #dCMalad.lamIt[p,1]=norm(dLogalad.Lam[:,p]-prevLam[:,1],2)
     #dCMalad.lam[p,1]=norm(dLogalad.Lam[:,p]-cSol.lamCoupl[stepI:(horzLen+stepI)],2)
@@ -678,16 +687,16 @@ function runEVALADIt(p,stepI,hubS,dLogalad,dSol,cSol,mode,eqForm,silent)
     #ALADIN tuning
     if eqForm
         #println("Running Eq ALADIN")
-        scalingF=1
+        scalingF=1.0
     else
         #println("Running ineq ALADIN")
-        scalingF=1e-4
+        scalingF=1e-2
     end
-    σZ=scalingF
+    σZ=scalingF*10
     σT=scalingF
-    σU=ones(H,1)
-    σE=ones(H,1)/1e3
-    σD=ones(H,1)/1e1
+    σU=ones(H,1)*scalingF*10
+    σE=ones(H,1)*scalingF
+    σD=ones(H,1)*scalingF*10
 
     μALADp=1e8
     # μALAD=1e8
@@ -764,6 +773,7 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     K=hubS.K
     S=hubS.S
     horzLen=min(hubS.K1,K-stepI)
+    ogρ=ρALADp #save to reset later
     dLogalad=hubItLogPWL(horzLen=horzLen,H=hubS.H,S=hubS.S)
     for p=1:maxIt
         #@printf "%git" p
@@ -773,7 +783,7 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
             break
         end
     end
-    # 
+    #
     # plot(dLogalad.U[:,:,convIt])
     # plot(dLogalad.E[:,:,convIt])
     # pd3alad=plot(hcat(dLogalad.Tactual[:,1,convIt],dLogalad.Tpwl[:,1,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")
@@ -816,8 +826,8 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     #                    legend=false,xlims=(2,convIt))
     # setChangesPlot=plot(2:convIt,setChanges[2:convIt],xlabel="Iteration",ylabel="Changes in Active inequality constraints",
     #                   legend=false,xlims=(2,convIt))
-    # #solChangesplot=plot(2:convIt,hcat(ΔY[2:convIt],convCheck[2:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
-    #
+    # solChangesplot=plot(2:convIt,hcat(ΔY[2:convIt],convCheck[2:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
+
     # fPlotalad=plot(dCMalad.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convItPlotalad=plot(dCMalad.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false) #,yscale=:log10
     # convPlotalad=plot(dCMalad.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
@@ -882,6 +892,7 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     global prevVt=newVt
     global prevVe=newVe
     global prevVd=newVd
+    global ρALADp=ogρ
 
     return nothing
 end
