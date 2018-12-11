@@ -1,6 +1,6 @@
 
 
-#structures
+#scenarios
 struct scenarioStruct
     N::Int
     Ts::Float64
@@ -100,7 +100,7 @@ struct scenarioHubStruct
     slackMax::Array{Float64,2}
 end
 
-#structures
+#debug info
 @with_kw struct convMetricsStruct
     obj::Array=zeros(maxIt,1)
     couplConst::Array=zeros(maxIt,1)
@@ -208,6 +208,7 @@ end
     itUpdate::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 end
 
+#solutions
 @with_kw struct solutionStruct
     K::Int
     N::Int
@@ -227,13 +228,16 @@ end
     convIt::Array=zeros(K,1)
 end
 
-@with_kw struct centralHubSolutionStruct
+@with_kw struct hubSolutionStruct
     K::Int
     H::Int
     E::Array=zeros(K,H) #row are time, column are hub
     U::Array=zeros(K,H) #row are time, column are hub
-    T::Array=zeros(K,1) #row are time
+    Itotal::Array=zeros(K,1) #row are time
+    Tpwl::Array=zeros(K,1) #row are time
+    Tactual::Array=zeros(K,1) #row are time
     Lam::Array=zeros(K,1) #row are time
+    convIt::Array=zeros(K,1) #row are time
     objVal::Array=zeros(K,1)
 
     E_depart::Array=zeros(K,H)

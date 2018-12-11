@@ -34,7 +34,7 @@ plot!(twinx(),sum(cSol.U,dims=2),label="Hub Current",seriestype=:line,seriescolo
 
 p2=plot(cSol.U,xlabel="",ylabel="Hub Current (kA)",legend=false,xticks=xticks)
 
-p3=plot(cSol.T*1000,label="XFRM Temp",xlabel="",ylabel="Temp (K)")
+p3=plot(cSol.Tactual*1000,label="XFRM Temp",xlabel="",ylabel="Temp (K)")
 plot!(p3,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 
 p4=plot(cSol.Lam,label="Time",ylabel=raw"Lambda ($/kA)",legend=false,xticks=xticks)

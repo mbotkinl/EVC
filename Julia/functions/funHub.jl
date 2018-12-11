@@ -32,7 +32,7 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     @variable(cModel,u[1:(horzLen+1),1:H])
     @variable(cModel,t[1:(horzLen+1)])
     @variable(cModel,e[1:(horzLen+1),1:H])
-    @variable(cModel,slackE[1:(horzLen+1),1:H])
+    @variable(cModel,eΔ[1:(horzLen+1),1:H])
 
     #objective
     @objective(cModel,Min,sum(sum(hubS.Qh[h]*(e[k,h]-eMax[k,h])^2+hubS.Rh[h]*u[k,h]^2 for k=1:horzLen+1) for h=1:H))
@@ -57,24 +57,24 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
         #coupling constraint
         @constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[k,h] for h=1:H)-hubS.iD_pred[stepI+(k-1)]+itotal[k,1])
     elseif mode=="PWL"
-        @variable(cModel,z[1:(horzLen+1)*hubS.S])
-        @constraint(cModel,tempCon1,t[1,1]==hubS.τP*t0+hubS.γP*hubS.deltaI*sum((2*s-1)*z[s,1] for s=1:hubS.S)+hubS.ρP*hubS.Tamb[stepI,1])
-        @constraint(cModel,tempCon2[k=1:horzLen],t[k+1,1]==hubS.τP*t[k,1]+hubS.γP*hubS.deltaI*sum((2*s-1)*z[k*hubS.S+s,1] for s=1:hubS.S)+hubS.ρP*hubS.Tamb[stepI+k,1])
+        @variable(cModel,z[1:(horzLen+1),1:hubS.S])
+        @constraint(cModel,tempCon1,t[1,1]==hubS.τP*t0+hubS.γP*hubS.deltaI*sum((2*s-1)*z[1,s] for s=1:hubS.S)+hubS.ρP*hubS.Tamb[stepI,1])
+        @constraint(cModel,tempCon2[k=1:horzLen],t[k+1,1]==hubS.τP*t[k,1]+hubS.γP*hubS.deltaI*sum((2*s-1)*z[k+1,s] for s=1:hubS.S)+hubS.ρP*hubS.Tamb[stepI+k,1])
         @constraint(cModel,z.>=0)
         @constraint(cModel,z.<=hubS.deltaI)
         #coupling constraint
-        @constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[k,h] for h=1:H)-hubS.iD_pred[stepI+(k-1)]+sum(z[(k-1)*(hubS.S)+s] for s=1:hubS.S))
+        @constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[k,h] for h=1:H)-hubS.iD_pred[stepI+(k-1)]+sum(z[k,s] for s=1:hubS.S))
     end
 
     #hub constraints
-    @constraint(cModel,stateCon1[h=1:H],e[1,h]==e0[h]+hubS.ηP[h]*u[1,h]-(eDepart_min[1,h]+slackE[1,h])+eArrive_pred[1,h])
-    @constraint(cModel,stateCon[k=1:horzLen,h=1:H],e[k+1,h]==e[k,h]+hubS.ηP[h]*u[k+1,h]-(eDepart_min[k+1,h]+slackE[k+1,h])+eArrive_pred[k+1,h])
+    @constraint(cModel,stateCon1[h=1:H],e[1,h]==e0[h]+hubS.ηP[h]*u[1,h]-(eDepart_min[1,h]+eΔ[1,h])+eArrive_pred[1,h])
+    @constraint(cModel,stateCon[k=1:horzLen,h=1:H],e[k+1,h]==e[k,h]+hubS.ηP[h]*u[k+1,h]-(eDepart_min[k+1,h]+eΔ[k+1,h])+eArrive_pred[k+1,h])
     @constraint(cModel,e.>=0)
     @constraint(cModel,eMaxCon[k=1:horzLen+1,h=1:H],e[k,h]<=eMax[k,h])
     @constraint(cModel,uMaxCon,u.<=uMax)
     @constraint(cModel,u.>=0)
-    @constraint(cModel,slackE.<=slackMax)
-    @constraint(cModel,slackE.>=0)
+    @constraint(cModel,eΔ.<=slackMax)
+    @constraint(cModel,eΔ.>=0)
 
     TT = stdout # save original stdout stream
     redirect_stdout()
@@ -86,24 +86,24 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     uRaw=getvalue(u)
     tRaw=getvalue(t)
     lambdaCurr=-getdual(currCon)
-    extraE=getvalue(slackE)
-
-    p1nl=plot(eRaw,xlabel="Time",ylabel="Energy",xlims=(1,horzLen+1),label="hub energy")
-    plot!(p1nl,eMax,label="hub max")
-    plot!(p1nl,eMax*.8,label="minimum departure")
-
-    p2nl=plot(uRaw,xlabel="Time",ylabel="Hub Current (kA)",legend=false,xlims=(1,horzLen+1))
-    plot!(p2nl,uMax)
-
-    p3nl=plot(1:horzLen+1,tRaw,label="XFRM Temp",xlims=(1,horzLen+1),xlabel="Time",ylabel="Temp (K)")
-    plot!(p3nl,1:horzLen+1,Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
-    p4nl=plot(1:horzLen+1,lambdaCurr,label="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,horzLen+1),legend=false)
-
-    plot(sum(eMax,dims=2),label="max")
-    plot!(sum(eRaw,dims=2),label="e")
-    plot(eDepart_min,label="min")
-    plot!(eDepart_min+extraE,label="actual")
-    plot!(eDepart_min+slackMax,label="max")
+    extraE=getvalue(eΔ)
+    #
+    # p1nl=plot(eRaw,xlabel="Time",ylabel="Energy",xlims=(1,horzLen+1),label="hub energy")
+    # plot!(p1nl,eMax,label="hub max")
+    # plot!(p1nl,eMax*.8,label="minimum departure")
+    #
+    # p2nl=plot(uRaw,xlabel="Time",ylabel="Hub Current (kA)",legend=false,xlims=(1,horzLen+1))
+    # plot!(p2nl,uMax)
+    #
+    # p3nl=plot(1:horzLen+1,tRaw,label="XFRM Temp",xlims=(1,horzLen+1),xlabel="Time",ylabel="Temp (K)")
+    # plot!(p3nl,1:horzLen+1,Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
+    # p4nl=plot(1:horzLen+1,lambdaCurr,label="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,horzLen+1),legend=false)
+    #
+    # plot(sum(eMax,dims=2),label="max")
+    # plot!(sum(eRaw,dims=2),label="e")
+    # plot(eDepart_min,label="min")
+    # plot!(eDepart_min+extraE,label="actual")
+    # plot!(eDepart_min+slackMax,label="max")
 
 
     #apply current and actual departures and arrivals
@@ -113,10 +113,10 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     cSol.E_depart[stepI,:]=eDepart_min[1,:]+extraE[1,:]
     cSol.E_arrive[stepI,:]=eArrive_actual[1,:]
     cSol.E[stepI,:]=e0[:]+hubS.ηP[:].*nextU-(cSol.E_depart[stepI,:])+cSol.E_arrive[stepI,:]
-    cSol.T[stepI,1]=hubS.τP*t0+hubS.γP*(sum(nextU)+hubS.iD_actual[stepI,1])^2+hubS.ρP*hubS.Tamb[stepI,1]
+    cSol.Tactual[stepI,1]=hubS.τP*t0+hubS.γP*(sum(nextU)+hubS.iD_actual[stepI,1])^2+hubS.ρP*hubS.Tamb[stepI,1]
 
     # new states
-    t0=cSol.T[stepI,1]
+    t0=cSol.Tactual[stepI,1]
     e0=cSol.E[stepI,:]
 
     return nothing
@@ -126,7 +126,7 @@ function hubCentral(hubS::scenarioHubStruct,mode::String,silent::Bool)
     H=hubS.H
     K=hubS.K
     Nh=hubS.Nh
-    cSol=centralHubSolutionStruct(K=K,H=H)
+    cSol=hubSolutionStruct(K=K,H=H)
 
     for stepI=1:K
         @printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI K

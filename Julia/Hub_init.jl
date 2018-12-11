@@ -6,22 +6,23 @@ using Printf
 using Parameters
 using SharedArrays
 using Distributed
+using LinearAlgebra
 #using Ipopt
 using Gurobi
 
 # check all indexing????
 #especially stepI +k for iD and Tamb
 H=4
-maxIt=100
-datafile="jld2"
+maxIt=1000
+datafile="n"
 mode="PWL"
 silent=true
 saveS=false
 saveF=false
 loadResults=false
-
+saveResults=false
+eqForm=false
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
-include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funHub.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4\\"
