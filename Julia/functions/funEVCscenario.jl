@@ -125,7 +125,7 @@ end
 
 function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd())
     #model parameters
-    a   = rand(Nh,H)*.1 .+ 0.8               # efficiency of Li-ion batts is ~80-90%
+    a   = rand(1,H)*.1 .+ 0.8               # efficiency of Li-ion batts is ~80-90%
     b   = (6*rand(Nh,H).+12)*3.6e6           # battery capacity (12-18 kWh = 43.3-64.8 MJ)
     imax = (10 .+ 16*rand(Nh,H))/1000             # kA, charging with 10-24 A
 
@@ -141,14 +141,16 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     #Ts = Rh*C/9              # s, sampling time in seconds
     Ts=180.0
     #ηP = Ts*Vac*a./b  # 1/kA, normalized battery sizes (0-1)
-    ηP=0.8*ones(1,H)*(Ts/3600)*Vac #Vh
+    ηP=a*(Ts/3600)*Vac #Vh
     τP = exp(- Ts/(Rh*C))
     ρP = 1 - τP            # no units, ambient-to-temp param: 1/RC
     γP = Rh*Rw/(Ntf)*ρP*1000^2/1000    # kK/kW, ohmic losses-to-temp parameter
 
     ## MPC Paramters
-    T1=6 #hours
+    T1=12 #hours
     T2=14-T1
+    # T1=6 #hours
+    # T2=14-T1
     K1 = round(Int,T1*3600/Ts);            # Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
     K2 = round(Int,T2*3600/Ts);             # Additional time instants past control horizon
     K  = K1+K2;                        # Total horizon (8 PM to 10 AM)
@@ -173,27 +175,21 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     #hub information
     arriveLast=round(Int,2*3600/Ts) #last arrival at 10PM
     departFirst=round(Int,10*3600/Ts) #first departure at 6AM
-
     K_arrive_pred=rand(1:arriveLast,Nh,H)
     K_depart_pred=rand(departFirst:K,Nh,H)
-    # K_arrive_pred=Array{Int64,2}(undef,N,H)
-    # K_arrive_pred[:,1]=[1;3;10]
-    # K_depart_pred=Array{Int64,2}(undef,N,H)
-    # K_depart_pred[:,1]=[20;22;25]
+    # K_arrive_pred=zeros(Nh,H)
+    # K_arrive_pred[Int(Nh/2+1):Nh,1]=1:20
+    # K_depart_pred=hcat(1:Nh)
     K_arrive_actual=K_arrive_pred
     K_depart_actual=K_depart_pred
     Sn_depart_min=1 .- 0.20*rand(Nh,H) #need 80-100%
+    #Sn_depart_min=.8*ones(Nh,H)
     Sn_arrive_pred=0.20*rand(Nh,H) #arrive with 0-20%
-    # Sn_depart_min=zeros(N,H)
-    # Sn_depart_min[:,1]=[.8;.85;1]
-    # Sn_arrive_pred=zeros(N,H)
-    # Sn_arrive_pred[:,1]=[.5;.5;.5]
+    #Sn_arrive_pred=.8*ones(Nh,H)
     Sn_arrive_actual=Sn_arrive_pred
     EVcap=b./3.6e6 #kWh
-    # EVcap=zeros(N,H)
-    # EVcap[:,1]=[1.0;1.0;1.0]
     e0=zeros(H)
-    #uMax=sum(imax,dims=1)
+    #e0=[sum(Sn_arrive_actual[n,h]*EVcap[n,h] for n in findall(x->x==0,K_arrive_actual[:,h])) for h=1:H]
 
     #prepare predicted values for optimization
     eMax=zeros(K,H)

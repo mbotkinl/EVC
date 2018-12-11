@@ -1,7 +1,7 @@
 # run PEM
 
 function pemEVC(N::Int,S::Int,horzLen::Int,evS::scenarioStruct,forecastError::Bool, slack::Bool)
-	
+
 	if forecastError
 		iD=evS.iDnoise
 	else

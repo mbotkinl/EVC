@@ -7,7 +7,7 @@ using Dates
 # using Cairo #for png output
 # using Fontconfig
 
-function saveRun(path::String, filename::String, time::Float64, scenario::scenarioStruct, solution, convMetrics=convMetricsStruct(), convIt=1)
+function saveRun(path::String, filename::String, time::Float64, scenario, solution, convMetrics=convMetricsStruct(), convIt=1)
     save(path*filename*".jld2","runTime", time, "scenario", scenario, "solution", solution,
     "convMetrics", convMetrics, "convIt", convIt)
 end
@@ -157,7 +157,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
         plot!(uSumPlot,1:Klen,noLim["solution"].uSum,label="Uncoordinated",seriescolor=allColors[P+1])
     end
 
-    iD=evS.iD[1:Klen].+10
+    iD=evS.iD_actual[1:Klen].+10
     loadPlot=plot(1:Klen,cSol.uSum+iD,xlabel="",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
                   seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
     plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash))
