@@ -236,6 +236,8 @@ end
     Itotal::Array=zeros(K,1) #row are time
     Tpwl::Array=zeros(K,1) #row are time
     Tactual::Array=zeros(K,1) #row are time
+    uSum::Array=zeros(K,1) #row are time
+    zSum::Array=zeros(K,1) #row are time
     Lam::Array=zeros(K,1) #row are time
     convIt::Array=zeros(K,1) #row are time
     objVal::Array=zeros(K,1)
@@ -263,42 +265,43 @@ end
     horzLen::Int
     H::Int
     S::Int
-    E::Array=zeros(horzLen+1,H,maxIt) #row are time, column are hub, stack is iteration
-    U::Array=zeros(horzLen+1,H,maxIt) #row are time, column are hub, stack is iteration
-    Z::Array=zeros(horzLen+1,S,maxIt) #row are time, column are segment, stack is iteration
-    Tpwl::Array=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
-    Lam::Array=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
-    couplConst::Array=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
-    Itotal::Array=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
-    uSum::Array{Float64}=zeros((horzLen+1),1,maxIt+1) #row are time, stack is iteration
-    zSum::Array{Float64}=zeros((horzLen+1),1,maxIt+1) #row are time, stack is iteration
-    Tactual::Array=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
+    E::Array{Float64,3}=zeros(horzLen+1,H,maxIt) #row are time, column are hub, stack is iteration
+    U::Array{Float64,3}=zeros(horzLen+1,H,maxIt) #row are time, column are hub, stack is iteration
+    Z::Array{Float64,3}=zeros(horzLen+1,S,maxIt) #row are time, column are segment, stack is iteration
+    Tpwl::Array{Float64,3}=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
+    Lam::Array{Float64,3}=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
+    couplConst::Array{Float64,3}=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
+    Itotal::Array{Float64,3}=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
+    uSum::Array{Float64,3}=zeros((horzLen+1),1,maxIt+1) #row are time, stack is iteration
+    zSum::Array{Float64,3}=zeros((horzLen+1),1,maxIt+1) #row are time, stack is iteration
+    Tactual::Array{Float64,3}=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
 
     #auxillary variables
-    Vu::Array{Float64}=zeros((horzLen+1),H,maxIt+1)#row are time, columns are hub,  stacks are iteration
-    Vz::Array{Float64}=zeros((horzLen+1),S,maxIt+1)
-    Ve::Array{Float64}=zeros((horzLen+1),H,maxIt+1) #row are time, columns are hub,  stacks are iteration
-    Vd::Array{Float64}=zeros((horzLen+1),H,maxIt+1) #row are time, columns are hub,  stacks are iteration
-    Vt::Array{Float64}=zeros((horzLen+1),1,maxIt+1) #row are time,  columns are iteration
+    Vu::Array{Float64,3}=zeros((horzLen+1),H,maxIt+1)#row are time, columns are hub,  stacks are iteration
+    Vz::Array{Float64,3}=zeros((horzLen+1),S,maxIt+1)
+    Ve::Array{Float64,3}=zeros((horzLen+1),H,maxIt+1) #row are time, columns are hub,  stacks are iteration
+    Vd::Array{Float64,3}=zeros((horzLen+1),H,maxIt+1) #row are time, columns are hub,  stacks are iteration
+    Vt::Array{Float64,3}=zeros((horzLen+1),1,maxIt+1) #row are time,  columns are iteration
 
     #Gradian Vectors
-    Gu::SharedArray{Float64}=zeros((horzLen+1),H,maxIt+1) #row are time, columns are hub,  stacks are iteration
-    Ge::SharedArray{Float64}=zeros((horzLen+1),H,maxIt+1) #row are time, columns are hub,  stacks are iteration
-    GeΔ::SharedArray{Float64}=zeros((horzLen+1),H,maxIt+1) #row are time, columns are hub,  stacks are iteration
-    Gz::Array{Float64}=zeros((horzLen+1),S,maxIt+1) #row are time, stacks are iteration
-    Gt::Array{Float64}=zeros((horzLen+1),1,maxIt+1) #row are time,   stacks are iteration
+    Gu::SharedArray{Float64,3}=zeros((horzLen+1),H,maxIt+1) #row are time, columns are hub,  stacks are iteration
+    Ge::SharedArray{Float64,3}=zeros((horzLen+1),H,maxIt+1) #row are time, columns are hub,  stacks are iteration
+    GeΔ::SharedArray{Float64,3}=zeros((horzLen+1),H,maxIt+1) #row are time, columns are hub,  stacks are iteration
+    Gz::Array{Float64,3}=zeros((horzLen+1),S,maxIt+1) #row are time, stacks are iteration
+    Gt::Array{Float64,3}=zeros((horzLen+1),1,maxIt+1) #row are time,   stacks are iteration
 
     #Jacobian C Vectors
-    Ceu::SharedArray{Float64}=zeros((horzLen+1),H,maxIt+1)   #row are time, columns are hub,  stacks are iteration
-    Cuu::SharedArray{Float64}=zeros((horzLen+1),H,maxIt+1)   #row are time, columns are hub,  stacks are iteration
-    Cdu::SharedArray{Float64}=zeros((horzLen+1),H,maxIt+1)   #row are time, columns are hub,  stacks are iteration
-    Czu::Array{Float64}=zeros((horzLen+1),S,maxIt+1)  #row are time,   stacks are iteration
-    Ctu::Array{Float64}=zeros((horzLen+1),1,maxIt+1)  #row are time,   stacks are iteration
+    Ceu::SharedArray{Float64,3}=zeros((horzLen+1),H,maxIt+1)   #row are time, columns are hub,  stacks are iteration
+    Cuu::SharedArray{Float64,3}=zeros((horzLen+1),H,maxIt+1)   #row are time, columns are hub,  stacks are iteration
+    Cdu::SharedArray{Float64,3}=zeros((horzLen+1),H,maxIt+1)   #row are time, columns are hub,  stacks are iteration
+    Czu::Array{Float64,3}=zeros((horzLen+1),S,maxIt+1)  #row are time,   stacks are iteration
+    Ctu::Array{Float64,3}=zeros((horzLen+1),1,maxIt+1)  #row are time,   stacks are iteration
 
-    Cel::SharedArray{Float64}=zeros((horzLen+1),H,maxIt+1)   #row are time, columns are hub,  stacks are iteration
-    Cul::SharedArray{Float64}=zeros((horzLen+1),H,maxIt+1)   #row are time, columns are hub,  stacks are iteration
-    Cdl::SharedArray{Float64}=zeros((horzLen+1),H,maxIt+1)   #row are time, columns are hub,  stacks are iteration
-    Czl::Array{Float64}=zeros((horzLen+1),S,maxIt+1)  #row are time,   stacks are iteration
-    Ctl::Array{Float64}=((horzLen+1),1,maxIt+1)  #row are time,   stacks are iteration
+    Cel::SharedArray{Float64,3}=zeros((horzLen+1),H,maxIt+1)   #row are time, columns are hub,  stacks are iteration
+    Cul::SharedArray{Float64,3}=zeros((horzLen+1),H,maxIt+1)   #row are time, columns are hub,  stacks are iteration
+    Cdl::SharedArray{Float64,3}=zeros((horzLen+1),H,maxIt+1)   #row are time, columns are hub,  stacks are iteration
+    Czl::Array{Float64,3}=zeros((horzLen+1),S,maxIt+1)  #row are time,   stacks are iteration
+    Ctl::Array{Float64,3}=zeros((horzLen+1),1,maxIt+1)  #row are time,   stacks are iteration
 
+    itUpdate::Array{Float64,3}=zeros(1,1,maxIt+1)  #row are time,   stacks are iteration
 end
