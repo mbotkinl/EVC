@@ -861,11 +861,11 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
             newVd=prevVd[2:horzLen+1,:]
         else
             newLam=vcat(prevLam[2:horzLen+1,1],prevLam[horzLen+1,1])
-            newVu=vcat(prevVu[2:horzLen+1,:],prevVu[horzLen+1,:])
-            newVz=vcat(prevVz[2:horzLen+1,:],prevVz[horzLen+1,:])
-            newVt=vcat(prevVt[2:horzLen+1,:],prevVt[horzLen+1,1])
-            newVe=vcat(prevVe[2:horzLen+1,:],prevVe[horzLen+1,:])
-            newVe=vcat(prevVd[2:horzLen+1,:],prevVd[horzLen+1,:])
+            newVu=vcat(prevVu[2:horzLen+1,:],prevVu[horzLen+1,:]')
+            newVz=vcat(prevVz[2:horzLen+1,:],prevVz[horzLen+1,:]')
+            newVt=vcat(prevVt[2:horzLen+1,:],prevVt[horzLen+1,:])
+            newVe=vcat(prevVe[2:horzLen+1,:],prevVe[horzLen+1,:]')
+            newVd=vcat(prevVd[2:horzLen+1,:],prevVd[horzLen+1,:]')
         end
     else
         dSol.Lam[stepI,1]=dLogalad.Lam[1,1,convIt-1]
