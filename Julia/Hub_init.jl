@@ -12,9 +12,9 @@ using Gurobi
 
 # check all indexing????
 #especially stepI +k for iD and Tamb
-H=1
+H=4
 maxIt=30
-datafile="n"
+datafile="jld2"
 mode="PWL"
 silent=true
 saveS=false
@@ -22,10 +22,11 @@ saveF=false
 loadResults=false
 saveResults=false
 eqForm=false
+Tlimit=true
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4\\"
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4_100\\"
 file="HubscenarioH$(H).jld2"
 if datafile=="jld2"
 	using FileIO
@@ -34,8 +35,8 @@ if datafile=="jld2"
 	hubS=loadF["hubS"]
 else #create scenario
 	println("Creating Hub Scenario...")
-	Nh=3
-	Tmax=.393
+	Nh=40
+	Tmax=.400
 	#Dload_amplitude=20
 
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")

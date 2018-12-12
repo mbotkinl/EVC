@@ -24,8 +24,11 @@ Xlabels=vcat(collect(stT1:Dates.Second(round(hubS.Ts)):endT1),collect(stT2:Dates
 xticks=(1:40:hubS.K,Dates.format.(Xlabels[1:40:hubS.K],"HH:MM"))
 hubLabels=permutedims(["Hub $(h)" for h=1:hubS.H])
 
+allColors=get_color_palette(:auto, plot_color(:white), H)
+plotColors=allColors'
+
 p1=plot(cSol.E,xlabel="",ylabel="Energy (MWh)",seriestype=:line,labels=hubLabels,xticks=xticks)
-plot!(hubS.eMax,label="Hub Max",line=(:dash))
+plot!(hubS.eMax,label=hubLabels.*" Max",line=(:dash),seriescolor=plotColors)
 
 sumPlot=plot(sum(cSol.E,dims=2),xlabel="",ylabel="Energy (MWh)",label="Hub Energy",seriestype=:bar,xticks=xticks)
 plot!(sumPlot,sum(cSol.E_depart,dims=2),label="Depart Energy",seriestype=:scatter,markersize=10)
@@ -48,20 +51,20 @@ p4=plot(cSol.Lam,label="Time",ylabel=raw"Lambda ($/kA)",legend=false,xticks=xtic
 # all(testDept)
 # findfirst(testDept.==false)
 
-h1=plot(p1,p2,p3,p4,layout=(4,1))
-lowRes=true
-if lowRes
-    pubPlot(h1,thickscale=0.4,sizeWH=(400,300),dpi=40)
-else
-    pubPlot(h1,thickscale=0.8,sizeWH=(800,600),dpi=100)
-end
-if saveF savefig(h1,path*"hubPlot1.png") end
-
-h2=plot(sumPlot,p3,p4,layout=(3,1))
-lowRes=true
-if lowRes
-    pubPlot(h2,thickscale=0.4,sizeWH=(400,300),dpi=40)
-else
-    pubPlot(h2,thickscale=0.8,sizeWH=(800,600),dpi=100)
-end
-if saveF savefig(h2,path*"hubPlot2.png") end
+# h1=plot(p1,p2,p3,p4,layout=(4,1))
+# lowRes=true
+# if lowRes
+#     pubPlot(h1,thickscale=0.4,sizeWH=(400,300),dpi=40)
+# else
+#     pubPlot(h1,thickscale=0.8,sizeWH=(800,600),dpi=100)
+# end
+# if saveF savefig(h1,path*"hubPlot1.png") end
+#
+# h2=plot(sumPlot,p3,p4,layout=(3,1))
+# lowRes=true
+# if lowRes
+#     pubPlot(h2,thickscale=0.4,sizeWH=(400,300),dpi=40)
+# else
+#     pubPlot(h2,thickscale=0.8,sizeWH=(800,600),dpi=100)
+# end
+# if saveF savefig(h2,path*"hubPlot2.png") end

@@ -19,6 +19,7 @@ else
 	prevVd=repeat(maximum(hubS.slackMax,dims=1),outer=[(hubS.K1+1),1])
 	ρALADp = 1e-2
 
+
 	println("Running ALAD Sim")
 	timeT=@elapsed dSolalad=hubALAD(maxIt,hubS,cSol,mode,eqForm,silent)
 	if saveResults saveRun(path,fname,timeT, hubS, dSolalad) end
@@ -41,7 +42,7 @@ p3=plot(dSolalad.Tactual*1000,label="XFRM Temp",xlabel="",ylabel="Temp (K)")
 plot!(p3,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 
 p4=plot(dSolalad.Lam,label="Time",ylabel=raw"Lambda ($/kA)",legend=false,xticks=xticks)
-
+plot!(p4,cSol.Lam,label="Central")
 
 aggU=plot(hcat(cSol.uSum,dSolalad.uSum),label=["Central" "ALAD"],
 			xlims=(0,hubS.K),xlabel="Time",ylabel="PEV Current (kA)")
