@@ -168,7 +168,7 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
 
     Qmag=1
     Rmag=1
-    Omag=10
+    Omag=100
     Rh=(Rmag*rand(1,H).+Rmag/1e3)
     Qh=(Qmag*rand(1,H).+Qmag/1e3)
     Oh=(Omag*rand(1,H).+Omag/1e3)

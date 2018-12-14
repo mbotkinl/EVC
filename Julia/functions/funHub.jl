@@ -9,7 +9,7 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     H=hubS.H
     K=hubS.K
     horzLen=min(hubS.K1,K-stepI)
-    Oh=hubS.Oh.+1e3
+
     eMax=hubS.eMax[stepI:(stepI+horzLen),:]
     uMax=hubS.uMax[stepI:(stepI+horzLen),:]
     eDepart_min=hubS.eDepart_min[stepI:(stepI+horzLen),:]
@@ -34,7 +34,7 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     @variable(cModel,eΔ[1:(horzLen+1),1:H])
 
     #objective
-    @objective(cModel,Min,sum(sum(hubS.Qh[h]*(e[k,h]-eMax[k,h])^2+hubS.Rh[h]*u[k,h]^2-Oh[h]*eΔ[k,h] for k=1:horzLen+1) for h=1:H))
+    @objective(cModel,Min,sum(sum(hubS.Qh[h]*(e[k,h]-eMax[k,h])^2+hubS.Rh[h]*u[k,h]^2-hubS.Oh[h]*eΔ[k,h] for k=1:horzLen+1) for h=1:H))
 
     #transformer constraints
     if Tlimit
