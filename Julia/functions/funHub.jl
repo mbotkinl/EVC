@@ -8,9 +8,8 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     global e0
     H=hubS.H
     K=hubS.K
-    Nh=hubS.Nh
     horzLen=min(hubS.K1,K-stepI)
-
+    Oh=hubS.Oh.+1e3
     eMax=hubS.eMax[stepI:(stepI+horzLen),:]
     uMax=hubS.uMax[stepI:(stepI+horzLen),:]
     eDepart_min=hubS.eDepart_min[stepI:(stepI+horzLen),:]
@@ -35,7 +34,7 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     @variable(cModel,eΔ[1:(horzLen+1),1:H])
 
     #objective
-    @objective(cModel,Min,sum(sum(hubS.Qh[h]*(e[k,h]-eMax[k,h])^2+hubS.Rh[h]*u[k,h]^2 for k=1:horzLen+1) for h=1:H))
+    @objective(cModel,Min,sum(sum(hubS.Qh[h]*(e[k,h]-eMax[k,h])^2+hubS.Rh[h]*u[k,h]^2-Oh[h]*eΔ[k,h] for k=1:horzLen+1) for h=1:H))
 
     #transformer constraints
     if Tlimit
@@ -89,7 +88,10 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     tRaw=getvalue(t)
     lambdaCurr=-getdual(currCon)
     extraE=getvalue(eΔ)
-    #
+    if mode=="PWL"
+        cSol.Tpwl[stepI,1]=tRaw[1,1]
+    end
+
     # p1nl=plot(eRaw,xlabel="Time",ylabel="Energy",xlims=(1,horzLen+1),label="hub energy")
     # plot!(p1nl,eMax,label="hub max")
     # plot!(p1nl,eMax*.8,label="minimum departure")
@@ -106,7 +108,7 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     # plot(eDepart_min,label="min")
     # plot!(eDepart_min+extraE,label="actual")
     # plot!(eDepart_min+slackMax,label="max")
-
+    #
 
     #apply current and actual departures and arrivals
     nextU=uRaw[1,:]
@@ -128,7 +130,6 @@ end
 function hubCentral(hubS::scenarioHubStruct,mode::String,silent::Bool)
     H=hubS.H
     K=hubS.K
-    Nh=hubS.Nh
     cSol=hubSolutionStruct(K=K,H=H)
 
     for stepI=1:K
@@ -430,7 +431,6 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     eArrive_pred=hubS.eArrive_pred[stepI:(stepI+horzLen),hubInd]
     eArrive_actual=hubS.eArrive_actual[stepI:(stepI+horzLen),hubInd]
     slackMax=hubS.slackMax[stepI:(stepI+horzLen),hubInd]
-
 
     hubM=Model(solver = GurobiSolver())
     @variable(hubM,u[1:horzLen+1])

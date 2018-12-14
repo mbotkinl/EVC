@@ -168,8 +168,10 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
 
     Qmag=1
     Rmag=1
-    Rh=(Rmag*rand(1,H).+.001)
-    Qh=(Qmag*rand(1,H).+.001)
+    Omag=10
+    Rh=(Rmag*rand(1,H).+Rmag/1e3)
+    Qh=(Qmag*rand(1,H).+Qmag/1e3)
+    Oh=(Omag*rand(1,H).+Omag/1e3)
 
     #action happens immediately afte interval before ends
     #hub information
@@ -178,18 +180,20 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     K_arrive_pred=rand(1:arriveLast,Nh,H)
     K_depart_pred=rand(departFirst:K,Nh,H)
     # K_arrive_pred=zeros(Nh,H)
-    # K_arrive_pred[Int(Nh/2+1):Nh,1]=1:20
+    # K_arrive_pred[1:Int(Nh/2),1]=1:Int(Nh/2)
     # K_depart_pred=hcat(1:Nh)
+    # K_arrive_pred=hcat(1:Nh)
+    # K_depart_pred=hcat(K-Nh:K)
     K_arrive_actual=K_arrive_pred
     K_depart_actual=K_depart_pred
-    Sn_depart_min=1 .- 0.20*rand(Nh,H) #need 80-100%
+    Sn_depart_min=round.(1 .- 0.20*rand(Nh,H),digits=4) #need 80-100%
     #Sn_depart_min=.8*ones(Nh,H)
-    Sn_arrive_pred=0.20*rand(Nh,H) #arrive with 0-20%
+    Sn_arrive_pred=round.(0.20*rand(Nh,H),digits=4) #arrive with 0-20%
     #Sn_arrive_pred=.8*ones(Nh,H)
     Sn_arrive_actual=Sn_arrive_pred
     #EVcap=b./3.6e6 #kWh
-    EVcap=b./3.6e6/1e3 #MWh
-    e0=zeros(H)
+    EVcap=round.(b./3.6e6/1e3,digits=6) #MWh
+    e0=zeros(H) # no vehicles have arrived yet
     #e0=[sum(Sn_arrive_actual[n,h]*EVcap[n,h] for n in findall(x->x==0,K_arrive_actual[:,h])) for h=1:H]
 
     #prepare predicted values for optimization
@@ -223,12 +227,12 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
         end
     end
 
-    hubS=scenarioHubStruct(Nh,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,ηP,τP,ρP,γP,e0,t0,iD_pred,iD_actual,Tamb,Qh,Rh,
+    hubS=scenarioHubStruct(Nh,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,ηP,τP,ρP,γP,e0,t0,iD_pred,iD_actual,Tamb,Qh,Rh,Oh,
                             Sn_depart_min,Sn_arrive_actual,Sn_arrive_pred,K_arrive_pred,K_depart_pred,K_arrive_actual,
                             K_depart_actual,EVcap,eMax,uMax,eDepart_min,eArrive_pred,eArrive_actual,slackMax)
 
     if saveS==true
-        save(path*"HubscenarioH$(H).jld2","hubS",hubS)
+            save(path*"HubscenarioH$(H).jld2","hubS",hubS)
     end
 
     return hubS

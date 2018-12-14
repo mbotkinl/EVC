@@ -81,6 +81,7 @@ struct scenarioHubStruct
     #User def penalty matrix
     Qh::Array{Float64,2}
     Rh::Array{Float64,2}
+    Oh::Array{Float64,2}
 
     #hub conditions
     Sn_depart_min::Array{Float64,2}
