@@ -436,7 +436,7 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     @variable(hubM,u[1:horzLen+1])
     @variable(hubM,e[1:horzLen+1])
     @variable(hubM,eΔ[1:(horzLen+1)])
-    objExp=sum((e[k,1]-eMax[k,1])^2*hubS.Qh[1,hubInd]+(u[k,1])^2*hubS.Rh[1,hubInd]+
+    objExp=sum((e[k,1]-eMax[k,1])^2*hubS.Qh[1,hubInd]+(u[k,1])^2*hubS.Rh[1,hubInd]-hubS.Oh[1,hubInd]*eΔ[k,1]+
                             prevLam[k,1]*(u[k,1])+
                             ρALADp/2*(u[k,1]-prevVu[k,hubInd])*σU[hubInd,1]*(u[k,1]-prevVu[k,hubInd])+
                             ρALADp/2*(eΔ[k,1]-prevVd[k,hubInd])*σD[hubInd,1]*(eΔ[k,1]-prevVd[k,hubInd])+
@@ -485,7 +485,7 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
 
     dLogalad.Gu[:,hubInd,p]=round.(2*hubS.Rh[hubInd]*uVal,digits=10)
     dLogalad.Ge[:,hubInd,p]=round.(2*hubS.Qh[hubInd]*eVal.-2*hubS.Qh[hubInd]*eMax,digits=10)
-    #dLogalad.GeΔ[:,hubInd,p].=0
+    dLogalad.GeΔ[:,hubInd,p].=-hubS.Oh[1,hubInd]
     return nothing
 end
 
