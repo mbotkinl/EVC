@@ -7,7 +7,7 @@ if loadResults
 	println("Reading in ALAD Sim")
 	loadF=load(path*fname*".jld2")
 	hubS=loadF["scenario"]
-	dSol=loadF["solution"]
+	dSolalad=loadF["solution"]
 else
 	t0=hubS.t0
 	e0=hubS.e0
@@ -33,18 +33,43 @@ Xlabels=vcat(collect(stT1:Dates.Second(round(hubS.Ts)):endT1),collect(stT2:Dates
 xticks=(1:40:hubS.K,Dates.format.(Xlabels[1:40:hubS.K],"HH:MM"))
 hubLabels=permutedims(["Hub $(h)" for h=1:hubS.H])
 
-p1=plot(dSolalad.E,xlabel="",ylabel="Energy (MWh)",seriestype=:line,labels=hubLabels,xticks=xticks)
-plot!(hubS.eMax,label="Hub Max",line=(:dash))
+pd1alad=plot(dSolalad.E,xlabel="",ylabel="Energy (MWh)",seriestype=:line,labels=hubLabels,xticks=xticks, xlims=(0,hubS.K))
+plot!(pd1alad,hubS.eMax,label="Hub Max",line=(:dash))
 
-p2=plot(dSolalad.U,xlabel="",ylabel="Hub Current (kA)",legend=false,xticks=xticks)
+pd2alad=plot(dSolalad.U,xlabel="",ylabel="Hub Current (kA)",legend=false,xticks=xticks, xlims=(0,hubS.K))
 
-p3=plot(dSolalad.Tactual*1000,label="XFRM Temp",xlabel="",ylabel="Temp (K)")
-plot!(p3,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red),xticks=xticks)
+pd3alad=plot(dSolalad.Tactual*1000,label="ALAD",xlabel="",ylabel="Temp (K)", xlims=(0,hubS.K))
+plot!(pd3alad,cSol.Tactual*1000,label="Central")
+plot!(pd3alad,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 
-p4=plot(dSolalad.Lam,label="Time",ylabel=raw"Lambda ($/kA)",legend=false,xticks=xticks)
-plot!(p4,cSol.Lam,label="Central")
+pd4alad=plot(dSolalad.Lam,xlabel="Time",ylabel=raw"Lambda ($/kA)",label="ALAD",xticks=xticks, xlims=(0,hubS.K))
+plot!(pd4alad,cSol.Lam,label="Central")
 
 aggU=plot(hcat(cSol.uSum,dSolalad.uSum),label=["Central" "ALAD"],
-			xlims=(0,hubS.K),xlabel="Time",ylabel="PEV Current (kA)")
+			xlims=(0,hubS.K),xlabel="",ylabel="PEV Current (kA)")
+# plot!(aggU,sum(hubS.uMax,dims=2),label="Max Current",line=(:dash,:red),xticks=xticks)
 
+aggE=plot(hcat(sum(cSol.E,dims=2),sum(dSolalad.E,dims=2)),label=["Central" "ALAD"], xlims=(0,hubS.K),xlabel="",ylabel="Energy (MWh)")
+plot!(aggE,sum(hubS.eMax,dims=2),label="Max Energy",line=(:dash,:red),xticks=xticks)
 #checkDesiredStates(dSolalad.Sn,evS.Kn,evS.Snmin)
+
+
+#noLim Plots
+#
+# currComp=plot(hcat(cSol.uSum,noLim.uSum,dSolalad.uSum),label=["Central" "Uncoordinated" "ALADIN"],xlabel="",ylabel="Current (kA)", xlims=(0,hubS.K),xticks=xticks)
+# tempComp=plot(hcat(cSol.Tactual*1000,noLim.Tactual*1000,dSolalad.Tactual*1000),label=["Central" "Uncoordinated" "ALADIN"],xlabel="",ylabel="Temp (K)", xlims=(0,hubS.K),xticks=xticks)
+# plot!(tempComp,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red))
+# compP=plot(currComp,tempComp,pd4alad,layout=(3,1))
+# pubPlot(compP,thickscale=0.8,sizeWH=(1000,600),dpi=100)
+# savefig(compP,path*"aladinPlot1.png")
+#
+
+
+h1alad=plot(aggE,aggU,pd3alad,pd4alad,layout=(4,1))
+lowRes=true
+if lowRes
+    pubPlot(h1alad,thickscale=0.4,sizeWH=(400,300),dpi=40)
+else
+    pubPlot(h1alad,thickscale=0.8,sizeWH=(1000,600),dpi=100)
+end
+if saveF savefig(h1alad,path*"hubPlot1ALAD.png") end

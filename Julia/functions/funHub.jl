@@ -684,7 +684,7 @@ function runEVALADIt(p,stepI,hubS,dLogalad,dSol,cSol,mode,eqForm,silent)
     global ρALADp
 
     #other parameters
-    epsilon = 1e-3
+    epsilon = 5e-3
 
     #ALADIN tuning
     if eqForm
