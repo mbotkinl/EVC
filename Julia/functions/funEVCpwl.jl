@@ -196,8 +196,8 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
 
     @assert statusEVM==:Optimal "EV NLP optimization not solved to optimality"
 
-    dLog.Sn[collect(evInd:N:N*(horzLen+1)),p]=getvalue(sn) #solved state goes in next time slot
-    dLog.Un[collect(evInd:N:N*(horzLen+1)),p]=getvalue(un) #current go
+    dLog.Sn[collect(evInd:N:N*(horzLen+1)),p]=round.(getvalue(sn),digits=8) #solved state goes in next time slot
+    dLog.Un[collect(evInd:N:N*(horzLen+1)),p]=round.(getvalue(un),digits=8) #current go
     dLog.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
     return nothing
 end
@@ -230,8 +230,8 @@ function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,dCM:
 
         @assert statusC==:Optimal "Dual Ascent central optimization not solved to optimality"
 
-         dLog.Tpwl[:,p]=getvalue(t)
-         dLog.Z[:,p]=getvalue(z)
+         dLog.Tpwl[:,p]=round.(getvalue(t),digits=8)
+         dLog.Z[:,p]=round.(getvalue(z),digits=8)
 
         #grad of lagragian
         for k=1:horzLen+1
@@ -284,7 +284,7 @@ function runEVDualIt(p,stepI,evS,dLog,dCM,dSol,cSol,silent)
         minAlpha=1e-6
     end
 
-    convChk = 1e-4
+    convChk = 1e-3
 
     #solve subproblem for each EV
     @sync @distributed for evInd=1:N
@@ -299,7 +299,7 @@ function runEVDualIt(p,stepI,evS,dLog,dCM,dSol,cSol,silent)
     #alphaP= alphaP*alphaRate
 
     #dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP*dLog.couplConst[:,p],0)
-    dLog.Lam[:,p]=prevLam[:,1]+alphaP*dLog.couplConst[:,p]
+    dLog.Lam[:,p]=round.(prevLam[:,1]+alphaP*dLog.couplConst[:,p],digits=8)
 
     #calculate actual temperature from nonlinear model of XFRM
     for k=1:horzLen+1
@@ -632,6 +632,8 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,K-stepI)
+    ogρ=ρADMMp #save to reset later
+
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+η*u[k+1]
     dCMadmm=convMetricsStruct()
@@ -714,6 +716,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
     global prevLam=newLam
     global prevVu=newVu
     global prevVz=newVz
+    global ρADMMp=ogρ
 
     return nothing
 end
@@ -821,7 +824,7 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     # dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
     # dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
 
-    dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,digits=4)
+    dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,digits=8)
     dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],digits=8)
 
     #use convex ALADIN approach
@@ -971,7 +974,7 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,dLogal
     statusM = solve(cM)
     redirect_stdout(TT)
     @assert statusM==:Optimal "ALAD Central QP optimization not solved to optimality"
-    @printf "4"
+    #@printf "4"
 
     #update step
     # Lam[:,p+1]=-getdual(currCon)
@@ -1037,13 +1040,13 @@ function runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
     # μRate=1
     # μALADmax=2e9
 
-    @printf "1"
+    #@printf "1"
     #solve decoupled
     @sync @distributed for evInd=1:N
     #for evInd=1:N
         localEVALAD(evInd,p,stepI,σU,σS,evS,dLogalad)
     end
-    @printf "2"
+    #@printf "2"
 
     localXFRMALAD(p,stepI,σZ,σT,evS,dLogalad)
 
@@ -1091,7 +1094,7 @@ function runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
             #@printf("fGap       %e after %g iterations\n",fGap,p)
         end
     end
-    @printf "3"
+    #@printf "3"
 
     coordALAD(p,stepI,μALADp,evS,dLogalad,dCMalad)
 
@@ -1102,7 +1105,7 @@ function runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
     prevVt=dLogalad.Vt[:,p]
     prevLam=dLogalad.Lam[:,p]
     ρALADp=dLogalad.itUpdate[1,p]
-    @printf "5..."
+    #@printf "5..."
 
     return false
 end
@@ -1112,6 +1115,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,cSol,eqForm,silent)
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,K-stepI)
+    ogρ=ρALADp #save to reset later
 
     #convCheck=zeros(maxIt+1,1)
     #ΔY=zeros(1,maxIt+1)
@@ -1119,7 +1123,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,cSol,eqForm,silent)
     dCMalad=convMetricsStruct()
     dLogalad=itLogPWL(horzLen=horzLen,N=N,S=S)
     for p=1:maxIt
-        @printf "%git" p
+        #@printf "%git" p
         cFlag=runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
         global convIt=p
         if cFlag
@@ -1236,6 +1240,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,cSol,eqForm,silent)
     global prevVz=newVz
     global prevVt=newVt
     global prevVs=newVs
+    global ρALADp=ogρ
 
     return nothing
 end
