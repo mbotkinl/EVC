@@ -23,7 +23,7 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,Dload_error=0,saveS=false,p
     # Discretization parameters:
     #Ts = Rh*C/9              # s, sampling time in seconds
     Ts=180
-    ηP = Ts*Vac*a./b*1000  # 1/kA, normalized battery sizes (0-1)
+    ηP = round.(Ts*Vac*a./b*1000,digits=4)  # 1/kA, normalized battery sizes (0-1)
     #ηP = Ts*Vac*a./b  # 1/A, normalized battery sizes (0-1)
 
     #τP = 1 - Ts/(Rh*C)      # no units, temp time constant: 1 - 1/RC
@@ -54,23 +54,21 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,Dload_error=0,saveS=false,p
     # Constraint parameters:
     #Tmax = 393                             # Short-term over-loading --> 120 C = 393 Kelvin
     imin = zeros(N,1)                      # A, q_min < 0 if V2G is allowed
-    imax = (10 .+ 16*rand(N,1))/1000             # kA, charging with 10-24 A
+    imax = round.((10 .+ 16*rand(N,1))/1000,digits=6)             # kA, charging with 10-24 A
     #imax=10/1000*ones(N,1)
     #imax = (10 + 16*rand(N,1))             # A, charging with 10-24 A
 
     # Initial conditions:
     #s0=0.98*ones(N,1)
-    s0 = 0.2*rand(N,1)       # initial states of charge (0 - 0.20)
+    s0 = round.(0.2*rand(N,1),digits=4)       # initial states of charge (0 - 0.20)
     t0 = 370/1000                 # initial temp (~65 K below Tmax) 368K
 
     #desired states
-    SOCmin = 1 .- 0.20*rand(N,1)            # Required min final states of charge (~0.80-1)
-    #SOCmin=ones(N,1)
+    Snmin = round.(1 .- 0.20*rand(N,1),digits=4)           # Required min final states of charge (~0.80-1)
+    #Snmin=ones(N,1)
     FullChargeTime_relative = .25*rand(N,1).+.75
-    #FullChargeTime_relative=ones(N,1)
-    FullChargeTime = convert(Array{Int,2},round.(K*FullChargeTime_relative))
-    Snmin=round.(SOCmin,digits=4)
-    Kn=FullChargeTime
+    #Kn=ones(N,1)
+    Kn = convert(Array{Int,2},round.(K*FullChargeTime_relative))
 
     # Disturbances
     #Dload_amplitude = 2;  # base-demand factor
@@ -90,7 +88,7 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,Dload_error=0,saveS=false,p
     iD_pred = round.(FullDload/Vtf,digits=6);                                     #background demand current
     noisePerc= Dload_error/Dload_amplitude
     iD_actual = round.(iD_pred+2*noisePerc*iD_pred.*rand(length(iD_pred),1).-iD_pred*noisePerc,digits=6)
-    Tamb    = Tamb_amplitude*ones(K+1,1).-0.1*pdf.(d,range(-10,stop=10,length=K+1));             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
+    Tamb  = round.(Tamb_amplitude*ones(K+1,1).-0.1*pdf.(d,range(-10,stop=10,length=K+1)),digits=6);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
 
     # penalty matrix new (need to fix for k>Ki)
     Ru   = 0.1*1000^2;              # Stage and terminal penalty on local power flow (inputs u)
@@ -100,9 +98,9 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,Dload_error=0,saveS=false,p
     #Qs  = 100;               # Stage and terminal penalty on charge difference with respect to 1 (states s)
     QT  = 0;                # PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
     #QsKi  = 1;             # Stage and terminal penalty on charge difference with respect to 1 (states s), for k >= Ki
-    Ri=Ru*(5*rand(N,1).+.1);
+    Ri=round.(Ru*(5*rand(N,1).+.1),digits=6);
     #Ri=Ru*(5*rand(N,1).+.001);
-    Qi=Qs*(10*rand(N,1).+.01);
+    Qi=round.(Qs*(10*rand(N,1).+.01),digits=6);
     Qsi=[Qi;QT];
 
     #for slack
@@ -110,7 +108,7 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,Dload_error=0,saveS=false,p
 
 
     #move this into struct???
-    @assert all(ηP.*K.*FullChargeTime_relative.*imax+s0 .>= SOCmin) "Some PEVs may not be able to meet SOC min level by desired time!"
+    @assert all(ηP.*K.*FullChargeTime_relative.*imax+s0 .>= Snmin) "Some PEVs may not be able to meet SOC min level by desired time!"
 
 
     evScenario=scenarioStruct(N,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,
