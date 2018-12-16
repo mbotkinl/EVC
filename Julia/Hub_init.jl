@@ -13,8 +13,8 @@ using Gurobi
 # check all indexing????
 #especially stepI +k for iD and Tamb
 H=4
-maxIt=30
-datafile="jld2"
+maxIt=15
+datafile="n"
 mode="PWL"
 silent=true
 saveS=false
@@ -26,7 +26,7 @@ Tlimit=true
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4_100\\"
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4\\"
 file="HubscenarioH$(H).jld2"
 if datafile=="jld2"
 	using FileIO

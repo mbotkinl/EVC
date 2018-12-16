@@ -123,8 +123,8 @@ function runEVCCentralStep(stepI,evS,cSol,silent)
     #cSol.objVal[1,1,stepI]=getobjectivevalue(centralModel)
 
     # new states
-    t0=cSol.Tactual[stepI,1]
-    s0=cSol.Sn[stepI,:]
+    t0=round.(cSol.Tactual[stepI,1],digits=6)
+    s0=round.(cSol.Sn[stepI,:],digits=6)
     return nothing
 end
 
@@ -489,8 +489,8 @@ function localEVADMM(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::
     redirect_stdout(TT)
     @assert statusEVM==:Optimal "ADMM EV NLP optimization not solved to optimality"
 
-    dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=getvalue(sn)
-    dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=getvalue(u)
+    dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=round.(getvalue(sn),digits=6)
+    dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=round.(getvalue(u),digits=6)
     dLogadmm.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
     return nothing
 end
@@ -525,8 +525,8 @@ function localXFRMADMM(p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL)
     redirect_stdout(TT)
     @assert statusC==:Optimal "ADMM XFRM NLP optimization not solved to optimality"
 
-    dLogadmm.Tpwl[:,p]=getvalue(t)
-    dLogadmm.Z[:,p]=getvalue(z)
+    dLogadmm.Tpwl[:,p]=round.(getvalue(t),digits=6)
+    dLogadmm.Z[:,p]=round.(getvalue(z),digits=8)
     return nothing
 end
 
@@ -548,7 +548,7 @@ function runEVADMMIt(p,stepI,evS,dLogadmm,dCMadmm,dSol,cSol,silent)
     ρDivRate=1
     maxRho=1e9
 
-    convChk = 1e-4
+    convChk = 1e-1
 
     #x minimization eq 7.66 in Bertsekas
     @sync @distributed for evInd=1:N
@@ -619,9 +619,9 @@ function runEVADMMIt(p,stepI,evS,dLogadmm,dCMadmm,dSol,cSol,silent)
         end
 
         #update iterate variables
-        prevLam=dLogadmm.Lam[:,p]
-        prevVz=dLogadmm.Vz[:,p]
-        prevVu=dLogadmm.Vu[:,p]
+        prevLam=round.(dLogadmm.Lam[:,p],digits=8)
+        prevVz=round.(dLogadmm.Vz[:,p],digits=8)
+        prevVu=round.(dLogadmm.Vu[:,p],digits=8)
         ρADMMp=dLogadmm.itUpdate[1,p]
         return false
     end
@@ -652,22 +652,22 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
     # 	xPlot[:,ii]=dLogadmm.Sn[collect(ii:N:length(dLogadmm.Sn[:,convIt])),convIt]
     # 	uPlotd[:,ii]=dLogadmm.Un[collect(ii:N:length(dLogadmm.Un[:,convIt])),convIt]
     # end
-
+    #
     # #convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
     #                range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
     #
     # uSumPlotadmm=plot(dLogadmm.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
-    # plot!(uSumPlotadmm,1:horzLen+1,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+    # plot!(uSumPlotadmm,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # zSumPlotadmm=plot(dLogadmm.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
-    # plot!(zSumPlotadmm,1:horzLen+1,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+    # plot!(zSumPlotadmm,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # constPlotadmm2=plot(dLogadmm.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
     #
     # lamPlotadmm=plot(dLogadmm.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
-    # plot!(lamPlotadmm,1:horzLen+1,cSol.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
+    # plot!(lamPlotadmm,cSol.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # fPlotadmm=plot(1:convIt,dCMadmm.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convItPlotadmm=plot(1:convIt,dCMadmm.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
