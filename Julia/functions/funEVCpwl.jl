@@ -818,8 +818,8 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     dLogalad.Csl[ind,p]=-1cValMin
 
     dLogalad.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
-    dLogalad.Sn[ind,p]=snVal
-    dLogalad.Un[ind,p]=uVal
+    dLogalad.Sn[ind,p]=round.(snVal,digits=6)
+    dLogalad.Un[ind,p]=round.(uVal,digits=8)
 
     # dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
     # dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
@@ -883,8 +883,8 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenario
     dLogalad.Ctu[:,p]=1cValMax
     dLogalad.Ctl[:,p]=-1cValMin
 
-    dLogalad.Tpwl[:,p]=tVal
-    dLogalad.Z[:,p]=zVal
+    dLogalad.Tpwl[:,p]=round.(tVal,digits=6)
+    dLogalad.Z[:,p]=round.(zVal,digits=8)
     dLogalad.Gz[:,p].=0
     dLogalad.Gt[:,p].=0
 
@@ -1099,11 +1099,11 @@ function runEVALADIt(p,stepI,evS,dLogalad,dCMalad,dSol,cSol,eqForm,silent)
     coordALAD(p,stepI,μALADp,evS,dLogalad,dCMalad)
 
     #reset for next iteration
-    prevVu=dLogalad.Vu[:,p]
-    prevVs=dLogalad.Vs[:,p]
-    prevVz=dLogalad.Vz[:,p]
-    prevVt=dLogalad.Vt[:,p]
-    prevLam=dLogalad.Lam[:,p]
+    prevVu=round.(dLogalad.Vu[:,p],digits=8)
+    prevVs=round.(dLogalad.Vs[:,p],digits=6)
+    prevVz=round.(dLogalad.Vz[:,p],digits=8)
+    prevVt=round.(dLogalad.Vt[:,p],digits=8)
+    prevLam=round.(dLogalad.Lam[:,p],digits=8)
     ρALADp=dLogalad.itUpdate[1,p]
     #@printf "5..."
 
@@ -1235,12 +1235,12 @@ function runEVALADStep(stepI,maxIt,evS,dSol,cSol,eqForm,silent)
         end
     end
 
-    global prevLam=newLam
-    global prevVu=newVu
-    global prevVz=newVz
-    global prevVt=newVt
-    global prevVs=newVs
-    global ρALADp=ogρ
+    global prevLam=round.(newLam,digits=8)
+    global prevVu=round.(newVu,digits=8)
+    global prevVz=round.(newVz,digits=8)
+    global prevVt=round.(newVt,digits=6)
+    global prevVs=round.(newVs,digits=6)
+    global ρALADp=round.(ogρ,digits=2)
 
     return nothing
 end
