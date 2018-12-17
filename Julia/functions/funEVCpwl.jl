@@ -196,7 +196,7 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
 
     @assert statusEVM==:Optimal "EV NLP optimization not solved to optimality"
 
-    dLog.Sn[collect(evInd:N:N*(horzLen+1)),p]=round.(getvalue(sn),digits=8) #solved state goes in next time slot
+    dLog.Sn[collect(evInd:N:N*(horzLen+1)),p]=round.(getvalue(sn),digits=6) #solved state goes in next time slot
     dLog.Un[collect(evInd:N:N*(horzLen+1)),p]=round.(getvalue(un),digits=8) #current go
     dLog.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
     return nothing
@@ -230,7 +230,7 @@ function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,dCM:
 
         @assert statusC==:Optimal "Dual Ascent central optimization not solved to optimality"
 
-         dLog.Tpwl[:,p]=round.(getvalue(t),digits=8)
+         dLog.Tpwl[:,p]=round.(getvalue(t),digits=6)
          dLog.Z[:,p]=round.(getvalue(z),digits=8)
 
         #grad of lagragian
@@ -423,7 +423,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,cSol,silent)
             newLam=vcat(dLog.Lam[2:horzLen+1,convIt-1],dLog.Lam[horzLen+1,convIt-1])
         end
     end
-    global prevLam=newLam
+    global prevLam=round.(newLam,digits=8)
     return nothing
 end
 
@@ -490,7 +490,7 @@ function localEVADMM(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::
     @assert statusEVM==:Optimal "ADMM EV NLP optimization not solved to optimality"
 
     dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=round.(getvalue(sn),digits=6)
-    dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=round.(getvalue(u),digits=6)
+    dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=round.(getvalue(u),digits=8)
     dLogadmm.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
     return nothing
 end
@@ -545,10 +545,11 @@ function runEVADMMIt(p,stepI,evS,dLogadmm,dCMadmm,dSol,cSol,silent)
     global prevVz
     global ρADMMp
 
-    ρDivRate=1
+    ρDivRate=1.15
     maxRho=1e9
 
-    convChk = 1e-1
+    dualChk = 1e-2
+    primChk = 1e-4
 
     #x minimization eq 7.66 in Bertsekas
     @sync @distributed for evInd=1:N
@@ -589,6 +590,8 @@ function runEVADMMIt(p,stepI,evS,dLogadmm,dCMadmm,dSol,cSol,silent)
     dLogadmm.itUpdate[1,p]= min(ρADMMp*ρDivRate,maxRho)
 
     #check convergence
+
+    cc=norm(vcat((prevVu[:,1]-dLogadmm.Vu[:,p]),(prevVz[:,1]-dLogadmm.Vz[:,p])),2)
     objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) +
                      sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
     dLogadmm.objVal[1,p]=objFun(dLogadmm.Sn[:,p],dLogadmm.Un[:,p])
@@ -604,7 +607,7 @@ function runEVADMMIt(p,stepI,evS,dLogadmm,dCMadmm,dSol,cSol,silent)
     dCMadmm.couplConst[p,1]=constGap
     dCMadmm.lamIt[p,1]=itGap
     dCMadmm.lam[p,1]=convGap
-    if(convGap <= convChk )
+    if(constGap <= primChk  && cc <=dualChk)
         if !silent @printf "Converged after %g iterations\n" p end
         convIt=p
         return true
@@ -612,6 +615,7 @@ function runEVADMMIt(p,stepI,evS,dLogadmm,dCMadmm,dSol,cSol,silent)
         if !silent
             @printf "lastGap  %e after %g iterations\n" itGap p
             @printf "convGap  %e after %g iterations\n" convGap p
+            @printf "dual residue  %e after %g iterations\n" cc p
             @printf "constGap %e after %g iterations\n\n" constGap p
             #@printf "snGap    %e after %g iterations\n" snGap p
             #@printf "unGap    %e after %g iterations\n" unGap p
@@ -713,10 +717,10 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
             newVz=vcat(dLogadmm.Vz[(S+1):(S*(horzLen+1)),convIt-1],dLogadmm.Vz[((S*horzLen)+1):(S*(horzLen+1)),convIt-1])
         end
     end
-    global prevLam=newLam
-    global prevVu=newVu
-    global prevVz=newVz
-    global ρADMMp=ogρ
+    global prevLam=round.(newLam,digits=8)
+    global prevVu=round.(newVu,digits=8)
+    global prevVz=round.(newVz,digits=8)
+    global ρADMMp=round.(ogρ,digits=2)
 
     return nothing
 end
