@@ -51,6 +51,7 @@ end
 
 function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 	poolSol=Int(min(round(N*packLen),100))
+	w=1e8
 
 	#receive requests and forecast for the next packLen intervals
 	prevT = if stepI>1 pemSol.Tactual[stepI-1] else evS.t0 end
@@ -59,21 +60,22 @@ function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 	requiredInd=findall(x->x==1,requiredCh)
 	optOff=findall(x->x==0,Req[stepI,:])
 
-	m = Model(solver = GurobiSolver(PoolSearchMode=1,PoolSolutions=poolSol,PoolGap=0))
-	@variable(m,u[1:horzLen,1:N],Bin)
-	@variable(m,Test[1:horzLen])
-	@objective(m,Min,-sum(u))
+	m = Model(solver = GurobiSolver(PoolSearchMode=1,PoolSolutions=poolSol,PoolGap=0,OutputFlag=!silent,TimeLimit=2/3*evS.Ts))
+	@variable(m,u[1:horzLen+1,1:N],Bin) #binary charge variable
+	@variable(m,Test[1:horzLen+1])
+	@variable(m,slackT)
+	@objective(m,Min,-sum(u)+w*slackT)
 	@constraint(m,tempCon1,Test[1]>=evS.τP*prevT+evS.γP*(sum(u[1,n]*evS.imax[n] for n=1:N)+evS.iD_pred[stepI])^2+evS.ρP*evS.Tamb[stepI])
-	@constraint(m,tempCon2[kk=2:horzLen],Test[kk]>=evS.τP*Test[kk-1]+evS.γP*(sum(u[kk,n]*evS.imax[n] for n=1:N)+evS.iD_pred[stepI+kk])^2+evS.ρP*evS.Tamb[stepI+kk])
-	@constraint(m,Test.<=evS.Tmax)
-	# @constraint(m,optOn[kk=1:packLen],sum(u[n,kk] for n in requiredInd[kk])==length(requiredInd[kk]))
-	@constraint(m,optOnC[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(min(abs(Req[stepI,requiredInd[nn]]),horzLen)))==min(abs(Req[stepI,requiredInd[nn]]),horzLen))
-	@constraint(m,optOffC[kk=1:horzLen],sum(u[kk,n] for n in optOff)==0)
+	@constraint(m,tempCon2[kk=1:horzLen],Test[kk+1]>=evS.τP*Test[kk]+evS.γP*(sum(u[kk+1,n]*evS.imax[n] for n=1:N)+evS.iD_pred[stepI+kk])^2+evS.ρP*evS.Tamb[stepI+kk])
+	@constraint(m,Test.<=evS.Tmax+slackT)
+	@constraint(m,slackT>=0)
+	@constraint(m,optOnC[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(min(abs(Req[stepI,requiredInd[nn]]),horzLen+1)))==min(abs(Req[stepI,requiredInd[nn]]),horzLen+1))
+	@constraint(m,optOffC[kk=1:horzLen+1],sum(u[kk,n] for n in optOff)==0)
 
-	TT = stdout
-	redirect_stdout()
+	#TT = stdout
+	#redirect_stdout()
 	statusC = solve(m)
-	redirect_stdout(TT)
+	#redirect_stdout(TT)
 
 
 	if statusC==:Optimal
@@ -90,7 +92,7 @@ function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 		end
 		Rec=sol
 	else
-		#return
+		#return required EVs to charges
 		Rec=requiredCh
 	end
 
@@ -121,16 +123,16 @@ function pemEVCstep(stepI,evS,pemSol,silent)
 
 	# actual dynamics
 	prevT = if stepI>1 pemSol.Tactual[stepI-1] else evS.t0 end
-	pemSol.uSum[stepI] = sum(pemSol.Un[stepI,n] for n=1:N)
-	pemSol.Itotal[stepI] = pemSol.uSum[stepI] + evS.iD_actual[stepI]
-	pemSol.Tactual[stepI] = evS.τP*prevT+evS.γP*pemSol.Itotal[stepI]^2+evS.ρP*evS.Tamb[stepI]
+	pemSol.uSum[stepI] = round.(sum(pemSol.Un[stepI,n] for n=1:N),digits=8)
+	pemSol.Itotal[stepI] = round.(pemSol.uSum[stepI] + evS.iD_actual[stepI],digits=8)
+	pemSol.Tactual[stepI] = round.(evS.τP*prevT+evS.γP*pemSol.Itotal[stepI]^2+evS.ρP*evS.Tamb[stepI],digits=6)
 	return nothing
 end
 
 function pemEVC(evS::scenarioStruct,slack::Bool,silent::Bool)
 	pemSol=solutionStruct(K=evS.K,N=evS.N,S=evS.S)
 
-	for stepI =1:evS.K-1
+	for stepI =1:evS.K
 		@printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI evS.K
 		try
 			pemEVCstep(stepI,evS,pemSol,silent)

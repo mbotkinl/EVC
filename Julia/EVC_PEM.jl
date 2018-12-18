@@ -21,6 +21,8 @@ else
 	if saveResults saveRun(path,fname,timeT, evS,pemSol) end
 end
 
+println("plotting....")
+
 p1pem=plot(pemSol.Sn,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,evS.K),ylims=(0,1))
 if drawFig savefig(p1pem,path*"J_PEM_SOC.png") end
 
