@@ -19,7 +19,9 @@ end
 
 function clipr()
     t=clipboard()
-    return JLD.load(t[2:length(t)-1])
+    loadF=load(t[2:length(t)-1])
+
+    return loadF
 end
 
 function pubPlot(p;upscale=8,thickscale=2,dpi=300,sizeWH=(800,600))
@@ -29,7 +31,7 @@ end
 function readRuns(path)
     files = filter(x->occursin(".jld2",x), readdir(path))
     files = filter(x->occursin("_",x), files) # avoid evScenario
-    noLimFile = filter(x->occursin("noLimit",x), files)
+    noLimFile = filter(x->occursin("noLim",x), files)
     cFile = filter(x->occursin("central",x), files)
     dFiles= setdiff(files,cFile)
 
@@ -57,7 +59,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     runNames=collect(keys(runs))
     cSol=cRun["solution"]
     numIt=size(runs[runNames[1]]["convMetrics"].lam)[1]
-    Klen=size(cSol.Xt)[1]
+    Klen=size(cSol.Tactual)[1]
     P=length(runNames)
     evS=cRun["scenario"]
     N=evS.N
@@ -78,12 +80,12 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
         println(runNames[i])
         runI=runs[runNames[i]]
         cIt=runI["convIt"]
-        if typeof(runI["solution"]) == centralSolutionStruct #PEM
+        if typeof(runI["solution"]) == solutionStruct #PEM
             lamRMSE[:,i].=NaN
             lamInfNorm[:,i].=NaN
-            objPerc[1:numIt,i].=abs.(cSol.objVal.-runI["solution"].objVal)/cSol.objVal*100
-            Lam[:,i].=NaN
-            T[:,i]=runI["solution"].Xt[:,cIt]
+            #objPerc[1:numIt,i].=abs.(cSol.objVal.-runI["solution"].objVal)/cSol.objVal*100
+            Lam[:,i]=runI["solution"].lamCoupl
+            T[:,i]=runI["solution"].Tactual[:,cIt]
         else
             lamRMSE[:,i]=[sqrt(1/Klen*sum((runI["solution"].Lam[k,it]-cSol.lamCoupl[k])^2/abs(cSol.lamCoupl[k]) for k=1:numIt)) for it=1:numIt]
             lamInfNorm[:,i]=[maximum(abs.(runI["solution"].Lam[:,it]-cSol.lamCoupl)) for it=1:numIt]

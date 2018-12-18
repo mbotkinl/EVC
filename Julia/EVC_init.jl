@@ -14,6 +14,7 @@ using LinearAlgebra
 using Plots
 using Statistics
 pyplot()
+using Dates
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
@@ -29,13 +30,15 @@ noTlimit=false
 forecastError=false
 relaxedMode=2
 slack=false
-eqForm=true
+eqForm=false
+runParallel=true
 
 drawFig=false
 saveResults=false
 saveS=false
 loadResults=false
 silent=true
+solverSilent=true
 
 if datafile=="jld2"
 	using FileIO

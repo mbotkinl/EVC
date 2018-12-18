@@ -10,8 +10,7 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 
 eqString=if eqForm "_eq" else "_ineq" end
 relaxString= "_R$(relaxedMode)"
-errorString= if forecastError "_Error" else "" end
-fname = "dALADIN_NL_N$(N)"*eqString*relaxString*errorString
+fname = "dALADIN_NL_N$(N)"*eqString*relaxString
 
 if loadResults
 	println("Reading in NL AlAD Sim")

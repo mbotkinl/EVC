@@ -13,7 +13,7 @@ if loadResults
 	println("Reading in ADMM Sim")
 	loadF=load(path*fname*".jld2")
 	evS=loadF["scenario"]
-	dLogadmm=loadF["solution"]
+	dSoladmm=loadF["solution"]
 	dCMadmm=loadF["convMetrics"]
 	convIt=loadF["convIt"]
 else
