@@ -1,6 +1,5 @@
 #functions to run PWL EVC problems
 
-
 #central
 function runEVCCentralStep(stepI,evS,cSol,silent)
 
@@ -22,12 +21,9 @@ function runEVCCentralStep(stepI,evS,cSol,silent)
     end
 
     if !silent println("setting up model") end
-    if silent
-        centralModel = Model(solver = GurobiSolver(OutputFlag=0))
-    else
-        centralModel = Model(solver = GurobiSolver())
-        #centralModel = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1,NumericFocus=3))
-    end
+
+    centralModel = Model(solver = GurobiSolver())
+    #centralModel = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1,NumericFocus=3))
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
 
@@ -69,10 +65,14 @@ function runEVCCentralStep(stepI,evS,cSol,silent)
     @constraint(centralModel,z.<=evS.deltaI)
 
     if !silent println("solving....") end
-    TT = stdout # save original stdout stream
-    redirect_stdout()
-    status = solve(centralModel)
-    redirect_stdout(TT)
+
+    if solverSilent
+        @suppress_out begin
+            status = solve(centralModel)
+        end
+    else
+        status = solve(centralModel)
+    end
     @assert status==:Optimal "Central optimization not solved to optimality"
 
     uRaw=getvalue(u)
@@ -144,13 +144,16 @@ function pwlEVcentral(evS::scenarioStruct,slack::Bool,silent::Bool)
     # @profile  runEVCCentralStep(stepI,evS,cSol,silent)
     # Juno.profiler()
 
-    for stepI=1:K
-        @printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI K
-        try
-            runEVCCentralStep(stepI,evS,cSol,silent)
-        catch e
-            @printf "error: %s" e
-            break
+    Juno.progress() do id
+        for stepI=1:K
+            @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)" progress=stepI/K _id=id
+            @printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI K
+            try
+                runEVCCentralStep(stepI,evS,cSol,silent)
+            catch e
+                @printf "error: %s" e
+                break
+            end
         end
     end
 
@@ -189,10 +192,13 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
     @constraint(evM,un.<=evS.imax[evInd,1])
     @constraint(evM,un.>=evS.imin[evInd,1])
 
-    TT = stdout # save original stdout stream
-    redirect_stdout()
-    statusEVM = solve(evM)
-    redirect_stdout(TT)
+    if solverSilent
+        @suppress_out begin
+            statusEVM = solve(evM)
+        end
+    else
+        statusEVM = solve(evM)
+    end
 
     @assert statusEVM==:Optimal "EV NLP optimization not solved to optimality"
 
@@ -223,10 +229,14 @@ function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,dCM:
         @constraint(coorM,t.>=0)
         @constraint(coorM,z.<=evS.deltaI)
         @constraint(coorM,z.>=0)
-        TT = stdout # save original stdout stream
-        redirect_stdout()
-        statusC = solve(coorM)
-        redirect_stdout(TT)
+
+        if solverSilent
+            @suppress_out begin
+                statusC = solve(coorM)
+            end
+        else
+            statusC = solve(coorM)
+        end
 
         @assert statusC==:Optimal "Dual Ascent central optimization not solved to optimality"
 
@@ -435,14 +445,17 @@ function pwlEVdual(maxIt::Int,updateMethod::String,evS::scenarioStruct,cSol::sol
     S=evS.S
     dSol=solutionStruct(K=K,N=N,S=S)
 
-    for stepI=1:K
-        @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
-        try
-            runEVDualStep(stepI,maxIt,evS,dSol,cSol,silent)
-            @printf "convIt: %g\n" dSol.convIt[stepI,1]
-        catch e
-            @printf "error: %s" e
-            break
+    Juno.progress() do id
+        for stepI=1:K
+            @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)" progress=stepI/K _id=id
+            @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
+            try
+                runEVDualStep(stepI,maxIt,evS,dSol,cSol,silent)
+                @printf "convIt: %g\n" dSol.convIt[stepI,1]
+            catch e
+                @printf "error: %s" e
+                break
+            end
         end
     end
 
@@ -483,10 +496,13 @@ function localEVADMM(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::
     end
     @constraint(evM,u.<=evS.imax[evInd,1])
     @constraint(evM,u.>=evS.imin[evInd,1])
-    TT = stdout # save original stdout stream
-    redirect_stdout()
-    statusEVM = solve(evM)
-    redirect_stdout(TT)
+    if solverSilent
+        @suppress_out begin
+            statusEVM = solve(evM)
+        end
+    else
+        statusEVM = solve(evM)
+    end
     @assert statusEVM==:Optimal "ADMM EV NLP optimization not solved to optimality"
 
     dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=round.(getvalue(sn),digits=6)
@@ -519,10 +535,14 @@ function localXFRMADMM(p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL)
     @constraint(tM,z.<=evS.deltaI)
     #@constraint(tM,zC[k=1:horzLen+1],zSum[k,1]==sum(z[(k-1)*(S)+s] for s=1:S))
 
-    TT = stdout # save original stdout stream
-    redirect_stdout()
-    statusC = solve(tM)
-    redirect_stdout(TT)
+    if solverSilent
+        @suppress_out begin
+            statusC = solve(tM)
+        end
+    else
+        statusC = solve(tM)
+    end
+
     @assert statusC==:Optimal "ADMM XFRM NLP optimization not solved to optimality"
 
     dLogadmm.Tpwl[:,p]=round.(getvalue(t),digits=6)
@@ -733,14 +753,17 @@ function pwlEVadmm(maxIt::Int,evS::scenarioStruct,cSol::solutionStruct,slack::Bo
     S=evS.S
     dSol=solutionStruct(K=K,N=N,S=S)
 
-    for stepI=1:K
-        @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
-        try
-            runEVADMMStep(stepI,maxIt,evS,dSol,cSol,silent)
-            @printf "convIt: %g\n" dSol.convIt[stepI,1]
-        catch e
-            @printf "error: %s" e
-            break
+    Juno.progress() do id
+        for stepI=1:K
+            @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)" progress=stepI/K _id=id
+            @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
+            try
+                runEVADMMStep(stepI,maxIt,evS,dSol,cSol,silent)
+                @printf "convIt: %g\n" dSol.convIt[stepI,1]
+            catch e
+                @printf "error: %s" e
+                break
+            end
         end
     end
 
@@ -793,10 +816,14 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     @constraint(evM,curKappaMax,u.<=evS.imax[evInd,1])
     @constraint(evM,curKappaMin,u.>=evS.imin[evInd,1])
 
-    TT = stdout # save original stdout stream
-    redirect_stdout()
-    statusEVM = solve(evM)
-    redirect_stdout(TT)
+    if solverSilent
+        @suppress_out begin
+            statusEVM = solve(evM)
+        end
+    else
+        statusEVM = solve(evM)
+    end
+
     @assert statusEVM==:Optimal "ALAD EV NLP optimization not solved to optimality"
     #@printf "s"
 
@@ -863,10 +890,13 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenario
     @constraint(tM,lowerTCon,t.>=0)
     @constraint(tM,pwlKappaMin,z.>=0)
     @constraint(tM,pwlKappaMax,z.<=evS.deltaI)
-    TT = stdout # save original stdout stream
-    redirect_stdout()
-    statusTM = solve(tM)
-    redirect_stdout(TT)
+    if solverSilent
+        @suppress_out begin
+            statusTM = solve(tM)
+        end
+    else
+        statusTM = solve(tM)
+    end
     @assert statusTM==:Optimal "ALAD XFRM NLP optimization not solved to optimality"
 
     #kappaMax=-getdual(pwlKappaMax)
@@ -972,11 +1002,13 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,dLogal
         @constraint(cM,dLogalad.Ctl[:,p].*dT.<=0)
     end
 
-
-    TT = stdout # save original stdout stream
-    redirect_stdout()
-    statusM = solve(cM)
-    redirect_stdout(TT)
+    if solverSilent
+        @suppress_out begin
+            statusM = solve(cM)
+        end
+    else
+        statusM = solve(cM)
+    end
     @assert statusM==:Optimal "ALAD Central QP optimization not solved to optimality"
     #@printf "4"
 
@@ -1257,14 +1289,17 @@ function pwlEValad(maxIt::Int,evS::scenarioStruct,cSol::solutionStruct,slack::Bo
     S=evS.S
     dSol=solutionStruct(K=K,N=N,S=S)
 
-    for stepI=1:K
-        @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
-        try
-            runEVALADStep(stepI,maxIt,evS,dSol,cSol,eqForm,silent)
-            @printf "convIt: %g\n" dSol.convIt[stepI,1]
-        catch e
-            @printf "error: %s" e
-            break
+    Juno.progress() do id
+        for stepI=1:K
+            @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)" progress=stepI/K _id=id
+            @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
+            try
+                runEVALADStep(stepI,maxIt,evS,dSol,cSol,eqForm,silent)
+                @printf "convIt: %g\n" dSol.convIt[stepI,1]
+            catch e
+                @printf "error: %s" e
+                break
+            end
         end
     end
 

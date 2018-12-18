@@ -17,16 +17,10 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     eArrive_actual=hubS.eArrive_actual[stepI:(stepI+horzLen),:]
     slackMax=hubS.slackMax[stepI:(stepI+horzLen),:]
 
-    if silent
-        #cModel = Model(solver = IpoptSolver(print_level=0))
-        #cModel = Model(solver = GurobiSolver(OutputFlag=0,QCPDual=1))
-        cModel = Model(solver = GurobiSolver(OutputFlag=0))
-    else
-        #cModel = Model(solver = IpoptSolver())
-        #cModel = Model(solver = GurobiSolver(QCPDual=1))
-        cModel = Model(solver = GurobiSolver())
 
-    end
+    #cModel = Model(solver = IpoptSolver(print_level=!silent))
+    #cModel = Model(solver = GurobiSolver(OutputFlag=0,QCPDual=1))
+    cModel = Model(solver = GurobiSolver())
 
     @variable(cModel,u[1:(horzLen+1),1:H])
     @variable(cModel,t[1:(horzLen+1)])
@@ -77,10 +71,15 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     @constraint(cModel,eΔ.<=slackMax)
     @constraint(cModel,eΔ.>=0)
 
-    TT = stdout # save original stdout stream
-    redirect_stdout()
-    status = solve(cModel)
-    redirect_stdout(TT)
+
+    if solverSilent
+        @suppress_out begin
+			status = solve(cModel)
+        end
+    else
+		status = solve(cModel)
+    end
+
     @assert status==:Optimal "Central Hub optimization not solved to optimality"
 
     eRaw=getvalue(e)
@@ -132,13 +131,16 @@ function hubCentral(hubS::scenarioHubStruct,mode::String,silent::Bool)
     K=hubS.K
     cSol=hubSolutionStruct(K=K,H=H)
 
-    for stepI=1:K
-        @printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI K
-        try
-            runHubCentralStep(stepI,hubS,cSol,mode,silent)
-        catch e
-            @printf "error: %s" e
-            break
+    Juno.progress() do id
+        for stepI=1:K
+            @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
+            @printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI K
+            try
+                runHubCentralStep(stepI,hubS,cSol,mode,silent)
+            catch e
+                @printf "error: %s" e
+                break
+            end
         end
     end
 
@@ -177,10 +179,14 @@ function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog:
     @constraint(hubM,eΔ.<=slackMax)
     @constraint(hubM,eΔ.>=0)
 
-    TT = stdout # save original stdout stream
-    redirect_stdout()
-    statusM = solve(hubM)
-    redirect_stdout(TT)
+	if solverSilent
+        @suppress_out begin
+			statusM = solve(hubM)
+        end
+    else
+		statusM = solve(hubM)
+    end
+
     @assert statusM==:Optimal "Hub optimization not solved to optimality"
 
     dLog.U[:,hubInd,p]=round.(getvalue(u),digits=6)
@@ -219,10 +225,14 @@ function localXFRMDual(p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogP
         @constraint(coorM,z.<=hubS.deltaI)
     end
 
-    TT = stdout # save original stdout stream
-    redirect_stdout()
-    statusC = solve(coorM)
-    redirect_stdout(TT)
+	if solverSilent
+        @suppress_out begin
+			statusC = solve(coorM)
+        end
+    else
+		statusC = solve(coorM)
+    end
+
     @assert statusC==:Optimal "Dual Ascent XFRM optimization not solved to optimality"
 
      dLog.Tpwl[:,1,p]=round.(getvalue(t),digits=6)
@@ -399,14 +409,17 @@ function hubDual(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
     Nh=hubS.Nh
     dSol=hubSolutionStruct(K=K,H=H)
 
-    for stepI=1:36
-        @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
-        try
-            runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
-            @printf "convIt: %g\n" dSol.convIt[stepI,1]
-        catch e
-            @printf "error: %s" e
-            break
+    Juno.progress() do id
+        for stepI=1:K
+            @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
+            @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
+            try
+                runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
+                @printf "convIt: %g\n" dSol.convIt[stepI,1]
+            catch e
+                @printf "error: %s" e
+                break
+            end
         end
     end
 
@@ -454,10 +467,14 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     @constraint(hubM,eΔ.<=slackMax)
     @constraint(hubM,eΔ.>=0)
 
-    TT = stdout # save original stdout stream
-    redirect_stdout()
-    statusM = solve(hubM)
-    redirect_stdout(TT)
+	if solverSilent
+        @suppress_out begin
+			statusM = solve(hubM)
+        end
+    else
+		statusM = solve(hubM)
+    end
+
     @assert statusM==:Optimal "Hub optimization not solved to optimality"
 
     uVal=getvalue(u)
@@ -527,10 +544,14 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenari
         @constraint(coorM,z.<=hubS.deltaI)
     end
 
-    TT = stdout # save original stdout stream
-    redirect_stdout()
-    statusC = solve(coorM)
-    redirect_stdout(TT)
+	if solverSilent
+        @suppress_out begin
+			statusC = solve(coorM)
+        end
+    else
+		statusC = solve(coorM)
+    end
+
     @assert statusC==:Optimal "Dual Ascent XFRM optimization not solved to optimality"
 
     #kappaMax=-getdual(pwlKappaMax)
@@ -631,11 +652,14 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
         @constraint(cM,dLogalad.Ctl[:,:,p].*dT.<=0)
     end
 
+	if solverSilent
+        @suppress_out begin
+			statusM = solve(cM)
+        end
+    else
+		statusM = solve(cM)
+    end
 
-    TT = stdout # save original stdout stream
-    redirect_stdout()
-    statusM = solve(cM)
-    redirect_stdout(TT)
     @assert statusM==:Optimal "ALAD Central QP optimization not solved to optimality"
 
     #update step
@@ -905,14 +929,17 @@ function hubALAD(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
     K=hubS.K
     dSol=hubSolutionStruct(K=K,H=H)
 
-    for stepI=1:K
-        @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
-        try
-            runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
-            @printf "convIt: %g\n" dSol.convIt[stepI,1]
-        catch e
-            @printf "error: %s" e
-            break
+    Juno.progress() do id
+        for stepI=1:K
+            @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
+            @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
+            try
+                runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
+                @printf "convIt: %g\n" dSol.convIt[stepI,1]
+            catch e
+                @printf "error: %s" e
+                break
+            end
         end
     end
 

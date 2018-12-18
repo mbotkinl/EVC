@@ -60,7 +60,7 @@ function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 	requiredInd=findall(x->x==1,requiredCh)
 	optOff=findall(x->x==0,Req[stepI,:])
 
-	m = Model(solver = GurobiSolver(PoolSearchMode=1,PoolSolutions=poolSol,PoolGap=0,OutputFlag=!silent,TimeLimit=2/3*evS.Ts))
+	m = Model(solver = GurobiSolver(PoolSearchMode=1,PoolSolutions=poolSol,PoolGap=0,TimeLimit=2/3*evS.Ts))
 	@variable(m,u[1:horzLen+1,1:N],Bin) #binary charge variable
 	@variable(m,Test[1:horzLen+1])
 	@variable(m,slackT)
@@ -72,10 +72,14 @@ function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 	@constraint(m,optOnC[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(min(abs(Req[stepI,requiredInd[nn]]),horzLen+1)))==min(abs(Req[stepI,requiredInd[nn]]),horzLen+1))
 	@constraint(m,optOffC[kk=1:horzLen+1],sum(u[kk,n] for n in optOff)==0)
 
-	#TT = stdout
-	#redirect_stdout()
-	statusC = solve(m)
-	#redirect_stdout(TT)
+
+	if solverSilent
+        @suppress_out begin
+			statusC = solve(m)
+        end
+    else
+		statusC = solve(m)
+    end
 
 
 	if statusC==:Optimal
@@ -132,13 +136,16 @@ end
 function pemEVC(evS::scenarioStruct,slack::Bool,silent::Bool)
 	pemSol=solutionStruct(K=evS.K,N=evS.N,S=evS.S)
 
-	for stepI =1:evS.K
-		@printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI evS.K
-		try
-			pemEVCstep(stepI,evS,pemSol,silent)
-		catch e
-			@printf "error: %s" e
-			break
+	Juno.progress() do id
+		for stepI=1:evS.K
+			@info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(evS.K)....\n" progress=stepI/evS.K _id=id
+			@printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI evS.K
+			try
+				pemEVCstep(stepI,evS,pemSol,silent)
+			catch e
+				@printf "error: %s" e
+				break
+			end
 		end
 	end
 
