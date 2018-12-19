@@ -1,9 +1,7 @@
 #Micah Botkin-Levy
 #4/8/18
-@everywhere using Gurobi
-@everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
-# using Gurobi
-# include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
+using Gurobi
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 fname = "central_N$(N)"
 
 if loadResults
