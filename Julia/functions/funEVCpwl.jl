@@ -584,7 +584,7 @@ function runEVADMMIt(p,stepI,evS,dLogadmm,dCMadmm,dSol,cSol,silent)
         dLogadmm.zSum[k,p]=sum(dLogadmm.Z[(k-1)*(S)+s,p] for s=1:S)
         dLogadmm.couplConst[k,p]= dLogadmm.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLogadmm.zSum[k,p]
         #dLogadmm.Lam[k,p]=max.(prevLam[k,1]+ρADMMp/(S*(N))*(dLogadmm.couplConst[k,p]),0)
-        dLogadmm.Lam[k,p]=prevLam[k,1]+ρADMMp/(horzLen+1)*(dLogadmm.couplConst[k,p])
+        dLogadmm.Lam[k,p]=prevLam[k,1]+ρADMMp/(max(horzLen+1,N))*(dLogadmm.couplConst[k,p])
     end
 
     #calculate actual temperature from nonlinear model of XFRM
