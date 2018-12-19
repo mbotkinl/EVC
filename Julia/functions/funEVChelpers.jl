@@ -64,42 +64,21 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     evS=cRun["scenario"]
     N=evS.N
 
-    objPerc = zeros(numIt,P)
-    objConv = zeros(numIt,P)
-    lamConv = zeros(numIt,P)
-    lamRMSE = zeros(numIt,P)
-    lamInfNorm = zeros(numIt,P)
+
     Lam = zeros(Klen,P)
     T = zeros(Klen,P)
     Sn = zeros(Klen*N,P)
     uSum = zeros(Klen,P)
     snSum = zeros(Klen,P)
     snAvg = zeros(Klen,P)
+    convIt = zeros(Klen,P)
 
     for i in 1:length(runNames)
         println(runNames[i])
         runI=runs[runNames[i]]
-        cIt=runI["convIt"]
-        if typeof(runI["solution"]) == solutionStruct #PEM
-            lamRMSE[:,i].=NaN
-            lamInfNorm[:,i].=NaN
-            #objPerc[1:numIt,i].=abs.(cSol.objVal.-runI["solution"].objVal)/cSol.objVal*100
-            Lam[:,i]=runI["solution"].lamCoupl
-            T[:,i]=runI["solution"].Tactual[:,cIt]
-        else
-            lamRMSE[:,i]=[sqrt(1/Klen*sum((runI["solution"].Lam[k,it]-cSol.lamCoupl[k])^2/abs(cSol.lamCoupl[k]) for k=1:numIt)) for it=1:numIt]
-            lamInfNorm[:,i]=[maximum(abs.(runI["solution"].Lam[:,it]-cSol.lamCoupl)) for it=1:numIt]
-            objPerc[1:numIt,i]=abs.(cSol.objVal.-runI["solution"].objVal[1:numIt]')/cSol.objVal*100
-            Lam[:,i]=runI["solution"].Lam[:,cIt]
-
-            if typeof(runI["solution"])==itLogPWL
-                T[:,i]=runI["solution"].Tactual[:,cIt] #for PWL
-            else
-                T[:,i]=runI["solution"].Xt[:,cIt] # for NL
-            end
-            objConv[:,i]=runI["convMetrics"].obj
-            lamConv[:,i]=runI["convMetrics"].lam
-        end
+        convIt[:,i]=runI["solution"].convIt
+        Lam[:,i]=runI["solution"].lamCoupl
+        T[:,i]=runI["solution"].Tactual[:,cIt]
         uSum[:,i]=runI["solution"].uSum[:,cIt]
         if size(runI["solution"].Sn)[1]>Klen+1
             Sn[:,i]=runI["solution"].Sn[:,cIt]
@@ -110,13 +89,6 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
             snSum[:,i]=[sum(runI["solution"].Sn[k,:]) for k in 1:Klen]# sum up across N
             snAvg[:,i]=[mean(runI["solution"].Sn[k,:]) for k in 1:Klen]# mean across N
         end
-
-        # fill in NaN for greater than convIt
-        objPerc[cIt:numIt,i].=NaN
-        lamRMSE[cIt:numIt,i].=NaN
-        lamInfNorm[cIt:numIt,i].=NaN
-        objConv[cIt:numIt,i].=NaN
-        lamConv[cIt:numIt,i].=NaN
     end
 
     plotLabels=permutedims(runNames)
@@ -130,18 +102,6 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     Xlabels=vcat(collect(stT1:Dates.Second(round(evS.Ts)):endT1),collect(stT2:Dates.Second(round(evS.Ts)):endT2))
     #Xlabels=vcat(collect(stT1:Dates.Minute(3):endT1),collect(stT2:Dates.Minute(3):endT2))
     xticks=(1:40:Klen,Dates.format.(Xlabels[1:40:Klen],"HH:MM"))
-
-    #Iteration plots
-    lamConvPlot=plot(lamConv,xlabel="",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10,
-                    seriescolor=plotColors,legend=false,xlims=(0,numIt))
-    lamRMSEPlot=plot(lamRMSE,xlabel="",ylabel="Relative RMSE Lambda Gap",labels=plotLabels,yscale=:log10,
-                    seriescolor=plotColors,xlims=(0,numIt))
-    lamInfNormPlot=plot(lamInfNorm,xlabel="",ylabel="Max Lambda Gap",labels=plotLabels,yscale=:log10,
-                        seriescolor=plotColors,legend=false,xlims=(0,numIt))
-    objNormPlot=plot(objConv,xlabel="",ylabel="Objective Value Magintude Gap",labels=plotLabels,yscale=:log10,
-                    seriescolor=plotColors',legend=false,xlims=(0,numIt))
-    objPercPlot=plot(objPerc,xlabel="Iteration",ylabel="Objective Value Percentage Gap",labels=plotLabels,yscale=:log10,
-                    seriescolor=plotColors,legend=false,xlims=(0,numIt))
 
     #Time plots
     tempPlot=plot(1:Klen,cSol.Tactual*1000,label="",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),
@@ -174,25 +134,27 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
         target[k]=sum(evS.Snmin[ind])
     end
 
-    snSumCentral=[sum(cSol.Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# sum up across N
-    snSumPlot=plot(1:Klen,snSumCentral,xlabel="",ylabel="SOC Sum",xlims=(0,Klen),labels="",
+    snSumCentral=sum(cSol.Sn,dims=2)# sum up across N
+    snSumPlot=plot(snSumCentral,xlabel="",ylabel="SOC Sum",xlims=(0,Klen),labels="",
                    seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
-    plot!(snSumPlot,1:Klen,target,label="SOC Target",line=(:dash))
+    plot!(snSumPlot,target,label="SOC Target",line=(:dash))
     plot!(snSumPlot,snSum,labels="",seriescolor=plotColors)
     if noLim !=nothing
-        snSumNoLim=[sum(noLim["solution"].Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# sum up across N
-        plot!(snSumPlot,1:Klen,snSumNoLim,label="",seriescolor=allColors[P+1])
+        plot!(snSumPlot,sum(noLim["solution"].Sn,dims=2),label="",seriescolor=allColors[P+1])
     end
 
 
-    snAvgCentral=[mean(cSol.Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# mean across N
-    snAvgPlot=plot(1:Klen,snAvgCentral,xlabel="",ylabel="Avg.SOC",xlims=(0,Klen),labels=plotLabels,
-                   seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
-    plot!(snAvgPlot,snAvg,labels=plotLabels,seriescolor=plotColors)
-    if noLim !=nothing
-        snAvgNoLim=[mean(noLim["solution"].Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# sum up across N
-        plot!(snAvgPlot,1:Klen,snAvgNoLim,label="Uncoordinated",seriescolor=allColors[P+1])
-    end
+    # snAvgCentral=[mean(cSol.Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# mean across N
+    # snAvgPlot=plot(1:Klen,snAvgCentral,xlabel="",ylabel="Avg.SOC",xlims=(0,Klen),labels=plotLabels,
+    #                seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
+    # plot!(snAvgPlot,snAvg,labels=plotLabels,seriescolor=plotColors)
+    # if noLim !=nothing
+    #     snAvgNoLim=[mean(noLim["solution"].Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# sum up across N
+    #     plot!(snAvgPlot,1:Klen,snAvgNoLim,label="Uncoordinated",seriescolor=allColors[P+1])
+    # end
+
+    convItPlot=plot(convIt,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),xticks=xticks,labels=plotLabels)
+
 
     lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),labels="Central",
                    seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
@@ -222,6 +184,64 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
         pubPlot(resPlot,thickscale=0.8,sizeWH=(800,600),dpi=100)
     end
 
+    if saveF savefig(resPlot,path*"resPlot.png") end
+
+    return resPlot, convPlot
+end
+
+function compareConvGraph()
+    runNames=collect(keys(runs))
+    cSol=cRun["solution"]
+    numIt=size(runs[runNames[1]]["convMetrics"].lam)[1]
+    Klen=size(cSol.Tactual)[1]
+    P=length(runNames)
+    evS=cRun["scenario"]
+    N=evS.N
+
+    objPerc = zeros(numIt,P)
+    objConv = zeros(numIt,P)
+    lamConv = zeros(numIt,P)
+    lamRMSE = zeros(numIt,P)
+    lamInfNorm = zeros(numIt,P)
+    Lam = zeros(Klen,P)
+
+    for i in 1:length(runNames)
+        println(runNames[i])
+        runI=runs[runNames[i]]
+
+        lamRMSE[:,i]=[sqrt(1/Klen*sum((runI["solution"].Lam[k,it]-cSol.lamCoupl[k])^2/abs(cSol.lamCoupl[k]) for k=1:numIt)) for it=1:numIt]
+        lamInfNorm[:,i]=[maximum(abs.(runI["solution"].Lam[:,it]-cSol.lamCoupl)) for it=1:numIt]
+        objPerc[1:numIt,i]=abs.(cSol.objVal.-runI["solution"].objVal[1:numIt]')/cSol.objVal*100
+        Lam[:,i]=runI["solution"].Lam[:,cIt]
+
+        if typeof(runI["solution"])==itLogPWL
+            T[:,i]=runI["solution"].Tactual[:,cIt] #for PWL
+        else
+            T[:,i]=runI["solution"].Xt[:,cIt] # for NL
+        end
+        objConv[:,i]=runI["convMetrics"].obj
+        lamConv[:,i]=runI["convMetrics"].lam
+
+        # fill in NaN for greater than convIt
+        objPerc[cIt:numIt,i].=NaN
+        lamRMSE[cIt:numIt,i].=NaN
+        lamInfNorm[cIt:numIt,i].=NaN
+        objConv[cIt:numIt,i].=NaN
+        lamConv[cIt:numIt,i].=NaN
+    end
+
+    #Iteration plots
+    lamConvPlot=plot(lamConv,xlabel="",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10,
+                    seriescolor=plotColors,legend=false,xlims=(0,numIt))
+    lamRMSEPlot=plot(lamRMSE,xlabel="",ylabel="Relative RMSE Lambda Gap",labels=plotLabels,yscale=:log10,
+                    seriescolor=plotColors,xlims=(0,numIt))
+    lamInfNormPlot=plot(lamInfNorm,xlabel="",ylabel="Max Lambda Gap",labels=plotLabels,yscale=:log10,
+                        seriescolor=plotColors,legend=false,xlims=(0,numIt))
+    objNormPlot=plot(objConv,xlabel="",ylabel="Objective Value Magintude Gap",labels=plotLabels,yscale=:log10,
+                    seriescolor=plotColors',legend=false,xlims=(0,numIt))
+    objPercPlot=plot(objPerc,xlabel="Iteration",ylabel="Objective Value Percentage Gap",labels=plotLabels,yscale=:log10,
+                    seriescolor=plotColors,legend=false,xlims=(0,numIt))
+
     convPlot=plot(lamRMSEPlot,lamInfNormPlot,objPercPlot,layout=(3,1))
     if lowRes
         pubPlot(convPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
@@ -229,32 +249,27 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
         pubPlot(convPlot,thickscale=0.8,sizeWH=(800,600),dpi=100)
     end
 
-    # p=plot(lamRMSEPlot, tempPlot,lamInfNormPlot, loadPlot, objPercPlot,lamPlot,layout=(3,2))
-    # if lowRes
-    #     pubPlot(p,thickscale=0.4,sizeWH=(500,300),dpi=40)
-    # else
-    #     pubPlot(p,thickscale=0.8,sizeWH=(1000,600),dpi=100)
-    # end
-
-    if saveF savefig(resPlot,path*"resPlot.png") end
     if saveF savefig(convPlot,path*"convPlot.png") end
 
-    return resPlot, convPlot
-end
 
+end
 function compareRunsTable(runs)
     # compareTable = DataFrame(name=String[],time=Float64[],cLamDiff=Float64[],lamDiff=Float64[],
     # cObjDiff=Float64[],objDiff=Float64[])
-    compareTable = DataFrame(name=String[],timeTotal=Float64[],timePerIt=Float64[],convIt=Int64[])
+    compareTable = DataFrame(name=String[],timeTotal=Float64[],avgtimePerIt=Float64[],avgconvIt=Float64[])
     for keyI in keys(runs)
         println(keyI)
-        local loadF=runs[keyI]
-        local timeT=loadF["runTime"]
+        loadF=runs[keyI]
+        Klen=loadF["scenario"].K
+        timeT=loadF["runTime"]
+        convIt=loadF["solution"].convIt
         #cm=loadF["convMetrics"]
-        local convIt=loadF["convIt"]
+        #local convIt=loadF["convIt"]
         #ind= if convIt>0 convIt-1 else length(cm.lam) end
         #stats = [key timeT minimum(cm.lam[1:ind]) cm.lam[ind-1]-cm.lam[ind-2] minimum(cm.obj[1:ind]) cm.obj[ind-1]-cm.obj[ind-2]]
-        local stats = [keyI timeT timeT/convIt convIt]
+        avgTime=timeT/max(sum(convIt),Klen)
+        avgConv=max(sum(convIt),Klen)/Klen
+        stats = [keyI timeT avgTime avgConv]
         push!(compareTable,stats)
     end
 
