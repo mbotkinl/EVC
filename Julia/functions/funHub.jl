@@ -114,6 +114,7 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     cSol.U[stepI,:]=nextU
     cSol.uSum[stepI,1]=sum(nextU)
     cSol.Lam[stepI,1]=lambdaCurr[1,1]
+	cSol.D[stepI,:]=extraE[1,:]
     cSol.E_depart[stepI,:]=eDepart_min[1,:]+extraE[1,:]
     cSol.E_arrive[stepI,:]=eArrive_actual[1,:]
     cSol.E[stepI,:]=e0[:]+hubS.ηP[:].*nextU-(cSol.E_depart[stepI,:])+cSol.E_arrive[stepI,:]
@@ -144,8 +145,8 @@ function hubCentral(hubS::scenarioHubStruct,mode::String,silent::Bool)
         end
     end
 
-    objFun(e,u)=sum(sum((e[k,h]-hubS.eMax[k,h])^2*hubS.Qh[1,h] for h=1:H) +sum((u[k,h])^2*hubS.Rh[1,h] for h=1:H) for k=1:K)
-    cSol.objVal[1,1]=objFun(cSol.E,cSol.U)
+	objFun(e,u,d)=sum(sum((e[k,h]-hubS.eMax[k,h])^2*hubS.Qh[1,h]+(u[k,h])^2*hubS.Rh[1,h]-hubS.Oh[h]*d[k,h] for h=1:H) for k=1:K)
+    cSol.objVal[1,1]=objFun(cSol.E,cSol.U,cSol.D)
 
     return cSol
 end
@@ -190,7 +191,9 @@ function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog:
     @assert statusM==:Optimal "Hub optimization not solved to optimality"
 
     dLog.U[:,hubInd,p]=round.(getvalue(u),digits=6)
-    dLog.E[:,hubInd,p]=round.(getvalue(e),digits=2)
+    dLog.E[:,hubInd,p]=round.(getvalue(e),digits=6)
+	dLog.D[:,hubInd,p]=round.(getvalue(eΔ),digits=6)
+
     return nothing
 end
 
@@ -285,7 +288,7 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
     #alphaP= alphaP*alphaRate
 
     #dLog.Lam[:,p]=max.(itLam[:,1]+alphaP*dLog.couplConst[:,p],0)
-    dLog.Lam[:,1,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],digits=4)
+    dLog.Lam[:,1,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],digits=6)
 
     #calculate actual temperature from nonlinear model of XFRM
     for k=1:horzLen+1
@@ -336,7 +339,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
 		if p==1
 			itLam=prevLam
 		else
-			itLam=round.(dLogalad.Lam[:,1,(p-1)],digits=8)
+			itLam=round.(dLog.Lam[:,1,(p-1)],digits=8)
 		end
         cFlag=runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
         global convIt=p
@@ -387,6 +390,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     dSol.Tpwl[stepI,1]=dLog.Tpwl[1,1,convIt]
     dSol.U[stepI,:]=dLog.U[1,1:H,convIt]
     dSol.E[stepI,:]=dLog.E[1,1:H,convIt]
+	dSol.D[stepI,:]=dLog.D[1,1:H,convIt]
     #dSol.Z[stepI,:]=dLog.Z[1:S,convIt]
     dSol.Itotal[stepI,1]=dLog.Itotal[1,1,convIt]
     dSol.Tactual[stepI,1]=dLog.Tactual[1,1,convIt]
@@ -435,8 +439,8 @@ function hubDual(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
         end
     end
 
-    objFun(e,u)=sum(sum((e[k,h]-hubS.eMax[k,h])^2*hubS.Qh[1,h] for h=1:H) +sum((u[k,h])^2*hubS.Rh[1,h] for h=1:H) for k=1:K)
-    dSol.objVal[1,1]=objFun(dSol.E,dSol.U)
+	objFun(e,u,d)=sum(sum((e[k,h]-hubS.eMax[k,h])^2*hubS.Qh[1,h]+(u[k,h])^2*hubS.Rh[1,h]-hubS.Oh[h]*d[k,h] for h=1:H) for k=1:K)
+    dSol.objVal[1,1]=objFun(dSol.E,dSol.U,dSol.D)
 
     return dSol
 end
@@ -513,6 +517,7 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     #dLogalad.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
     dLogalad.E[:,hubInd,p]=round.(eVal,digits=10)
     dLogalad.U[:,hubInd,p]=round.(uVal,digits=10)
+	dLogalad.D[:,hubInd,p]=round.(eΔVal,digits=10)
 
     dLogalad.Gu[:,hubInd,p]=round.(2*hubS.Rh[hubInd]*uVal,digits=10)
     dLogalad.Ge[:,hubInd,p]=round.(2*hubS.Qh[hubInd]*eVal.-2*hubS.Qh[hubInd]*eMax,digits=10)
@@ -903,6 +908,7 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     dSol.Tpwl[stepI,1]=dLogalad.Tpwl[1,1,convIt]
     dSol.U[stepI,:]=dLogalad.U[1,1:H,convIt]
     dSol.E[stepI,:]=dLogalad.E[1,1:H,convIt]
+	dSol.D[stepI,:]=dLogalad.D[1,1:H,convIt]
     #dSol.Z[stepI,:]=dLogalad.Z[1:S,convIt]
     dSol.uSum[stepI,1]=dLogalad.uSum[1,1,convIt]
     dSol.zSum[stepI,1]=dLogalad.zSum[1,1,convIt]
@@ -982,8 +988,8 @@ function hubALAD(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
         end
     end
 
-    objFun(e,u)=sum(sum((e[k,h]-hubS.eMax[k,h])^2*hubS.Qh[1,h] for h=1:H) +sum((u[k,h])^2*hubS.Rh[1,h] for h=1:H) for k=1:K)
-    dSol.objVal[1,1]=objFun(dSol.E,dSol.U)
+	objFun(e,u,d)=sum(sum((e[k,h]-hubS.eMax[k,h])^2*hubS.Qh[1,h]+(u[k,h])^2*hubS.Rh[1,h]-hubS.Oh[h]*d[k,h] for h=1:H) for k=1:K)
+    dSol.objVal[1,1]=objFun(dSol.E,dSol.U,dSol.D)
 
     return dSol
 end

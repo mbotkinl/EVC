@@ -234,6 +234,7 @@ end
     H::Int
     E::Array=zeros(K,H) #row are time, column are hub
     U::Array=zeros(K,H) #row are time, column are hub
+    D::Array=zeros(K,H) #row are time, column are hub
     Itotal::Array=zeros(K,1) #row are time
     Tpwl::Array=zeros(K,1) #row are time
     Tactual::Array=zeros(K,1) #row are time
@@ -241,7 +242,7 @@ end
     zSum::Array=zeros(K,1) #row are time
     Lam::Array=zeros(K,1) #row are time
     convIt::Array=zeros(K,1) #row are time
-    objVal::Array=zeros(K,1)
+    objVal::Array=zeros(1,1)
 
     E_depart::Array=zeros(K,H)
     E_arrive::Array=zeros(K,H)
@@ -268,6 +269,7 @@ end
     S::Int
     E::Array{Float64,3}=zeros(horzLen+1,H,maxIt) #row are time, column are hub, stack is iteration
     U::Array{Float64,3}=zeros(horzLen+1,H,maxIt) #row are time, column are hub, stack is iteration
+    D::Array{Float64,3}=zeros(horzLen+1,H,maxIt) #row are time, column are hub, stack is iteration
     Z::Array{Float64,3}=zeros(horzLen+1,S,maxIt) #row are time, column are segment, stack is iteration
     Tpwl::Array{Float64,3}=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
     Lam::Array{Float64,3}=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
