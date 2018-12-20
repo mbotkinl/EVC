@@ -9,20 +9,23 @@ using Distributed
 using LinearAlgebra
 #using Ipopt
 using Gurobi
+using Suppressor
 
 # check all indexing????
 #especially stepI +k for iD and Tamb
 H=4
 maxIt=15
-datafile="n"
+datafile="jld2"
 mode="PWL"
 silent=true
+solverSilent=true
 saveS=false
 saveF=false
 loadResults=false
 saveResults=false
 eqForm=false
 Tlimit=true
+runParallel=false
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 

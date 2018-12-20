@@ -152,7 +152,7 @@ end
 
 
 #Dual Ascent
-function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogPWL)
+function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogPWL,itLam,e0,solverSilent)
     horzLen=min(hubS.K1,hubS.K-stepI)
 
     eMax=hubS.eMax[stepI:(stepI+horzLen),hubInd]
@@ -166,7 +166,7 @@ function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog:
     @variable(hubM,u[1:horzLen+1])
     @variable(hubM,e[1:horzLen+1])
     @variable(hubM,eΔ[1:(horzLen+1)])
-    objExp=sum((e[k,1]-eMax[k,1])^2*hubS.Qh[1,hubInd]+(u[k,1])^2*hubS.Rh[1,hubInd]+prevLam[k,1]*u[k,1] for k=1:horzLen+1)
+    objExp=sum((e[k,1]-eMax[k,1])^2*hubS.Qh[1,hubInd]+(u[k,1])^2*hubS.Rh[1,hubInd]+itLam[k,1]*u[k,1] for k=1:horzLen+1)
     @objective(hubM,Min,objExp)
 
     #hub constraints
@@ -194,7 +194,7 @@ function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog:
     return nothing
 end
 
-function localXFRMDual(p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogPWL,mode::String)
+function localXFRMDual(p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogPWL,mode::String,itLam,t0,solverSilent)
     S=hubS.S
     horzLen=min(hubS.K1,hubS.K-stepI)
 
@@ -204,21 +204,21 @@ function localXFRMDual(p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogP
     @constraint(coorM,t.>=0)
     if mode=="NL"
         @variable(coorM,itotal[1:(horzLen+1)])
-        @objective(coorM,Min,sum(prevLam[k,1]*itotal[k] for k=1:(horzLen+1)))
+        @objective(coorM,Min,sum(itLam[k,1]*itotal[k] for k=1:(horzLen+1)))
         @constraint(coorM,itotal.<=hubS.ItotalMax)
         @constraint(coorM,itotal.>=0)
         @NLconstraint(coorM,tempCon1,t[1,1]==hubS.τP*t0+hubS.γP*(itotal[1])^2+hubS.ρP*hubS.Tamb[stepI,1])
         @NLconstraint(coorM,tempCon2[k=1:horzLen],t[k+1,1]==hubS.τP*t[k,1]+hubS.γP*(itotal[k+1])^2+hubS.ρP*hubS.Tamb[stepI+k,1])
     elseif mode=="relax1"
         @variable(coorM,itotal[1:(horzLen+1)])
-        @objective(coorM,Min,sum(prevLam[k,1]*itotal[k] for k=1:(horzLen+1)))
+        @objective(coorM,Min,sum(itLam[k,1]*itotal[k] for k=1:(horzLen+1)))
         @constraint(coorM,itotal.<=hubS.ItotalMax)
         @constraint(coorM,itotal.>=0)
         @constraint(coorM,tempCon1,t[1,1]>=hubS.τP*t0+hubS.γP*(itotal[1])^2+hubS.ρP*hubS.Tamb[stepI,1])
         @constraint(coorM,tempCon2[k=1:horzLen],t[k+1,1]>=hubS.τP*t[k,1]+hubS.γP*(itotal[k+1])^2+hubS.ρP*hubS.Tamb[stepI+k,1])
     elseif mode=="PWL"
         @variable(coorM,z[1:(horzLen+1),1:hubS.S])
-        @objective(coorM,Min,sum(prevLam[k,1]*sum(-z[k,s] for s=1:S) for k=1:(horzLen+1)))
+        @objective(coorM,Min,sum(itLam[k,1]*sum(-z[k,s] for s=1:S) for k=1:(horzLen+1)))
         @constraint(coorM,tempCon1,t[1,1]==hubS.τP*t0+hubS.γP*hubS.deltaI*sum((2*s-1)*z[1,s] for s=1:hubS.S)+hubS.ρP*hubS.Tamb[stepI,1])
         @constraint(coorM,tempCon2[k=1:horzLen],t[k+1,1]==hubS.τP*t[k,1]+hubS.γP*hubS.deltaI*sum((2*s-1)*z[k+1,s] for s=1:hubS.S)+hubS.ρP*hubS.Tamb[stepI+k,1])
         @constraint(coorM,z.>=0)
@@ -241,11 +241,11 @@ function localXFRMDual(p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogP
     return nothing
 end
 
-function runHubDualIt(p,stepI,hubS,dLog,dSol,cSol,mode,silent)
+function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
 
     global t0
     global e0
-    global prevLam
+    #global prevLam
 
     H=hubS.H
     K=hubS.K
@@ -258,11 +258,18 @@ function runHubDualIt(p,stepI,hubS,dLog,dSol,cSol,mode,silent)
     convChk = 1e-4
 
     #solve subproblem for each EV
-    @sync @distributed for hubInd=1:H
-        localEVDual(hubInd,p,stepI,hubS,dLog)
-    end
+	if runParallel
+		@sync @distributed for hubInd=1:H
+			localEVDual(hubInd,p,stepI,hubS,dLog,itLam,e0,solverSilent)
+		end
+	else
+		for hubInd=1:H
+			localEVDual(hubInd,p,stepI,hubS,dLog,itLam,e0,solverSilent)
+		end
+	end
 
-    localXFRMDual(p,stepI,hubS,dLog,mode)
+
+    localXFRMDual(p,stepI,hubS,dLog,mode,itLam,t0,solverSilent)
 
     #grad of lagragian
     for k=1:horzLen+1
@@ -277,8 +284,8 @@ function runHubDualIt(p,stepI,hubS,dLog,dSol,cSol,mode,silent)
     dLog.itUpdate[1,1,p]=alphaP
     #alphaP= alphaP*alphaRate
 
-    #dLog.Lam[:,p]=max.(prevLam[:,1]+alphaP*dLog.couplConst[:,p],0)
-    dLog.Lam[:,1,p]=round.(prevLam[:,1]+alphaP*dLog.couplConst[:,1,p],digits=4)
+    #dLog.Lam[:,p]=max.(itLam[:,1]+alphaP*dLog.couplConst[:,p],0)
+    dLog.Lam[:,1,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],digits=4)
 
     #calculate actual temperature from nonlinear model of XFRM
     for k=1:horzLen+1
@@ -296,7 +303,7 @@ function runHubDualIt(p,stepI,hubS,dLog,dSol,cSol,mode,silent)
     #fGap=abs(dLog.objVal[1,p] -cSol.objVal[1,1])
     #snGap=norm((dLog.Sn[:,p]-cSol.Sn),2)
     #unGap=norm((dLog.Un[:,p]-cSol.Un),2)
-    itGap = norm(dLog.Lam[:,1,p]-prevLam[:,1],2)
+    itGap = norm(dLog.Lam[:,1,p]-itLam[:,1],2)
     convGap = norm(dLog.Lam[:,1,p]-cSol.Lam[stepI:(horzLen+stepI)],2)
     #dCM.obj[p,1]=fGap
     #dCM.sn[p,1]=snGap
@@ -315,7 +322,7 @@ function runHubDualIt(p,stepI,hubS,dLog,dSol,cSol,mode,silent)
             #@printf "unGap   %e after %g iterations\n" unGap p
             #@printf("fGap    %e after %g iterations\n\n",fGap,p)
         end
-        prevLam=dLog.Lam[:,1,p]
+        #prevLam=dLog.Lam[:,1,p]
         return false
     end
 end
@@ -326,7 +333,12 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     horzLen=min(hubS.K1,K-stepI)
     dLog=hubItLogPWL(horzLen=horzLen,H=hubS.H,S=hubS.S)
     for p=1:maxIt
-        cFlag=runHubDualIt(p,stepI,hubS,dLog,dSol,cSol,mode,silent)
+		if p==1
+			itLam=prevLam
+		else
+			itLam=round.(dLogalad.Lam[:,1,(p-1)],digits=8)
+		end
+        cFlag=runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
         global convIt=p
         if cFlag
             break
@@ -432,7 +444,9 @@ end
 
 
 #ALADIN
-function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Array{Float64,2},σD::Array{Float64,2},hubS::scenarioHubStruct,dLogalad::hubItLogPWL)
+function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Array{Float64,2},σD::Array{Float64,2},
+	hubS::scenarioHubStruct,dLogalad::hubItLogPWL,itLam,itVu,itVe,itVd,e0,itρ,solverSilent)
+
     horzLen=min(hubS.K1,hubS.K-stepI)
 
     tolU=1e-6
@@ -450,10 +464,10 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     @variable(hubM,e[1:horzLen+1])
     @variable(hubM,eΔ[1:(horzLen+1)])
     objExp=sum((e[k,1]-eMax[k,1])^2*hubS.Qh[1,hubInd]+(u[k,1])^2*hubS.Rh[1,hubInd]-hubS.Oh[1,hubInd]*eΔ[k,1]+
-                            prevLam[k,1]*(u[k,1])+
-                            ρALADp/2*(u[k,1]-prevVu[k,hubInd])*σU[hubInd,1]*(u[k,1]-prevVu[k,hubInd])+
-                            ρALADp/2*(eΔ[k,1]-prevVd[k,hubInd])*σD[hubInd,1]*(eΔ[k,1]-prevVd[k,hubInd])+
-                            ρALADp/2*(e[k,1]-prevVe[k,hubInd])*σE[hubInd,1]*(e[k,1]-prevVe[k,hubInd]) for k=1:horzLen+1)
+                            itLam[k,1]*(u[k,1])+
+                            ρALADp/2*(u[k,1]-itVu[k,hubInd])*σU[hubInd,1]*(u[k,1]-itVu[k,hubInd])+
+                            ρALADp/2*(eΔ[k,1]-itVd[k,hubInd])*σD[hubInd,1]*(eΔ[k,1]-itVd[k,hubInd])+
+                            ρALADp/2*(e[k,1]-itVe[k,hubInd])*σE[hubInd,1]*(e[k,1]-itVe[k,hubInd]) for k=1:horzLen+1)
 
     @objective(hubM,Min,objExp)
 
@@ -506,7 +520,8 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     return nothing
 end
 
-function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenarioHubStruct,dLogalad::hubItLogPWL,mode::String)
+function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenarioHubStruct,dLogalad::hubItLogPWL,
+	mode::String,itLam,itVz,itVt,itρ)
     S=hubS.S
     horzLen=min(hubS.K1,hubS.K-stepI)
 
@@ -520,23 +535,23 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenari
     @constraint(coorM,t.>=0)
     if mode=="NL"
         # @variable(coorM,itotal[1:(horzLen+1)])
-        # @objective(coorM,Min,sum(prevLam[k,1]*itotal[k] for k=1:(horzLen+1)))
+        # @objective(coorM,Min,sum(itLam[k,1]*itotal[k] for k=1:(horzLen+1)))
         # @constraint(coorM,itotal.<=hubS.ItotalMax)
         # @constraint(coorM,itotal.>=0)
         # @NLconstraint(coorM,tempCon1,t[1,1]==hubS.τP*t0+hubS.γP*(itotal[1])^2+hubS.ρP*hubS.Tamb[stepI,1])
         # @NLconstraint(coorM,tempCon2[k=1:horzLen],t[k+1,1]==hubS.τP*t[k,1]+hubS.γP*(itotal[k+1])^2+hubS.ρP*hubS.Tamb[stepI+k,1])
     elseif mode=="relax1"
         # @variable(coorM,itotal[1:(horzLen+1)])
-        # @objective(coorM,Min,sum(prevLam[k,1]*itotal[k] for k=1:(horzLen+1)))
+        # @objective(coorM,Min,sum(itLam[k,1]*itotal[k] for k=1:(horzLen+1)))
         # @constraint(coorM,itotal.<=hubS.ItotalMax)
         # @constraint(coorM,itotal.>=0)
         # @constraint(coorM,tempCon1,t[1,1]>=hubS.τP*t0+hubS.γP*(itotal[1])^2+hubS.ρP*hubS.Tamb[stepI,1])
         # @constraint(coorM,tempCon2[k=1:horzLen],t[k+1,1]>=hubS.τP*t[k,1]+hubS.γP*(itotal[k+1])^2+hubS.ρP*hubS.Tamb[stepI+k,1])
     elseif mode=="PWL"
         @variable(coorM,z[1:(horzLen+1),1:hubS.S])
-        objExp=sum(-prevLam[k,1]*sum(z[k,s] for s=1:S)+
-                  ρALADp/2*σZ*(sum(z[k,s] for s=1:S)-sum(prevVz[k,s] for s=1:S))^2+
-                  ρALADp/2*σT*(t[k]-prevVt[k,1])^2  for k=1:(horzLen+1))
+        objExp=sum(-itLam[k,1]*sum(z[k,s] for s=1:S)+
+                  ρALADp/2*σZ*(sum(z[k,s] for s=1:S)-sum(itVz[k,s] for s=1:S))^2+
+                  ρALADp/2*σT*(t[k]-itVt[k,1])^2  for k=1:(horzLen+1))
         @objective(coorM,Min, objExp)
         @constraint(coorM,tempCon1,t[1,1]==hubS.τP*t0+hubS.γP*hubS.deltaI*sum((2*s-1)*z[1,s] for s=1:hubS.S)+hubS.ρP*hubS.Tamb[stepI,1])
         @constraint(coorM,tempCon2[k=1:horzLen],t[k+1,1]==hubS.τP*t[k,1]+hubS.γP*hubS.deltaI*sum((2*s-1)*z[k+1,s] for s=1:hubS.S)+hubS.ρP*hubS.Tamb[stepI+k,1])
@@ -580,7 +595,9 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenari
     return nothing
 end
 
-function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dLogalad::hubItLogPWL)
+function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dLogalad::hubItLogPWL,
+	itLam,itVu,itVe,itVd,itVz,itVt,itρ)
+
     H=hubS.H
     S=hubS.S
     horzLen=min(hubS.K1,hubS.K-stepI)
@@ -611,7 +628,7 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
                    0.5*dEΔ[k,h]^2*HeΔ[h]+dLogalad.GeΔ[k,h,p]*dEΔ[k,h] for h=1:H) +
                sum(0.5*dZ[k,s]^2*Hz for s=1:S)+
                0.5*dT[k,1]^2*Ht   for k=1:(horzLen+1))
-    objExp=objExp+prevLam[:,1]'*relaxS+μALADp/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
+    objExp=objExp+itLam[:,1]'*relaxS+μALADp/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
     objExp=objExp+dot(dLogalad.Gz[:,:,p],dZ)+dot(dLogalad.Gt[:,1,p],dT)
 
     @objective(cM,Min,objExp)
@@ -669,15 +686,15 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
     α3=1
     #α3=1/ceil(p/2)
 
-    dLogalad.Lam[:,1,p]=round.(prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1]),digits=10)
-    #dLogalad.Lam[:,p]=max.(prevLam[:,1]+α3*(-getdual(currCon)-prevLam[:,1]),0)
-    dLogalad.Vu[:,:,p]=round.(prevVu[:,:,1]+α1*(dLogalad.U[:,:,p]-prevVu[:,:,1])+α2*getvalue(dU),digits=10)
-    dLogalad.Vz[:,:,p]=round.(prevVz[:,:,1]+α1*(dLogalad.Z[:,:,p]-prevVz[:,:,1])+α2*getvalue(dZ),digits=10)
-    dLogalad.Ve[:,:,p]=round.(prevVe[:,:,1]+α1*(dLogalad.E[:,:,p]-prevVe[:,:,1])+α2*getvalue(dE),digits=10)
-    dLogalad.Vd[:,:,p]=round.(prevVd[:,:,1]+α1*(dLogalad.Vd[:,:,p]-prevVd[:,:,1])+α2*getvalue(dEΔ),digits=10)
-    dLogalad.Vt[:,:,p]=round.(prevVt[:,:,1]+α1*(dLogalad.Tpwl[:,:,p]-prevVt[:,:,1])+α2*getvalue(dT),digits=10)
+    dLogalad.Lam[:,1,p]=round.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),digits=10)
+    #dLogalad.Lam[:,p]=max.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),0)
+    dLogalad.Vu[:,:,p]=round.(itVu[:,:,1]+α1*(dLogalad.U[:,:,p]-itVu[:,:,1])+α2*getvalue(dU),digits=10)
+    dLogalad.Vz[:,:,p]=round.(itVz[:,:,1]+α1*(dLogalad.Z[:,:,p]-itVz[:,:,1])+α2*getvalue(dZ),digits=10)
+    dLogalad.Ve[:,:,p]=round.(itVe[:,:,1]+α1*(dLogalad.E[:,:,p]-itVe[:,:,1])+α2*getvalue(dE),digits=10)
+    dLogalad.Vd[:,:,p]=round.(itVd[:,:,1]+α1*(dLogalad.Vd[:,:,p]-itVd[:,:,1])+α2*getvalue(dEΔ),digits=10)
+    dLogalad.Vt[:,:,p]=round.(itVt[:,:,1]+α1*(dLogalad.Tpwl[:,:,p]-itVt[:,:,1])+α2*getvalue(dT),digits=10)
 
-    #dCMalad.lamIt[p,1]=norm(dLogalad.Lam[:,p]-prevLam[:,1],2)
+    #dCMalad.lamIt[p,1]=norm(dLogalad.Lam[:,p]-itLam[:,1],2)
     #dCMalad.lam[p,1]=norm(dLogalad.Lam[:,p]-cSol.lamCoupl[stepI:(horzLen+stepI)],2)
     # if !silent
     #     @printf "lastGap    %e after %g iterations\n" dCMalad.lamIt[p,1] p
@@ -690,25 +707,25 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
     return nothing
 end
 
-function runEVALADIt(p,stepI,hubS,dLogalad,dSol,cSol,mode,eqForm,silent)
+function runEVALADIt(p,stepI,hubS,itLam,itVu,itVz,itVe,itVd,itVt,itρ,dLogalad,dSol,cSol,mode,eqForm,silent)
     H=hubS.H
     K=hubS.K
     S=hubS.S
     horzLen=min(hubS.K1,K-stepI)
 
     #initialize with current states
-    global s0
+    global e0
     global t0
-    global prevLam
-    global prevVu
-    global prevVz
-    global prevVt
-    global prevVe
-    global prevVd
-    global ρALADp
+    # global prevLam
+    # global prevVu
+    # global prevVz
+    # global prevVt
+    # global prevVe
+    # global prevVd
+    # global ρALADp
 
     #other parameters
-    epsilon = 5e-3
+    epsilon = 1e-2
 
     #ALADIN tuning
     if eqForm
@@ -730,12 +747,17 @@ function runEVALADIt(p,stepI,hubS,dLogalad,dSol,cSol,mode,eqForm,silent)
     # μALADmax=2e9
 
     #solve decoupled
-    @sync @distributed for hubInd=1:H
-        #println(hubInd)
-        localEVALAD(hubInd,p,stepI,σU,σE,σD,hubS,dLogalad)
+    if runParallel
+        @sync @distributed for hubInd=1:H
+			localEVALAD(hubInd,p,stepI,σU,σE,σD,hubS,dLogalad,itLam,itVu,itVe,itVd,e0,itρ,solverSilent)
+		end
+    else
+        for hubInd=1:H
+			localEVALAD(hubInd,p,stepI,σU,σE,σD,hubS,dLogalad,itLam,itVu,itVe,itVd,e0,itρ,solverSilent)
+		end
     end
 
-    localXFRMALAD(p,stepI,σZ,σT,hubS,dLogalad,mode)
+    localXFRMALAD(p,stepI,σZ,σT,hubS,dLogalad,mode,itLam,itVz,itVt,itρ)
 
     for k=1:horzLen+1
         dLogalad.uSum[k,1,p]=sum(dLogalad.U[k,h,p] for h=1:H)
@@ -754,8 +776,8 @@ function runEVALADIt(p,stepI,hubS,dLogalad,dSol,cSol,mode,eqForm,silent)
 
     #check for convergence
     constGap=norm(dLogalad.couplConst[:,1,p],1)
-    cc=norm(hcat(σU[1]*(prevVu[:,:]-dLogalad.U[:,:,p]),σZ*(prevVz[:,:]-dLogalad.Z[:,:,p]),
-                 σT*(prevVt[:,:]-dLogalad.Tpwl[:,:,p]),σE[1]*(prevVe[:,:]-dLogalad.E[:,:,p])),1)
+    cc=norm(hcat(σU[1]*(itVu[:,:]-dLogalad.U[:,:,p]),σZ*(itVz[:,:]-dLogalad.Z[:,:,p]),
+                 σT*(itVt[:,:]-dLogalad.Tpwl[:,:,p]),σE[1]*(itVe[:,:]-dLogalad.E[:,:,p])),1)
     #cc=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
     # objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*hubS.Qsi[n,1] for n=1:N) +
     #                  sum((u[(k-1)*N+n,1])^2*hubS.Ri[n,1]       for n=1:N) for k=1:horzLen+1)
@@ -782,16 +804,16 @@ function runEVALADIt(p,stepI,hubS,dLogalad,dSol,cSol,mode,eqForm,silent)
         end
     end
 
-    coordALAD(p,stepI,μALADp,hubS,dLogalad)
+    coordALAD(p,stepI,μALADp,hubS,dLogalad,itLam,itVu,itVe,itVd,itVz,itVt,itρ)
 
     #reset for next iteration
-    prevVu=dLogalad.Vu[:,:,p]
-    prevVe=dLogalad.Ve[:,:,p]
-    prevVd=dLogalad.Vd[:,:,p]
-    prevVz=dLogalad.Vz[:,:,p]
-    prevVt=dLogalad.Vt[:,:,p]
-    prevLam=dLogalad.Lam[:,:,p]
-    ρALADp=dLogalad.itUpdate[1,1,p]
+    # prevVu=dLogalad.Vu[:,:,p]
+    # prevVe=dLogalad.Ve[:,:,p]
+    # prevVd=dLogalad.Vd[:,:,p]
+    # prevVz=dLogalad.Vz[:,:,p]
+    # prevVt=dLogalad.Vt[:,:,p]
+    # prevLam=dLogalad.Lam[:,:,p]
+    # ρALADp=dLogalad.itUpdate[1,1,p]
 
     return false
 end
@@ -800,11 +822,28 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     K=hubS.K
     S=hubS.S
     horzLen=min(hubS.K1,K-stepI)
-    ogρ=ρALADp #save to reset later
+    #ogρ=ρALADp #save to reset later
     dLogalad=hubItLogPWL(horzLen=horzLen,H=hubS.H,S=hubS.S)
     for p=1:maxIt
         #@printf "%git" p
-        cFlag=runEVALADIt(p,stepI,hubS,dLogalad,dSol,cSol,mode,eqForm,silent)
+		if p==1
+			itLam=prevLam
+			itVu=prevVu
+			itVz=prevVz
+			itVe=prevVe
+			itVd=prevVd
+			itVt=prevVt
+			itρ=ρALADp
+		else
+			itLam=round.(dLogalad.Lam[:,1,(p-1)],digits=8)
+			itVu=round.(dLogalad.Vu[:,:,(p-1)],digits=8)
+			itVz=round.(dLogalad.Vz[:,:,(p-1)],digits=8)
+			itVd=round.(dLogalad.Vd[:,:,(p-1)],digits=6)
+			itVe=round.(dLogalad.Ve[:,:,(p-1)],digits=6)
+			itVt=round.(dLogalad.Vt[:,1,(p-1)],digits=6)
+			itρ=round.(dLogalad.itUpdate[1,1,(p-1)],digits=2)
+		end
+        cFlag=runEVALADIt(p,stepI,hubS,itLam,itVu,itVz,itVe,itVd,itVt,itρ,dLogalad,dSol,cSol,mode,eqForm,silent)
         global convIt=p
         if cFlag
             break
@@ -815,7 +854,7 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     # plot(dLogalad.E[:,:,convIt])
     # pd3alad=plot(hcat(dLogalad.Tactual[:,1,convIt],dLogalad.Tpwl[:,1,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")
     # plot!(pd3alad,1:horzLen+1,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red))
-    #
+	#
     # #convergence plots
     # halfCI=Int(floor(convIt/2))
     # if halfCI>0
@@ -826,15 +865,15 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     # end
     # uSumPlotalad=plot(dLogalad.uSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
     # plot!(uSumPlotalad,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
-    #
+	#
     # zSumPlotalad=plot(dLogalad.zSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
     # plot!(zSumPlotalad,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
-    #
+	#
     # constPlotalad2=plot(dLogalad.couplConst[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
-    #
+	#
     # lamPlotalad=plot(dLogalad.Lam[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
     # plot!(lamPlotalad,cSol.Lam,seriescolor=:black,linewidth=2,linealpha=0.8)
-    #
+	#
     # activeSet=zeros(convIt,1)
     # setChanges=zeros(convIt,1)
     # for ii=2:convIt
@@ -848,13 +887,13 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     #                      sum(abs.(dLogalad.Cdu[:,:,ii]-dLogalad.Cdu[:,:,ii-1]))+sum(abs.(dLogalad.Cdl[:,:,ii]-dLogalad.Cdl[:,:,ii-1]))+
     # 				     sum(abs.(dLogalad.Cul[:,:,ii]-dLogalad.Cul[:,:,ii-1]))+sum(abs.(dLogalad.Czl[:,:,ii]-dLogalad.Czl[:,:,ii-1]))
     # end
-    #
+	#
     # activeSetPlot=plot(2:convIt,activeSet[2:convIt],xlabel="Iteration",ylabel="Total Active inequality constraints",
     #                    legend=false,xlims=(2,convIt))
     # setChangesPlot=plot(2:convIt,setChanges[2:convIt],xlabel="Iteration",ylabel="Changes in Active inequality constraints",
     #                   legend=false,xlims=(2,convIt))
     # solChangesplot=plot(2:convIt,hcat(ΔY[2:convIt],convCheck[2:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
-    #
+	#
     # fPlotalad=plot(dCMalad.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convItPlotalad=plot(dCMalad.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false) #,yscale=:log10
     # convPlotalad=plot(dCMalad.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
@@ -919,7 +958,7 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     global prevVt=newVt
     global prevVe=newVe
     global prevVd=newVd
-    global ρALADp=ogρ
+    #global ρALADp=ogρ
 
     return nothing
 end
