@@ -547,8 +547,8 @@ function localXFRMADMM(p::Int,stepI::Int,hubS::scenarioHubStruct,dLogadmm::hubIt
     zVal=getvalue(z)
     tVal=getvalue(t)
 
-    dLogadmm.Tpwl[:,:,p]=round.(tVal,digits=10)
-    dLogadmm.Z[:,:,p]=round.(zVal,digits=10)
+    dLogadmm.Tpwl[:,:,p]=round.(tVal,digits=6)
+    dLogadmm.Z[:,:,p]=round.(zVal,digits=8)
     return nothing
 end
 
@@ -567,7 +567,7 @@ function runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,e
 	maxRho=1e9
 
 	dualChk = 5e-2
-	primChk = 5e-4
+	primChk = 5e-3
 
     #solve decoupled
     if runParallel
@@ -700,8 +700,8 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     dSol.convIt[stepI,1]=convIt
 
     # new states
-    global t0=dSol.Tactual[stepI,1]
-    global e0=dSol.E[stepI,:]
+    global t0=round.(dSol.Tactual[stepI,1],digits=6)
+    global e0=round.(dSol.E[stepI,:],digits=8)
 
     #function getAttr()
     #clean this up
@@ -729,9 +729,9 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
         end
     end
 
-    global prevLam=newLam
-    global prevVu=newVu
-    global prevVz=newVz
+    global prevLam=round.(newLam,digits=8)
+    global prevVu=round.(newVu,digits=8)
+    global prevVz=round.(newVz,digits=8)
     #global ρALADp=ogρ
 
     return nothing
@@ -761,7 +761,6 @@ function hubADMM(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
 
     return dSol
 end
-
 
 #ALADIN
 function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Array{Float64,2},σD::Array{Float64,2},

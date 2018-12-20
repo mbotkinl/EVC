@@ -14,7 +14,7 @@ using Suppressor
 # check all indexing????
 #especially stepI +k for iD and Tamb
 H=4
-maxIt=15
+maxIt=100
 datafile="jld2"
 mode="PWL"
 silent=true
