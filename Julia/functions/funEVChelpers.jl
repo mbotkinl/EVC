@@ -64,7 +64,6 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     evS=cRun["scenario"]
     N=evS.N
 
-
     Lam = zeros(Klen,P)
     T = zeros(Klen,P)
     Sn = zeros(Klen*N,P)
@@ -250,9 +249,8 @@ function compareConvGraph()
     end
 
     if saveF savefig(convPlot,path*"convPlot.png") end
-
-
 end
+
 function compareRunsTable(runs)
     # compareTable = DataFrame(name=String[],time=Float64[],cLamDiff=Float64[],lamDiff=Float64[],
     # cObjDiff=Float64[],objDiff=Float64[])
@@ -276,6 +274,90 @@ function compareRunsTable(runs)
     return compareTable
 end
 
+function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
+    runNames=collect(keys(runs))
+    cSol=cRun["solution"]
+    Klen=size(cSol.Tactual)[1]
+    P=length(runNames)
+    hubS=cRun["scenario"]
+    H=hubS.H
+
+    Lam = zeros(Klen,P)
+    T = zeros(Klen,P)
+    uSum = zeros(Klen,P)
+    eSum = zeros(Klen,P)
+    eAvg = zeros(Klen,P)
+    convIt = zeros(Klen,P)
+
+    for i in 1:length(runNames)
+        println(runNames[i])
+        runI=runs[runNames[i]]
+        convIt[:,i]=runI["solution"].convIt
+        Lam[:,i]=runI["solution"].Lam
+        T[:,i]=runI["solution"].Tactual[:,1]
+        uSum[:,i]=runI["solution"].uSum[:,1]
+        eSum[:,i]=[sum(runI["solution"].E[k,:]) for k in 1:Klen]# sum up across N
+        eAvg[:,i]=[mean(runI["solution"].E[k,:]) for k in 1:Klen]# mean across N
+    end
+
+    plotLabels=permutedims(runNames)
+    allColors=get_color_palette(:auto, plot_color(:white), P+1)
+    plotColors=allColors[1:P]'
+
+    stT1=Time(20,0)
+    endT1=Time(23,59)
+    stT2=Time(0,0)
+    endT2=Time(10,0)
+    Xlabels=vcat(collect(stT1:Dates.Second(round(evS.Ts)):endT1),collect(stT2:Dates.Second(round(evS.Ts)):endT2))
+    #Xlabels=vcat(collect(stT1:Dates.Minute(3):endT1),collect(stT2:Dates.Minute(3):endT2))
+    xticks=(1:40:Klen,Dates.format.(Xlabels[1:40:Klen],"HH:MM"))
+
+    #Time plots
+    tempPlot=plot(1:Klen,cSol.Tactual*1000,label="",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),
+                    xlabel="",ylabel="Temp (K)",xticks=xticks)
+    plot!(tempPlot,1:Klen,hubS.Tmax*ones(Klen)*1000,label="XFRM Limit",line=(:dash,:red))
+    plot!(tempPlot,T*1000,labels="",seriescolor=plotColors)
+    if noLim !=nothing
+        plot!(tempPlot,1:Klen,noLim["solution"].Tactual*1000,label="",seriescolor=allColors[P+1])
+    end
+
+    uSumPlot=plot(1:Klen,cSol.uSum,xlabel="",ylabel="Current Sum (kA)",xlims=(0,Klen),labels="Central",
+                  seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
+    plot!(uSumPlot,uSum,labels=plotLabels,seriescolor=plotColors,legend=false)
+    if noLim !=nothing
+        plot!(uSumPlot,1:Klen,noLim["solution"].uSum,label="Uncoordinated",seriescolor=allColors[P+1])
+    end
+
+    iD=evS.iD_actual[1:Klen].+10
+    loadPlot=plot(1:Klen,cSol.uSum+iD,xlabel="",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
+                  seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
+    plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash))
+    plot!(loadPlot,uSum.+iD,labels="",seriescolor=plotColors)
+    if noLim !=nothing
+        plot!(loadPlot,1:Klen,noLim["solution"].uSum+iD,label="",seriescolor=allColors[P+1])
+    end
+
+    convItPlot=plot(convIt,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),xticks=xticks,labels=plotLabels)
+
+
+    lamPlot=plot(1:Klen,cSol.Lam,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),labels="Central",
+                   seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
+    plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors)
+    if noLim !=nothing
+        plot!(lamPlot,1:Klen,noLim["solution"].Lam,label="Uncoordinated",seriescolor=allColors[P+1])
+    end
+
+    resPlot=plot(tempPlot,loadPlot,lamPlot,layout=(3,1))
+    if lowRes
+        pubPlot(resPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
+    else
+        pubPlot(resPlot,thickscale=0.8,sizeWH=(800,600),dpi=100)
+    end
+
+    if saveF savefig(resPlot,path*"resPlot.png") end
+
+    return resPlot, convPlot
+end
 
 function checkDesiredStates(Sn,Kn,Snmin)
     epsilon=1e-3
@@ -298,4 +380,52 @@ function checkDesiredStates(Sn,Kn,Snmin)
     end
 
     return flag
+end
+
+
+function calcPrivacy(N,K,S)
+    aladMaxIt=10
+    admmMaxIt=100
+    dualMaxIt=1000
+
+    bpf= 64 #bits per double
+    bpi= 16 #bits per int
+    bpb= 1#bits per bool
+
+    pem=N*bpi # 1 Req Int per EV
+    pem+= 1*bpf # 1 float for temperature
+
+    dual=N*K*bpf #i_n
+    dual+=K*bpf #sum iPWL
+    dual+=K*bpf # price to transformer
+    dual+=K*N*bpf # price to EVs
+    dual*=dualMaxIt
+
+    admm=N*K*bpf #i_n
+    admm+=K*S*bpf # iPWL
+    admm+=K*bpf # price to transformer
+    admm+=K*N*bpf # price to EVs
+    admm+=K*S*bpf # aux variable to transformer
+    admm+=K*N*bpf # aux variable to EVs
+    admm*=admmMaxIt
+
+    alad=N*K*bpf #i_n
+    alad+=N*K*bpf #g_i
+    alad+=N*K*bpf #g_s
+    alad+=4*N*K*bpb # all Cs
+    alad+=K*S*bpf # iPWL
+    # alad+=S*K*bpf #g_z
+    # alad+=K*bpf #g_t
+    alad+=2*S*K*bpb+2*K*bpb # all Cs
+    alad+=K*bpf # price to transformer
+    alad+=K*N*bpf # price to EVs
+    alad+=K*S*bpf+K*bpf # aux variable to transformer
+    alad+=2*K*N*bpf # aux variables to EVs
+    alad*=aladMaxIt
+
+    pem/1e3 #kilobit
+    dual/1e9 #gigabit
+    admm/1e6 #megabit
+    alad/1e6 #megabit
+
 end

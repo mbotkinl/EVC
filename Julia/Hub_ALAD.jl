@@ -46,7 +46,7 @@ pd4alad=plot(dSolalad.Lam,xlabel="Time",ylabel=raw"Lambda ($/kA)",label="ALAD",x
 plot!(pd4alad,cSol.Lam,label="Central")
 
 aggU=plot(hcat(cSol.uSum,dSolalad.uSum),label=["Central" "ALAD"],
-			xlims=(0,hubS.K),xlabel="",ylabel="PEV Current (kA)")
+			xlims=(0,hubS.K),xlabel="",ylabel="Current (kA)")
 # plot!(aggU,sum(hubS.uMax,dims=2),label="Max Current",line=(:dash,:red),xticks=xticks)
 
 aggE=plot(hcat(sum(cSol.E,dims=2),sum(dSolalad.E,dims=2)),label=["Central" "ALAD"], xlims=(0,hubS.K),xlabel="",ylabel="Energy (MWh)")

@@ -1,6 +1,9 @@
+
+
+
 #Micah Botkin-Levy
 #4/10/18
-include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
+@everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 fname = "d_$(updateMethod)_N$(N)"
 
 if loadResults
@@ -44,7 +47,7 @@ else
 	lamLabel=raw"Lambda ($/kA)"
 end
 
-pd4=plot(hcat(cSol.lamCoupl,dSol.lamCoupl[:,1]),xlabel="Time",ylabel=lamLabel,xlims=(0,evS.K),labels=["Central" "ALADIN"])
+pd4=plot(hcat(cSol.lamCoupl,dSol.lamCoupl[:,1]),xlabel="Time",ylabel=lamLabel,xlims=(0,evS.K),labels=["Central" "Dual"])
 if drawFig savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 
 #compare central and decentral current agg

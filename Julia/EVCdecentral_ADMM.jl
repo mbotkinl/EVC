@@ -6,7 +6,8 @@
 #u, sn, xt, and z are all in "x" v is the auxilliary variable corresponding to z in literature
 #current constraint is coupling
 
-include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
+@everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
+#include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 fname = "dADMM_N$(N)"
 
 if loadResults
@@ -23,6 +24,8 @@ else
 	prevLam=2e3*ones(evS.K1+1,1)
 	prevVz=-evS.deltaI*ones(evS.S*(evS.K1+1),1)
 	prevVu=.02*ones(evS.N*(evS.K1+1),1)
+	# prevVz=10*ones(evS.S*(evS.K1+1),1)
+	# prevVu=.02*ones(evS.N*(evS.K1+1),1)
 	ρADMMp = 1e5
 
 	println("Running ADMM Sim")
