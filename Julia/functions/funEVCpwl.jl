@@ -279,7 +279,6 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSol,silent)
     global t0
     #global prevLam
 
-
     if updateMethod=="fastAscent"
         #alpha0 = 0.1  #for A
         alpha0 = 5e4 #for kA
@@ -293,9 +292,6 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSol,silent)
         alphaDivRate=2
         minAlpha=1e-6
     end
-
-    convChk = 1e-1
-
     #solve subproblem for each EV
     if runParallel
         @sync @distributed for evInd=1:N
@@ -342,16 +338,20 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSol,silent)
     #dCM.obj[p,1]=fGap
     #dCM.sn[p,1]=snGap
     #dCM.un[p,1]=unGap
+    couplGap=norm(dLog.couplConst[:,p],1)
     dCM.lamIt[p,1]=itGap
     dCM.lam[p,1]=convGap
-    if(itGap <= convChk )
+    dCM.couplConst[p,1]=couplGap
+    # if(itGap <= convChk )
+    if((couplGap<=primChk) && (itGap <= dualChk))
         if !silent @printf "Converged after %g iterations\n" p end
         convIt=p
         return true
     else
         if !silent
-            @printf "lastGap %e after %g iterations\n" itGap p
-            @printf "convGap %e after %g iterations\n\n" convGap p
+            @printf "lastGap  %e after %g iterations\n" itGap p
+            @printf "couplGap %e after %g iterations\n\n" couplGap p
+            #@printf "convGap %e after %g iterations\n\n" convGap p
             #@printf "snGap   %e after %g iterations\n" snGap p
             #@printf "unGap   %e after %g iterations\n" unGap p
             #@printf("fGap    %e after %g iterations\n\n",fGap,p)
@@ -391,7 +391,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,cSol,silent)
     #
     # uSumPlotd=plot(dLog.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
     # plot!(uSumPlotd,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
-    #
+    # 
     # # uSumPlotd=plot(dLog.uSum[:,1:convIt],palette=:greens,line_z=(1:convIt)',legend=false,colorbar=:right,colorbar_title="Iteration",
     # #      xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1))
     # # plot!(uSumPlotd,1:horzLen+1,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
@@ -425,8 +425,8 @@ function runEVDualStep(stepI,maxIt,evS,dSol,cSol,silent)
     dSol.convIt[stepI,1]=convIt
 
     # new states
-    global t0=dSol.Tactual[stepI,1]
-    global s0=dSol.Sn[stepI,:]
+    global t0=round.(dSol.Tactual[stepI,1],digits=6)
+    global s0=round.(dSol.Sn[stepI,:],digits=6)
 
     if convIt==1
         dSol.lamCoupl[stepI,1]=prevLam[1,1]
@@ -579,9 +579,6 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCMadmm,dSol,cSol
     ρDivRate=1.15
     maxRho=1e9
 
-    dualChk = 5e-2
-    primChk = 5e-4
-
     #x minimization eq 7.66 in Bertsekas
     if runParallel
         @sync @distributed for evInd=1:N
@@ -608,7 +605,6 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCMadmm,dSol,cSol
         #dLogadmm.Lam[k,p]=max.(itLam[k,1]+itρ/(horzLen+1)*(dLogadmm.couplConst[k,p]),0)
         # dLogadmm.Lam[k,p]=itLam[k,1]+itρ/(horzLen+1)*(dLogadmm.couplConst[k,p])
         dLogadmm.Lam[k,p]=itLam[k,1]+itρ/(max(horzLen+1,N))*(dLogadmm.couplConst[k,p])
-
     end
 
     #calculate actual temperature from nonlinear model of XFRM
@@ -634,15 +630,14 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCMadmm,dSol,cSol
     dLogadmm.itUpdate[1,p]= min(itρ*ρDivRate,maxRho)
 
     #check convergence
-
-    cc=norm(vcat((itVu[:,1]-dLogadmm.Vu[:,p]),(itVz[:,1]-dLogadmm.Vz[:,p])),2)
+    cc=norm(vcat((itVu[:,1]-dLogadmm.Vu[:,p]),(itVz[:,1]-dLogadmm.Vz[:,p])),1)
     objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) +
                      sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
     dLogadmm.objVal[1,p]=objFun(dLogadmm.Sn[:,p],dLogadmm.Un[:,p])
     #fGap= abs(dLogadmm.objVal[1,p]-cSol.objVal[1,1])
     #snGap=norm((dLogadmm.Sn[:,p]-cSol.Sn),2)
     #unGap=norm((dLogadmm.Un[:,p]-cSol.Un),2)
-    constGap=norm(dLogadmm.couplConst[:,p],2)
+    constGap=norm(dLogadmm.couplConst[:,p],1)
     itGap = norm(dLogadmm.Lam[:,p]-itLam[:,1],2)
     convGap = norm(dLogadmm.Lam[:,p]-cSol.lamCoupl[stepI:(horzLen+stepI)],2)
     #dCMadmm.obj[p,1]=fGap
@@ -651,26 +646,21 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCMadmm,dSol,cSol
     dCMadmm.couplConst[p,1]=constGap
     dCMadmm.lamIt[p,1]=itGap
     dCMadmm.lam[p,1]=convGap
-    if(constGap <= primChk  && cc <=dualChk)
+    #if(constGap <= primChk  && cc <=dualChk)
+    if(constGap <= primChk  && itGap <=dualChk)
         if !silent @printf "Converged after %g iterations\n" p end
         convIt=p
         return true
     else
         if !silent
-            @printf "lastGap  %e after %g iterations\n" itGap p
-            @printf "convGap  %e after %g iterations\n" convGap p
+            #@printf "convGap  %e after %g iterations\n" convGap p
             @printf "dual residue  %e after %g iterations\n" cc p
+            @printf "lastGap  %e after %g iterations\n" itGap p
             @printf "constGap %e after %g iterations\n\n" constGap p
             #@printf "snGap    %e after %g iterations\n" snGap p
             #@printf "unGap    %e after %g iterations\n" unGap p
             #@printf("fGap     %e after %g iterations\n\n",fGap,p)
         end
-
-        #update iterate variables
-        # prevLam=round.(dLogadmm.Lam[:,p],digits=8)
-        # prevVz=round.(dLogadmm.Vz[:,p],digits=8)
-        # prevVu=round.(dLogadmm.Vu[:,p],digits=8)
-        # ρADMMp=dLogadmm.itUpdate[1,p]
         return false
     end
 end
@@ -1060,8 +1050,8 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,
     dCMalad.lamIt[p,1]=norm(dLogalad.Lam[:,p]-itLam[:,1],2)
     dCMalad.lam[p,1]=norm(dLogalad.Lam[:,p]-cSol.lamCoupl[stepI:(horzLen+stepI)],2)
     if !silent
-        @printf "lastGap    %e after %g iterations\n" dCMalad.lamIt[p,1] p
-        @printf "convLamGap %e after %g iterations\n\n" dCMalad.lam[p,1] p
+        #@printf "lastGap    %e after %g iterations\n" dCMalad.lamIt[p,1] p
+        #@printf "convLamGap %e after %g iterations\n\n" dCMalad.lam[p,1] p
     end
 
     dLogalad.itUpdate[1,p]=min(itρ*ρRate,ρALADmax) #increase ρ every iteration
@@ -1086,13 +1076,10 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCMalad
     # global prevVs
     # global ρALADp
 
-    #other parameters
-    epsilon = 1e-3
-
     #ALADIN tuning
     if eqForm
         #println("Running Eq ALADIN")
-        scalingF=1
+        scalingF=1e-4
     else
         #println("Running ineq ALADIN")
         scalingF=1e-4
@@ -1149,6 +1136,8 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCMalad
         dLogalad.Tactual[k+1,p]=evS.τP*dLogalad.Tactual[k,p]+evS.γP*dLogalad.Itotal[k,p]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
     end
 
+    coordALAD(p,stepI,μALADp,evS,itLam,itVu,itVs,itVz,itVt,itρ,dLogalad,dCMalad)
+
     #check for convergence
     constGap=norm(dLogalad.couplConst[:,p],1)
     cc=norm(vcat(σU[1]*(itVu[:,1]-dLogalad.Un[:,p]),σZ*(itVz[:,1]-dLogalad.Z[:,p]),
@@ -1157,6 +1146,8 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCMalad
     objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1] for n=1:N) +
                      sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]       for n=1:N) for k=1:horzLen+1)
     dLogalad.objVal[1,p]=objFun(dLogalad.Sn[:,p],dLogalad.Un[:,p])
+    itGap = norm(dLogalad.Lam[:,p]-itLam[:,1],2)
+
     #fGap= abs(dLogalad.objVal[1,p]-cSol.objVal[1,1])
     #snGap=norm((dLogalad.Sn[:,p]-cSol.Sn),2)
     #unGap=norm((dLogalad.Un[:,p]-cSol.Un),2)
@@ -1164,8 +1155,11 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCMalad
     #dCMalad.sn[p,1]=snGap
     #dCMalad.un[p,1]=unGap
     dCMalad.couplConst[p,1]=constGap
+    dCMalad.lamIt[p,1]=itGap
+
     #convCheck[p,1]=cc
-    if  constGap<=epsilon && cc<=epsilon
+    # if  constGap<=epsilon && cc<=epsilon
+    if  constGap<=primChk && itGap<=dualChk
         if !silent @printf "Converged after %g iterations\n" p end
         convIt=p
         #break
@@ -1173,23 +1167,15 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCMalad
     else
         if !silent
             @printf "convCheck  %e after %g iterations\n" cc p
-            @printf "constGap   %e after %g iterations\n" constGap p
+            @printf "lamIt      %e after %g iterations\n" itGap p
+            @printf "constGap   %e after %g iterations\n\n" constGap p
             #@printf "snGap      %e after %g iterations\n" snGap p
             #@printf("fGap       %e after %g iterations\n",fGap,p)
         end
     end
     #@printf "3"
 
-    coordALAD(p,stepI,μALADp,evS,itLam,itVu,itVs,itVz,itVt,itρ,dLogalad,dCMalad)
-
-    #reset for next iteration
-    # prevVu=round.(dLogalad.Vu[:,p],digits=8)
-    # prevVs=round.(dLogalad.Vs[:,p],digits=6)
-    # prevVz=round.(dLogalad.Vz[:,p],digits=8)
-    # prevVt=round.(dLogalad.Vt[:,p],digits=8)
-    # prevLam=round.(dLogalad.Lam[:,p],digits=8)
-    # ρALADp=dLogalad.itUpdate[1,p]
-    #@printf "5..."
+    # coordALAD(p,stepI,μALADp,evS,itLam,itVu,itVs,itVz,itVt,itρ,dLogalad,dCMalad)
 
     return false
 end
@@ -1229,6 +1215,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,cSol,eqForm,silent)
             break
         end
     end
+
     #
     # xPlot=zeros(horzLen+1,N)
     # uPlot=zeros(horzLen+1,N)
@@ -1252,6 +1239,9 @@ function runEVALADStep(stepI,maxIt,evS,dSol,cSol,eqForm,silent)
     # end
     # uSumPlotalad=plot(dLogalad.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
     # plot!(uSumPlotalad,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+    #
+    # p1=plot(dLogalad.uSum[:,convIt],xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),label="ALADIN Open Loop")
+    # plot!(p1,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8,label="Central Closed Loop")
     #
     # zSumPlotalad=plot(dLogalad.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
     # plot!(zSumPlotalad,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
@@ -1281,7 +1271,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,cSol,eqForm,silent)
     # #solChangesplot=plot(2:convIt,hcat(ΔY[2:convIt],convCheck[2:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
     #
     # fPlotalad=plot(dCMalad.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
-    # convItPlotalad=plot(dCMalad.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false) #,yscale=:log10
+    # convItPlotalad=plot(dCMalad.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convPlotalad=plot(dCMalad.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # constPlotalad=plot(dCMalad.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 

@@ -37,6 +37,10 @@ file="EVCscenarioN$(N)."*datafile
 
 updateMethod="dualAscent" #dualAscent #fastAscent
 maxIt=100
+# dualChk = 5e-2 #lamIt=0
+# primChk = 5e-4 # Ax-B=0
+dualChk = 5e-6 #lamIt=0
+primChk = 5e-6 # Ax-B=0
 noTlimit=false
 forecastError=false
 relaxedMode=2
