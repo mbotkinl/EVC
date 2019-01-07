@@ -5,24 +5,24 @@
 println("Loading Packages...")
 runParallel=true
 
+using Distributed
+
 if runParallel
-	using Distributed
 	addprocs(3)
+	@everywhere using Suppressor
+	@everywhere using JuMP
+	@everywhere using Printf
+	@everywhere using Parameters
+	@everywhere using SharedArrays
+	@everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
+else
+	using Suppressor
+	using JuMP
+	using Printf
+	using Parameters
+	using SharedArrays
+	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 end
-@everywhere using Suppressor
-@everywhere using JuMP
-@everywhere using Printf
-@everywhere using Parameters
-@everywhere using SharedArrays
-@everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
-# else
-	# using Suppressor
-	# using JuMP
-	# using Printf
-	# using Parameters
-	# using SharedArrays
-	# include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
-# end
 
 using LinearAlgebra
 using Plots;pyplot()

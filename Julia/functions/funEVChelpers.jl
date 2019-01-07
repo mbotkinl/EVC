@@ -254,7 +254,7 @@ end
 function compareRunsTable(runs)
     # compareTable = DataFrame(name=String[],time=Float64[],cLamDiff=Float64[],lamDiff=Float64[],
     # cObjDiff=Float64[],objDiff=Float64[])
-    compareTable = DataFrame(name=String[],timeTotal=Float64[],avgtimePerIt=Float64[],avgconvIt=Float64[])
+    compareTable = DataFrame(name=String[],timeTotal=Float64[],avgtimePerIt=Float64[],avgconvIt=Float64[],maxConvIt=Float64[])
     for keyI in keys(runs)
         println(keyI)
         loadF=runs[keyI]
@@ -267,7 +267,8 @@ function compareRunsTable(runs)
         #stats = [key timeT minimum(cm.lam[1:ind]) cm.lam[ind-1]-cm.lam[ind-2] minimum(cm.obj[1:ind]) cm.obj[ind-1]-cm.obj[ind-2]]
         avgTime=timeT/max(sum(convIt),Klen)
         avgConv=max(sum(convIt),Klen)/Klen
-        stats = [keyI timeT avgTime avgConv]
+        maxConv=maximum(convIt)
+        stats = [keyI timeT avgTime avgConv maxConv]
         push!(compareTable,stats)
     end
 
@@ -382,7 +383,6 @@ function checkDesiredStates(Sn,Kn,Snmin)
     return flag
 end
 
-
 function calcPrivacy(N,K,S)
     aladMaxIt=10
     admmMaxIt=100
@@ -427,5 +427,19 @@ function calcPrivacy(N,K,S)
     dual/1e9 #gigabit
     admm/1e6 #megabit
     alad/1e6 #megabit
+end
 
+function othergraphs()
+    c1=plot(hcat(dCM.couplConst,dCMadmm.couplConst,dCMalad.couplConst),labels=["Dual Ascent" "ADMM" "ALADIN"],
+        xlabel="",ylabel="2-Norm Coupling Gap",yscale=:log10,legend=false)
+    c2=plot(hcat(dCM.lamIt,dCMadmm.lamIt,dCMalad.lamIt),labels=["Dual Ascent" "ADMM" "ALADIN"],
+        xlabel="Iterations",ylabel="2-Norm Lambda Gap",yscale=:log10)
+    convPlot=plot(c1,c2,layout=(2,1))
+    if lowRes
+        pubPlot(convPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
+    else
+        pubPlot(convPlot,thickscale=0.8,sizeWH=(800,600),dpi=100)
+    end
+
+    if saveF savefig(convPlot,path*"dCMPlot.png") end
 end
