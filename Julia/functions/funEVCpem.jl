@@ -37,7 +37,8 @@ function pemEVClocal(n,stepI,horzLen,packLen,evS,pemSol)
 			ratio=0
 			Req=2 #looking for surplus energy
 		else
-			ratio=(desiredSOC-prevSOC)/(evS.ηP[n]*evS.imax[n]*(evS.Kn[n]-(stepI-1)))
+			# ratio=(desiredSOC-prevSOC)/(evS.ηP[n]*evS.imax[n]*(evS.Kn[n]-(stepI-1)))
+			ratio=(desiredSOC-prevSOC)/(evS.ηP[n]*evS.imax[n]*(evS.Kn[n]-(stepI)))
 			if ratio>=1 # opt out (need to charge for rest of time)
 				ratio=1
 				Req=-packLen
