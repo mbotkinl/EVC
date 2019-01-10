@@ -17,7 +17,6 @@ if loadResults
 else
 	println("Running PEM Sim")
 	timeT=@elapsed pemSol=pemEVC(evS,slack,silent)
-	timeT=timeT/evS.K
 	if saveResults saveRun(path,fname,timeT, evS,pemSol) end
 end
 
