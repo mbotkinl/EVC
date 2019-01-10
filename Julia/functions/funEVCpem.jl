@@ -3,9 +3,15 @@
 function pemEVClocal(n,stepI,horzLen,packLen,evS,pemSol)
 	epsilon=1e-3
 	mttr=300
+	#desiredSOC=1 # for now
+	desiredSOC=evS.Snmin[n] #this should be a ratio?
+	setSOC=0.5 # for now
+	prevSOC= if stepI>1 pemSol.Sn[stepI-1,n] else evS.s0[n] end
 
 	# clean up this logic***
 	if stepI==1
+		existPack=false
+	elseif ((prevSOC-desiredSOC)>=-epsilon)
 		existPack=false
 	elseif (pemSol.Un[stepI-1,n]>0)
 		if stepI<=packLen
@@ -24,13 +30,12 @@ function pemEVClocal(n,stepI,horzLen,packLen,evS,pemSol)
 	if existPack==true # still using a packet
 		Req=-packLen+prevChar
 	else
-		desiredSOC=1 # for now
-		setSOC=0.5 # for now
-		# desiredSOC=evS.Snmin[n] #this should be a ratio?
-		prevSOC= if stepI>1 pemSol.Sn[stepI-1,n] else evS.s0[n] end
-		if (prevSOC-desiredSOC)>=-epsilon #desiredSOC satisfied
+		if (prevSOC-1)>=-epsilon #100% SOC reached
 			ratio=0
 			Req=0
+		elseif (prevSOC-desiredSOC)>=-epsilon #desired SOC reached
+			ratio=0
+			Req=2 #looking for surplus energy
 		else
 			ratio=(desiredSOC-prevSOC)/(evS.ηP[n]*evS.imax[n]*(evS.Kn[n]-(stepI-1)))
 			if ratio>=1 # opt out (need to charge for rest of time)
@@ -51,26 +56,34 @@ end
 
 function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 	poolSol=Int(min(round(N*packLen),100))
-	w=1e8
+	slackWeight=1e8
+	extraWeight=round(1/(2*N*(horzLen+1)),digits=6)
 
 	#receive requests and forecast for the next packLen intervals
 	prevT = if stepI>1 pemSol.Tactual[stepI-1] else evS.t0 end
-    requiredCh=Int.(Req[stepI,:].<0)
-	#requiredCh=Int.(ratio[stepI,:].>=1)
+    requiredCh=Int.(Req[stepI,:].<0) # all negative numbers
 	requiredInd=findall(x->x==1,requiredCh)
-	optOff=findall(x->x==0,Req[stepI,:])
+	extraInd=findall(x->x==2,Req[stepI,:])
+	optOffInd=findall(x->x==0,Req[stepI,:]) #did not request
 
-	m = Model(solver = GurobiSolver(PoolSearchMode=1,PoolSolutions=poolSol,PoolGap=0,TimeLimit=2/3*evS.Ts))
+	m = Model(solver = GurobiSolver(PoolSearchMode=1,PoolSolutions=poolSol,PoolGap=0,TimeLimit=1/2*evS.Ts))
 	@variable(m,u[1:horzLen+1,1:N],Bin) #binary charge variable
 	@variable(m,Test[1:horzLen+1])
 	@variable(m,slackT)
-	@objective(m,Min,-sum(u)+w*slackT)
+	objExp=slackWeight*slackT
+	if !isempty(extraInd)
+		objExp=objExp-extraWeight*sum(sum(u[:,n] for n in extraInd))
+	end
+	if !isempty(setdiff(1:N,extraInd))
+		objExp=objExp-sum(sum(u[:,n] for n in setdiff(1:N,extraInd)))
+	end
+	@objective(m,Min,objExp)
 	@constraint(m,tempCon1,Test[1]>=evS.τP*prevT+evS.γP*(sum(u[1,n]*evS.imax[n] for n=1:N)+evS.iD_pred[stepI])^2+evS.ρP*evS.Tamb[stepI])
 	@constraint(m,tempCon2[kk=1:horzLen],Test[kk+1]>=evS.τP*Test[kk]+evS.γP*(sum(u[kk+1,n]*evS.imax[n] for n=1:N)+evS.iD_pred[stepI+kk])^2+evS.ρP*evS.Tamb[stepI+kk])
 	@constraint(m,Test.<=evS.Tmax+slackT)
 	@constraint(m,slackT>=0)
 	@constraint(m,optOnC[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(min(abs(Req[stepI,requiredInd[nn]]),horzLen+1)))==min(abs(Req[stepI,requiredInd[nn]]),horzLen+1))
-	@constraint(m,optOffC[kk=1:horzLen+1],sum(u[kk,n] for n in optOff)==0)
+	@constraint(m,optOffC[kk=1:horzLen+1],sum(u[kk,n] for n in optOffInd)==0)
 
 
 	if solverSilent
