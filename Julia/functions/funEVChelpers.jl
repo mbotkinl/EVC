@@ -77,8 +77,8 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
         runI=runs[runNames[i]]
         convIt[:,i]=runI["solution"].convIt
         Lam[:,i]=runI["solution"].lamCoupl
-        T[:,i]=runI["solution"].Tactual[:,cIt]
-        uSum[:,i]=runI["solution"].uSum[:,cIt]
+        T[:,i]=runI["solution"].Tactual[:,1]
+        uSum[:,i]=runI["solution"].uSum[:,1]
         if size(runI["solution"].Sn)[1]>Klen+1
             Sn[:,i]=runI["solution"].Sn[:,cIt]
             snSum[:,i]=[sum(Sn[N*(k-1)+n,i] for n=1:N) for k in 1:Klen]# sum up across N
@@ -185,7 +185,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 
     if saveF savefig(resPlot,path*"resPlot.png") end
 
-    return resPlot, convPlot
+    return resPlot
 end
 
 function compareConvGraph()
@@ -254,7 +254,7 @@ end
 function compareRunsTable(runs)
     # compareTable = DataFrame(name=String[],time=Float64[],cLamDiff=Float64[],lamDiff=Float64[],
     # cObjDiff=Float64[],objDiff=Float64[])
-    compareTable = DataFrame(name=String[],timeTotal=Float64[],avgtimePerIt=Float64[],avgconvIt=Float64[],maxConvIt=Float64[])
+    compareTable = DataFrame(name=String[],timeTotal=Float64[],avgTimePerTs=Float64[],avgtimePerIt=Float64[],avgconvIt=Float64[],maxConvIt=Float64[])
     for keyI in keys(runs)
         println(keyI)
         loadF=runs[keyI]
@@ -265,10 +265,11 @@ function compareRunsTable(runs)
         #local convIt=loadF["convIt"]
         #ind= if convIt>0 convIt-1 else length(cm.lam) end
         #stats = [key timeT minimum(cm.lam[1:ind]) cm.lam[ind-1]-cm.lam[ind-2] minimum(cm.obj[1:ind]) cm.obj[ind-1]-cm.obj[ind-2]]
+        avgTimeTs=timeT/Klen
         avgTime=timeT/max(sum(convIt),Klen)
         avgConv=max(sum(convIt),Klen)/Klen
         maxConv=maximum(convIt)
-        stats = [keyI timeT avgTime avgConv maxConv]
+        stats = [keyI timeT avgTimeTs avgTime avgConv maxConv]
         push!(compareTable,stats)
     end
 
@@ -361,7 +362,7 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 end
 
 function checkDesiredStates(Sn,Kn,Snmin)
-    epsilon=1e-3
+    epsilon=1e-2
     flag=true
     N=length(Kn)
 
@@ -370,6 +371,7 @@ function checkDesiredStates(Sn,Kn,Snmin)
         for n=1:N
             if (Sn[Kn[n],n]-Snmin[n])<-epsilon
                 flag=false
+                #println(n)
             end
         end
     else #all vehicles in one columns
