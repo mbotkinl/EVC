@@ -42,4 +42,4 @@ if drawFig savefig(aggUpem,path*"J_PEM_uSum.png") end
 
 
 checkDesiredStates(pemSol.Sn,evS.Kn,evS.Snmin)
-checkDesiredStates(pemSol.Sn,evS.Kn,ones(N))
+checkDesiredStates(pemSol.Sn,Int.(280*ones(N)),ones(N))
