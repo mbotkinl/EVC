@@ -223,7 +223,7 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
     return nothing
 end
 
-function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,dCM::convMetricsStruct,itLam)
+function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,itLam)
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,evS.K-stepI)
@@ -264,7 +264,6 @@ function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,dCM:
             dLog.uSum[k,p]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N)
             dLog.couplConst[k,p]=dLog.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLog.zSum[k,p]
         end
-        dCM.couplConst[p,1]=norm(dLog.couplConst[:,p],2)
     end
 
     if updateMethod=="fastAscent"
@@ -318,7 +317,7 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,silent)
         end
     end
 
-    localXFRMDual(p,stepI,evS,dLog,dCM,itLam)
+    localXFRMDual(p,stepI,evS,dLog,itLam)
 
     #update lambda
     alphaP= max(alpha0/ceil(p/alphaDivRate),minAlpha)
@@ -341,22 +340,37 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,silent)
     objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
                     sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
     dLog.objVal[1,p]=objFun(dLog.Sn[:,p],dLog.Un[:,p])
-    #fGap=abs(dLog.objVal[1,p] -cSave.objVal[1,1])
-    #snGap=norm((dLog.Sn[:,p]-cSave.Sn),2)
-    #unGap=norm((dLog.Un[:,p]-cSave.Un),2)
     itGap = norm(dLog.Lam[:,p]-itLam[:,1],2)
-    if updateMethod=="fastAscent"
-        convGap = norm(dLog.Lam[:,p]-cSave.lamTemp[stepI:(horzLen+stepI)],2)
-    else
-        convGap = norm(dLog.Lam[:,p]-cSave.lamCoupl[stepI:(horzLen+stepI)],2)
-    end
-    #dCM.obj[p,1]=fGap
-    #dCM.sn[p,1]=snGap
-    #dCM.un[p,1]=unGap
     couplGap=norm(dLog.couplConst[:,p],1)
-    dCM.lamIt2Norm[p,1]=itGap
-    dCM.lam2Norm[p,1]=convGap
-    dCM.coupl1Norm[p,1]=couplGap
+
+    if stepI in saveLogInd
+        ind=findall(x->x==stepI,saveLogInd)[1]
+        dCM.coupl1Norm[p,ind]=couplGap
+        dCM.lamIt2Norm[p,ind]=itGap
+        dCM.objAbs[p,ind]=abs(dLog.objVal[1,p]-cSave.Obj[1,1,ind])
+        dCM.objPerc[p,ind]=abs(dLog.objVal[1,p]-cSave.Obj[1,1,ind])/cSave.Obj[1,1,ind]*100
+        dCM.lam1Norm[p,ind]= norm(dLog.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],1)
+        dCM.lam2Norm[p,ind]= norm(dLog.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],2)
+        dCM.lamInfNorm[p,ind]= norm(dLog.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],Inf)
+        dCM.t1Norm[p,ind]= norm(dLog.Tactual[:,p]-cSave.Tactual[1:(horzLen+1),:,ind],1)
+        dCM.t2Norm[p,ind]= norm(dLog.Tactual[:,p]-cSave.Tactual[1:(horzLen+1),:,ind],2)
+        dCM.tInfNorm[p,ind]= norm(dLog.Tactual[:,p]-cSave.Tactual[1:(horzLen+1),:,ind],Inf)
+        zReshape=zeros(horzLen+1,S)
+        uReshape=zeros(horzLen+1,N)
+        for ii= 1:N
+            uReshape[:,ii]=dLog.Un[collect(ii:N:length(dLog.Un[:,p])),p]
+        end
+        for ii= 1:S
+            zReshape[:,ii]=dLog.Z[collect(ii:S:length(dLog.Z[:,p])),p]
+        end
+        dCM.un1Norm[p,ind]= norm(uReshape-cSave.Un[1:(horzLen+1),:,ind],1)
+        dCM.un2Norm[p,ind]= norm(uReshape-cSave.Un[1:(horzLen+1),:,ind],2)
+        dCM.unInfNorm[p,ind]= norm(uReshape-cSave.Un[1:(horzLen+1),:,ind],Inf)
+        dCM.z1Norm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],1)
+        dCM.z2Norm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],2)
+        dCM.zInfNorm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],Inf)
+    end
+
     # if(itGap <= convChk )
     if((couplGap<=primChk) && (itGap <= dualChk))
         if !silent @printf "Converged after %g iterations\n" p end
