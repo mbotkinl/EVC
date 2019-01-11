@@ -398,8 +398,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
         if cFlag
             break
         end
-        global p+=1
-
+        p+=1
     end
 
     ## convergence plots
@@ -733,7 +732,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
         if cFlag
             break
         end
-        global p+=1
+        p+=1
     end
 
     # xPlot=zeros(horzLen+1,N)
@@ -1278,7 +1277,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
         if cFlag
             break
         end
-        global p+=1
+        p+=1
     end
     if stepI in saveLogInd
         ind=findall(x->x==stepI,saveLogInd)[1]
