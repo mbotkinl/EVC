@@ -35,7 +35,7 @@ function pemEVClocal(n,stepI,horzLen,packLen,evS,pemSol)
 			Req=0
 		elseif (prevSOC-desiredSOC)>=-epsilon #desired SOC reached
 			ratio=0
-			Req=2 #looking for surplus energy
+			Req=2 #could use a probability here
 		else
 			# ratio=(desiredSOC-prevSOC)/(evS.ηP[n]*evS.imax[n]*(evS.Kn[n]-(stepI-1)))
 			ratio=(desiredSOC-prevSOC)/(evS.ηP[n]*evS.imax[n]*(evS.Kn[n]-(stepI)))
@@ -67,7 +67,7 @@ function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 	extraInd=findall(x->x==2,Req[stepI,:])
 	optOffInd=findall(x->x==0,Req[stepI,:]) #did not request
 
-	m = Model(solver = GurobiSolver(PoolSearchMode=1,PoolSolutions=poolSol,PoolGap=0,TimeLimit=1/2*evS.Ts))
+	m = Model(solver = GurobiSolver(PoolSearchMode=1,PoolSolutions=poolSol,PoolGap=0,TimeLimit=9/10*evS.Ts))
 	@variable(m,u[1:horzLen+1,1:N],Bin) #binary charge variable
 	@variable(m,Test[1:horzLen+1])
 	@variable(m,slackT)

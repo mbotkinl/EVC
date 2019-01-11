@@ -385,7 +385,9 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
     dLog=itLogPWL(horzLen=horzLen,N=N,S=S)
-    for p=1:maxIt
+    p=1
+    timeStart=now()
+    while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
         if p==1
             itLam=prevLam
         else
@@ -396,6 +398,8 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
         if cFlag
             break
         end
+        global p+=1
+
     end
 
     ## convergence plots
@@ -710,7 +714,9 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+η*u[k+1]
     dLogadmm=itLogPWL(horzLen=horzLen,N=N,S=S)
-    for p=1:maxIt
+    p=1
+    timeStart=now()
+    while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
         if p==1
             itLam=prevLam
             itVu=prevVu
@@ -727,6 +733,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
         if cFlag
             break
         end
+        global p+=1
     end
 
     # xPlot=zeros(horzLen+1,N)
@@ -1247,7 +1254,9 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
     #ΔY=zeros(1,maxIt+1)
 
     dLogalad=itLogPWL(horzLen=horzLen,N=N,S=S)
-    for p=1:maxIt
+    p=1
+    timeStart=now()
+    while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
         #@printf "%git" p
         if p==1
             itLam=prevLam
@@ -1269,6 +1278,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
         if cFlag
             break
         end
+        global p+=1
     end
     if stepI in saveLogInd
         ind=findall(x->x==stepI,saveLogInd)[1]
