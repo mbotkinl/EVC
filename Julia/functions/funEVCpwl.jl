@@ -660,12 +660,12 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,si
         dCM.lamIt2Norm[p,ind]=itGap
         dCM.objAbs[p,ind]=abs(dLogadmm.objVal[1,p]-cSave.Obj[1,1,ind])
         dCM.objPerc[p,ind]=abs(dLogadmm.objVal[1,p]-cSave.Obj[1,1,ind])/cSave.Obj[1,1,ind]*100
-        dCM.lam1Norm[p,ind]= norm(dLogadmm.Lam[:,p]-cSave.Lam[:,:,ind],1)
-        dCM.lam2Norm[p,ind]= norm(dLogadmm.Lam[:,p]-cSave.Lam[:,:,ind],2)
-        dCM.lamInfNorm[p,ind]= norm(dLogadmm.Lam[:,p]-cSave.Lam[:,:,ind],Inf)
-        dCM.t1Norm[p,ind]= norm(dLogadmm.Tactual[:,p]-cSave.Tactual[:,:,ind],1)
-        dCM.t2Norm[p,ind]= norm(dLogadmm.Tactual[:,p]-cSave.Tactual[:,:,ind],2)
-        dCM.tInfNorm[p,ind]= norm(dLogadmm.Tactual[:,p]-cSave.Tactual[:,:,ind],Inf)
+        dCM.lam1Norm[p,ind]= norm(dLogadmm.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],1)
+        dCM.lam2Norm[p,ind]= norm(dLogadmm.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],2)
+        dCM.lamInfNorm[p,ind]= norm(dLogadmm.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],Inf)
+        dCM.t1Norm[p,ind]= norm(dLogadmm.Tactual[:,p]-cSave.Tactual[1:(horzLen+1),:,ind],1)
+        dCM.t2Norm[p,ind]= norm(dLogadmm.Tactual[:,p]-cSave.Tactual[1:(horzLen+1),:,ind],2)
+        dCM.tInfNorm[p,ind]= norm(dLogadmm.Tactual[:,p]-cSave.Tactual[1:(horzLen+1),:,ind],Inf)
         zReshape=zeros(horzLen+1,S)
         uReshape=zeros(horzLen+1,N)
         for ii= 1:N
@@ -674,12 +674,12 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,si
         for ii= 1:S
             zReshape[:,ii]=dLogadmm.Z[collect(ii:S:length(dLogadmm.Z[:,p])),p]
         end
-        dCM.un1Norm[p,ind]= norm(uReshape-cSave.Un[:,:,ind],1)
-        dCM.un2Norm[p,ind]= norm(uReshape-cSave.Un[:,:,ind],2)
-        dCM.unInfNorm[p,ind]= norm(uReshape-cSave.Un[:,:,ind],Inf)
-        dCM.z1Norm[p,ind]= norm(zReshape-cSave.Z[:,:,ind],1)
-        dCM.z2Norm[p,ind]= norm(zReshape-cSave.Z[:,:,ind],2)
-        dCM.zInfNorm[p,ind]= norm(zReshape-cSave.Z[:,:,ind],Inf)
+        dCM.un1Norm[p,ind]= norm(uReshape-cSave.Un[1:(horzLen+1),:,ind],1)
+        dCM.un2Norm[p,ind]= norm(uReshape-cSave.Un[1:(horzLen+1),:,ind],2)
+        dCM.unInfNorm[p,ind]= norm(uReshape-cSave.Un[1:(horzLen+1),:,ind],Inf)
+        dCM.z1Norm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],1)
+        dCM.z2Norm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],2)
+        dCM.zInfNorm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],Inf)
     end
 
     #if(constGap <= primChk  && cc <=dualChk)
