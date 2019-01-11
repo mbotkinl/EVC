@@ -13,7 +13,6 @@ fname = "dADMM_N$(N)"
 if loadResults
 	println("Reading in ADMM Sim")
 	loadF=load(path*fname*".jld2")
-	evS=loadF["scenario"]
 	dSoladmm=loadF["solution"]
 	dCMadmm=loadF["convMetrics"]
 	convIt=loadF["convIt"]
@@ -29,8 +28,8 @@ else
 	ρADMMp = 1e5
 
 	println("Running ADMM Sim")
-	timeT=@elapsed dSoladmm=pwlEVadmm(maxIt,evS,cSol,slack,silent)
-	if saveResults saveRun(path,fname,timeT, evS,dSoladmm) end
+	timeT=@elapsed dSoladmm,dCMadmm=pwlEVadmm(maxIt,evS,cSave,slack,silent)
+	if saveResults saveRun(path,fname,timeT,dSoladmm,convMetrics=dCMadmm) end
 end
 
 

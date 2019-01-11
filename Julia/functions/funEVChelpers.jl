@@ -7,9 +7,11 @@ using Dates
 # using Cairo #for png output
 # using Fontconfig
 
-function saveRun(path::String, filename::String, time::Float64, scenario, solution, convMetrics=convMetricsStruct(), convIt=1)
-    save(path*filename*".jld2","runTime", time, "scenario", scenario, "solution", solution,
-    "convMetrics", convMetrics, "convIt", convIt)
+function saveRun(path::String, filename::String, time::Float64, solution; cSave=centralLogStruct(),
+    convMetrics=convMetricsStruct(maxIt=1,logLength=1))
+
+    saveFile=path*filename*".jld2"
+    save(saveFile,"runTime", time, "solution", solution,"centralLog",cSave,"convMetrics", convMetrics)
 end
 
 function clips()

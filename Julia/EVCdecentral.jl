@@ -9,7 +9,6 @@ fname = "d_$(updateMethod)_N$(N)"
 if loadResults
 	println("Reading in Dual Decomp Sim")
 	loadF=load(path*fname*".jld2")
-	evS=loadF["scenario"]
 	dLog=loadF["solution"]
 	dCM=loadF["convMetrics"]
 	convIt=loadF["convIt"]
@@ -21,11 +20,11 @@ else
 	#prevLam=round.(cSol.lamCoupl[1:evS.K1+1],digits=4)
 
 	println("Running Dual Decomp Sim")
-	timeT=@elapsed dSol=pwlEVdual(maxIt,updateMethod,evS,cSol,slack,silent)
+	timeT=@elapsed dSol,dCM=pwlEVdual(maxIt,updateMethod,evS,cSave,slack,silent)
 	# s=Symbol(@sprintf("dCM_%s",updateMethod))
 	# v=Symbol(@sprintf("dCM"))
 	# @eval(($s)=($v))
-	if saveResults saveRun(path,fname,timeT, evS,dSol) end
+	if saveResults saveRun(path,fname,timeT,dSol,convMetrics=dCM) end
 end
 
 println("plotting....")

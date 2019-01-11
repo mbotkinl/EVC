@@ -9,16 +9,16 @@ fname = "central_N$(N)"
 if loadResults
 	println("Reading in Central Sim")
 	loadF=load(path*fname*".jld2")
-	evS=loadF["scenario"]
 	cSol=loadF["solution"]
+	cSave=loadF["centralLog"]
 else
 	#initialize
     t0=evS.t0
     s0=evS.s0
 
 	println("Running Central Sim")
-	timeT=@elapsed cSol=pwlEVcentral(evS,slack,silent)
-	if saveResults saveRun(path,fname,timeT, evS,cSol) end
+	timeT=@elapsed cSol, cSave=pwlEVcentral(evS,slack,silent)
+	if saveResults saveRun(path,fname,timeT,cSol,cSave=cSave) end
 end
 
 

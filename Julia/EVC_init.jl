@@ -41,6 +41,7 @@ maxIt=100
 # primChk = 5e-4 # Ax-B=0
 dualChk = 5e-6 #lamIt=0
 primChk = 5e-6 # Ax-B=0
+saveLogInd=[1,71,141,210]
 noTlimit=false
 forecastError=false
 relaxedMode=2

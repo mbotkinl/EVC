@@ -103,15 +103,46 @@ end
 
 #debug info
 @with_kw struct convMetricsStruct
-    obj::Array=zeros(maxIt,1)
-    couplConst::Array=zeros(maxIt,1)
-    lam::Array=zeros(maxIt,1)
-    sn::Array=zeros(maxIt,1)
-    un::Array=zeros(maxIt,1)
+    maxIt::Int
+    logLength::Int
+    convIt::Array{Float64,3}=zeros(1,1,logLength)
+    coupl1Norm::Array=zeros(maxIt,logLength)
+    lamIt2Norm::Array=zeros(maxIt,logLength)
 
-    lamIt::Array=zeros(maxIt,1)
-    snIt::Array=zeros(maxIt,1)
-    unIt::Array=zeros(maxIt,1)
+    # only if central open loop is availble
+    objAbs::Array=zeros(maxIt,logLength)
+    objPerc::Array=zeros(maxIt,logLength)
+    lam1Norm::Array=zeros(maxIt,logLength)
+    lam2Norm::Array=zeros(maxIt,logLength)
+    lamInfNorm::Array=zeros(maxIt,logLength)
+    un1Norm::Array=zeros(maxIt,logLength)
+    un2Norm::Array=zeros(maxIt,logLength)
+    unInfNorm::Array=zeros(maxIt,logLength)
+    t1Norm::Array=zeros(maxIt,logLength)
+    t2Norm::Array=zeros(maxIt,logLength)
+    tInfNorm::Array=zeros(maxIt,logLength)
+    z1Norm::Array=zeros(maxIt,logLength)
+    z2Norm::Array=zeros(maxIt,logLength)
+    zInfNorm::Array=zeros(maxIt,logLength)
+
+    #add RMSE??
+end
+
+@with_kw struct centralLogStruct
+    logLength::Int
+    horzLen::Int
+    N::Int
+    S::Int
+    Obj::Array{Float64,3}=zeros(1,1,logLength)
+    Un::Array{Float64,3}=zeros(horzLen+1,N,logLength) #row are time, column are EV, stack is iteration
+    #Sn::Array{Float64,3}=zeros(horzLen+1,N,logLength) #row are time, column are EV, stack is iteration
+    Lam::Array{Float64,3}=zeros(horzLen+1,1,logLength)
+    Tactual::Array{Float64,3}=zeros(horzLen+1,1,logLength)
+    #Tpwl::Array{Float64,3}=zeros(horzLen+1,1,logLength)
+    #uSum::Array{Float64,3}=zeros(horzLen+1,1,logLength)
+    #zSum::Array{Float64,3}=zeros(horzLen+1,1,logLength)
+    #Itotal::Array{Float64,3}=zeros(horzLen+1,1,logLength)
+    Z::Array{Float64,3}=zeros(horzLen+1,S,logLength)
 end
 
 @with_kw struct itLogPWL
