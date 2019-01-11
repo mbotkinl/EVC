@@ -1424,7 +1424,7 @@ function pwlEValad(maxIt::Int,evS::scenarioStruct,cSave::centralLogStruct,slack:
     dCM=convMetricsStruct(maxIt=maxIt,logLength=length(saveLogInd))
 
     Juno.progress() do id
-        for stepI=1:139
+        for stepI=1:K
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)" progress=stepI/K _id=id
             @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
             try
