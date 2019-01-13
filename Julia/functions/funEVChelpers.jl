@@ -7,7 +7,7 @@ using Dates
 # using Cairo #for png output
 # using Fontconfig
 
-function saveRun(path::String, filename::String, time::Float64, solution; cSave=centralLogStruct(),
+function saveRun(path::String, filename::String, time::Float64, solution; cSave=centralLogStruct(logLength=1,horzLen=1,N=1,S=1),
     convMetrics=convMetricsStruct(maxIt=1,logLength=1))
 
     saveFile=path*filename*".jld2"

@@ -36,11 +36,11 @@ datafile="jld2" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
 
 updateMethod="dualAscent" #dualAscent #fastAscent
-maxIt=100
-# dualChk = 5e-2 #lamIt=0
-# primChk = 5e-4 # Ax-B=0
-dualChk = 5e-6 #lamIt=0
-primChk = 5e-6 # Ax-B=0
+maxIt=200 #500 for Dual Ascent
+dualChk = 5e-2 #lamIt=0
+primChk = 5e-4 # Ax-B=0
+# dualChk = 5e-1 #lamIt=0
+# primChk = 5e-1 # Ax-B=0
 saveLogInd=[1,71,141,210]
 noTlimit=false
 forecastError=false
@@ -84,7 +84,7 @@ end
 # path=path*"PWL\\"
 # cRun,runs, noLim=readRuns(path);
 # lowRes=true
-# resPlot, convPlot=compareRunsGraph(runs, cRun, noLim, saveResults,lowRes)
+# resPlot=compareRunsGraph(runs, cRun, noLim, saveResults,lowRes)
 # cTable=compareRunsTable(runs)
 
 # @time runALADit(1)
