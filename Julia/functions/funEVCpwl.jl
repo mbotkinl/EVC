@@ -125,11 +125,21 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
     if stepI in saveLogInd
         ind=findall(x->x==stepI,saveLogInd)[1]
         cSave.Obj[1,1,ind]=getobjectivevalue(centralModel)
-        cSave.Un[1:(horzLen+1),:,ind]=uRaw
+
+        zReshape=zeros(horzLen+1,S)
+        uReshape=zeros(horzLen+1,N)
+        for ii= 1:N
+            uReshape[:,ii]=uRaw[collect(ii:N:length(uRaw))]
+        end
+        for ii= 1:S
+            zReshape[:,ii]=zRaw[collect(ii:S:length(zRaw))]
+        end
+
+        cSave.Un[1:(horzLen+1),:,ind]=uReshape
         #cSave.uSum[1:(horzLen+1),:,ind]=uSum
         #cSave.Itotal[1:(horzLen+1),:,ind]=itotal
         cSave.Lam[1:(horzLen+1),:,ind]=lambdaCurr
-        cSave.Z[1:(horzLen+1),:,ind]=zRaw
+        cSave.Z[1:(horzLen+1),:,ind]=zReshape
         #cSave.zSum[1:(horzLen+1),:,ind]=zSum
         #cSave.Sn[1:(horzLen+1),:,ind]=snRaw
         cSave.Tactual[1:(horzLen+1),:,ind]=Tactual
