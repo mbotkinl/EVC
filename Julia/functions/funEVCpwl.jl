@@ -425,6 +425,11 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
         p+=1
     end
 
+    if stepI in saveLogInd
+        ind=findall(x->x==stepI,saveLogInd)[1]
+        dCM.convIt[1,1,ind]=convIt
+    end
+
     ## convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
@@ -618,7 +623,8 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,si
     # global prevVz
     # global ρADMMp
 
-    ρDivRate=1.15
+    ρDivRate=1.02
+    #ρRate=1.5
     maxRho=1e9
 
     #x minimization eq 7.66 in Bertsekas
@@ -646,7 +652,7 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,si
         dLogadmm.couplConst[k,p]= dLogadmm.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLogadmm.zSum[k,p]
         #dLogadmm.Lam[k,p]=max.(itLam[k,1]+itρ/(horzLen+1)*(dLogadmm.couplConst[k,p]),0)
         # dLogadmm.Lam[k,p]=itLam[k,1]+itρ/(horzLen+1)*(dLogadmm.couplConst[k,p])
-        dLogadmm.Lam[k,p]=itLam[k,1]+itρ/(max(horzLen+1,N))*(dLogadmm.couplConst[k,p])
+        dLogadmm.Lam[k,p]=round.(itLam[k,1]+itρ/(max(horzLen+1,N))*(dLogadmm.couplConst[k,p]),digits=8)
     end
 
     #calculate actual temperature from nonlinear model of XFRM
@@ -660,16 +666,12 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,si
 
     #v upate eq 7.67
     for k=1:horzLen+1
-        dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(itLam[k,1]-dLogadmm.Lam[k,p])/(itρ/1)
-        dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(itLam[k,1]-dLogadmm.Lam[k,p])/(itρ/1)
+        dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=round.(dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(itLam[k,1]-dLogadmm.Lam[k,p])/(itρ/1),digits=8)
+        dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=round.(-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(itLam[k,1]-dLogadmm.Lam[k,p])/(itρ/1),digits=8)
 
         # dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=min.(max.(dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(itLam[k,1]-dLogadmm.Lam[k,p])/itρ,evS.imin),evS.imax)
         # dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=max.(min.(-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(itLam[k,1]-dLogadmm.Lam[k,p])/itρ,0),-evS.deltaI)
     end
-
-    #update rho
-    #ρADMMp = ρADMM/ceil(p/ρDivRate)
-    dLogadmm.itUpdate[1,p]= min(itρ*ρDivRate,maxRho)
 
     #check convergence
     cc=norm(vcat((itVu[:,1]-dLogadmm.Vu[:,p]),(itVz[:,1]-dLogadmm.Vz[:,p])),1)
@@ -679,6 +681,19 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,si
 
     constGap=norm(dLogadmm.couplConst[:,p],1)
     itGap = norm(dLogadmm.Lam[:,p]-itLam[:,1],2)
+
+    #update rho
+    #ρADMMp = ρADMM/ceil(p/ρDivRate)
+    dLogadmm.itUpdate[1,p]= min(itρ*ρDivRate,maxRho)
+
+    #Boyds varying penalty parameter
+    # if norm(dLogadmm.couplConst[:,p],2)>10*itGap
+    #     dLogadmm.itUpdate[1,p]=min(itρ*ρRate,maxRho)
+    # elseif 10*norm(dLogadmm.couplConst[:,p],2)<itGap
+    #     dLogadmm.itUpdate[1,p]=max(itρ/ρRate,1)
+    # else
+    #     dLogadmm.itUpdate[1,p]=itρ
+    # end
 
     #only if saving
     if stepI in saveLogInd
@@ -760,6 +775,16 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
         p+=1
     end
 
+    if stepI in saveLogInd
+        ind=findall(x->x==stepI,saveLogInd)[1]
+        dCM.convIt[1,1,ind]=convIt
+
+        # fPlotadmm=plot(1:convIt,dCM.objAbs[1:convIt,ind],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
+        # convItPlotadmm=plot(1:convIt,dCM.lamIt2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
+        # convPlotadmm=plot(1:convIt,dCM.lam2Norm[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
+        # constPlotadmm=plot(1:convIt,dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    end
+
     # xPlot=zeros(horzLen+1,N)
     # uPlotd=zeros(horzLen+1,N)
     # for ii= 1:N
@@ -776,18 +801,13 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
     # plot!(uSumPlotadmm,sum(cSave.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # zSumPlotadmm=plot(dLogadmm.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
-    # plot!(zSumPlotadmm,cSave.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+    # plot!(zSumPlotadmm,sum(cSave.Z[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # constPlotadmm2=plot(dLogadmm.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
     #
     # lamPlotadmm=plot(dLogadmm.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
     # plot!(lamPlotadmm,cSave.Lam[:,:,ind],seriescolor=:black,linewidth=2,linealpha=0.8)
-    #
-    # fPlotadmm=plot(1:convIt,dCMadmm.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
-    # convItPlotadmm=plot(1:convIt,dCMadmm.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
-    # convPlotadmm=plot(1:convIt,dCMadmm.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
-    # constPlotadmm=plot(1:convIt,dCMadmm.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
-    #
+
     #save current state and update for next timeSteps
     dSol.Tpwl[stepI,1]=dLogadmm.Tpwl[1,convIt]
     dSol.Un[stepI,:]=dLogadmm.Un[1:N,convIt]
@@ -842,7 +862,6 @@ function pwlEVadmm(maxIt::Int,evS::scenarioStruct,cSave::centralLogStruct,slack:
     S=evS.S
     dSol=solutionStruct(K=K,N=N,S=S)
     dCM=convMetricsStruct(maxIt=maxIt,logLength=length(saveLogInd))
-
 
     Juno.progress() do id
         for stepI=1:K
@@ -1283,6 +1302,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
     p=1
     timeStart=now()
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
+        #global p
         #@printf "%git" p
         if p==1
             itLam=prevLam
@@ -1331,18 +1351,18 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
     #     CList=colorant"red";
     # end
     # uSumPlotalad=plot(dLogalad.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
-    # plot!(uSumPlotalad,cSave.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+    # plot!(uSumPlotalad,sum(cSave.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # p1=plot(dLogalad.uSum[:,convIt],xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),label="ALADIN Open Loop")
-    # plot!(p1,cSave.uSum,seriescolor=:black,linewidth=2,linealpha=0.8,label="Central Closed Loop")
+    # plot!(p1,sum(cSave.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8,label="Central Closed Loop")
     #
     # zSumPlotalad=plot(dLogalad.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
-    # plot!(zSumPlotalad,cSave.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+    # plot!(zSumPlotalad,sum(cSave.Z[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # constPlotalad2=plot(dLogalad.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
     #
     # lamPlotalad=plot(dLogalad.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",legend=false)
-    # plot!(lamPlotalad,cSave.lamCoupl,seriescolor=:black,linewidth=2,linealpha=0.8)
+    # plot!(lamPlotalad,cSave.Lam[:,:,ind],seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # activeSet=zeros(convIt,1)
     # setChanges=zeros(convIt,1)
