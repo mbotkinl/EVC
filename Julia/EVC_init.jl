@@ -41,7 +41,7 @@ dualChk = 5e-2 #lamIt=0
 primChk = 5e-4 # Ax-B=0
 # dualChk = 5e-1 #lamIt=0
 # primChk = 5e-1 # Ax-B=0
-saveLogInd=[1,71,141,210]
+saveLogInd=[1,2,71,141,210]
 noTlimit=false
 forecastError=false
 relaxedMode=2
@@ -82,7 +82,7 @@ end
 #run comparison
 #path = clips()
 # path=path*"PWL\\"
-# cRun,runs, noLim=readRuns(path);
+cRun,runs, noLim, evS=readRuns(path);
 # lowRes=true
 # resPlot=compareRunsGraph(runs, cRun, noLim, saveResults,lowRes)
 # cTable=compareRunsTable(runs)

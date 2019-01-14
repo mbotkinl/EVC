@@ -2,7 +2,7 @@
 using DataFrames
 using FileIO
 using Dates
-
+using LaTeXStrings
 # using Gadfly
 # using Cairo #for png output
 # using Fontconfig
@@ -32,6 +32,7 @@ end
 
 function readRuns(path)
     files = filter(x->occursin(".jld2",x), readdir(path))
+    evFile = filter(x->occursin("scenario",x), files)
     files = filter(x->occursin("_",x), files) # avoid evScenario
     noLimFile = filter(x->occursin("noLim",x), files)
     cFile = filter(x->occursin("central",x), files)
@@ -50,11 +51,30 @@ function readRuns(path)
         noLim=Nothing
     end
 
+    if length(evFile)>0
+        evS=load(path*evFile[1])["evScenario"]
+    else
+        evS=Nothing
+    end
+
     runs=Dict{String,Any}()
     for ii=1:length(dFiles)
         runs[dFiles[ii]]=load(path*dFiles[ii])
     end
-    return cRun, runs, noLim
+    return cRun, runs, noLim, evS
+end
+
+function renameLabel(label)
+    if occursin("PEM",label)
+        new="PEM"
+    elseif occursin("ADMM",label)
+        new="ADMM"
+    elseif occursin("ALADIN",label)
+        new="ALADIN"
+    elseif occursin("dual",label)
+        new="dual"
+    end
+    return new
 end
 
 function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
@@ -63,7 +83,6 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     numIt=size(runs[runNames[1]]["convMetrics"].lam)[1]
     Klen=size(cSol.Tactual)[1]
     P=length(runNames)
-    evS=cRun["scenario"]
     N=evS.N
 
     Lam = zeros(Klen,P)
@@ -92,7 +111,12 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
         end
     end
 
-    plotLabels=permutedims(runNames)
+    plotLabels=copy(permutedims(runNames))
+
+    for i=1:length(plotLabels)
+        plotLabels[i]=renameLabel(plotLabels[i])
+    end
+
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
 
@@ -178,7 +202,8 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     Rmax=plot(Rmax,xlabel="Time",ylabel="R Max",xlims=(0,Klen),labels=plotLabels,seriescolor=plotColors,legend=false)
 
 
-    resPlot=plot(tempPlot,loadPlot,snSumPlot,lamPlot,layout=(4,1))
+    #resPlot=plot(tempPlot,loadPlot,snSumPlot,lamPlot,layout=(4,1))
+    resPlot=plot(tempPlot,loadPlot,lamPlot,layout=(3,1))
     if lowRes
         pubPlot(resPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
     else
@@ -188,6 +213,48 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     if saveF savefig(resPlot,path*"resPlot.png") end
 
     return resPlot
+end
+
+function compareConvGraph_New(evS;ind=1)
+    runNames=collect(keys(runs))
+    K=evS.K
+    N=evS.N
+
+    #ignore PEM
+    pemRun = filter(x->occursin("PEM",x), runNames)
+    runNames=setdiff(runNames,pemRun)
+    P=length(runNames)
+    numIt=size(runs[runNames[1]]["convMetrics"].coupl1Norm)[1]
+
+    convNames=["coupl1Norm","lamIt2Norm","objAbs","objPerc",
+                "lam1Norm","lam2Norm","lamInfNorm",
+                "un1Norm","un2Norm","unInfNorm",
+                "t1Norm","t2Norm","tInfNorm",
+                "z1Norm","z2Norm","zInfNorm",]
+    convDict=Dict()
+    for ii=1:length(convNames)
+        convDict[convNames[ii]]=zeros(numIt,P)
+        for i=1:length(runNames)
+            cIt=Int(runs[runNames[i]]["convMetrics"].convIt[ind])
+            temp=getfield(runs[runNames[i]]["convMetrics"],Symbol(convNames[ii]))
+            convDict[convNames[ii]][:,i]=temp[:,ind]
+            # fill in NaN for greater than convIt
+            convDict[convNames[ii]][cIt:numIt,i].=NaN
+        end
+    end
+
+    plotLabels=copy(permutedims(runNames))
+    for i=1:length(plotLabels)
+        plotLabels[i]=renameLabel(plotLabels[i])
+    end
+
+    #internal metrics
+    couplPlot=plot(convDict["coupl1Norm"],legend=false,yscale=:log10,ylabel= L"||i_d[k+1]+\sum_{n=1}^N i_n[k+1]-\sum_{m=1}^M i_m^{PW}[k+1]||_1")
+    dualPlot=plot(convDict["lamIt2Norm"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"||\lambda^{(p)}-\lambda^{(p-1)}||_2")
+
+    #external
+    un1Plot=plot(convDict["un1Norm"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"||u_n^{(p)}-u_n^{*}||_1")
+    unInfPlot=plot(convDict["unInfNorm"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"||u_n^{(p)}-u_n^{*}||_{\infty}")
 end
 
 function compareConvGraph()
