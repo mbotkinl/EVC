@@ -39,7 +39,8 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
     for k=2:horzLen+1
         append!(objExp,sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1]  for n=1:N))
     end
-    if slack append!(objExp,sum(evS.β[n]*slackSn[n]^2 for n=1:N)) end
+    if slack append!(objExp,sum(1e3*evS.β[n]*slackSn[n]^2 for n=1:N)) end
+    if tempAugment append!(objExp,ψ*sum((evS.Tmax-t[k]) for k=1:horzLen+1)) end
     @objective(centralModel,Min,objExp)
 
     if !silent println("constraints") end

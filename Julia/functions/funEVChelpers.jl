@@ -320,14 +320,14 @@ function compareConvGraph()
     if saveF savefig(convPlot,path*"convPlot.png") end
 end
 
-function compareRunsTable(runs)
+function compareRunsTable(runs,evS)
     # compareTable = DataFrame(name=String[],time=Float64[],cLamDiff=Float64[],lamDiff=Float64[],
     # cObjDiff=Float64[],objDiff=Float64[])
     compareTable = DataFrame(name=String[],timeTotal=Float64[],avgTimePerTs=Float64[],avgtimePerIt=Float64[],avgconvIt=Float64[],maxConvIt=Float64[])
     for keyI in keys(runs)
         println(keyI)
         loadF=runs[keyI]
-        Klen=loadF["scenario"].K
+        Klen=evS.K
         timeT=loadF["runTime"]
         convIt=loadF["solution"].convIt
         #cm=loadF["convMetrics"]

@@ -26,6 +26,7 @@ end
 
 using LinearAlgebra
 using Plots;pyplot()
+#using Plots;gr()
 using Statistics
 using Dates
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
@@ -47,6 +48,8 @@ forecastError=false
 relaxedMode=2
 slack=false
 eqForm=false
+tempAugment=false
+ψ=-1e3
 
 drawFig=false
 saveResults=false
@@ -82,10 +85,10 @@ end
 #run comparison
 #path = clips()
 # path=path*"PWL\\"
-cRun,runs, noLim, evS=readRuns(path);
+# cRun,runs, noLim, evS=readRuns(path);
 # lowRes=true
 # resPlot=compareRunsGraph(runs, cRun, noLim, saveResults,lowRes)
-# cTable=compareRunsTable(runs)
+# cTable=compareRunsTable(runs,evS)
 
 # @time runALADit(1)
 #@time testALAD(1)
