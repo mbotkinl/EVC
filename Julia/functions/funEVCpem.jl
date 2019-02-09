@@ -2,10 +2,8 @@
 
 function pemEVClocal(n,stepI,horzLen,packLen,evS,pemSol)
 	epsilon=1e-3
-	mttr=300
 	#desiredSOC=1 # for now
 	desiredSOC=evS.Snmin[n] #this should be a ratio?
-	setSOC=0.5 # for now
 	prevSOC= if stepI>1 pemSol.Sn[stepI-1,n] else evS.s0[n] end
 
 	# clean up this logic***
@@ -44,7 +42,7 @@ function pemEVClocal(n,stepI,horzLen,packLen,evS,pemSol)
 				Req=-packLen
 			else
 				#mu[stepI,n] = 1/mttr*((desiredSOC-ratio[stepI,n])/(ratio[stepI,n]-0))*((setSOC-0)/(desiredSOC-setSOC))
-				mu = 1/mttr*((ratio-0)/(desiredSOC-ratio))*((desiredSOC-setSOC)/(setSOC-0))
+				mu = 1/mttr*((ratio-0)/(1-ratio))*((1-setSOC)/(setSOC-0))
 				P = min(max(1-exp(-mu*evS.Ts),0),1)
 				t=rand()
 				Req=if (t>(1-P)) 1 else  0  end

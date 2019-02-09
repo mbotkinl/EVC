@@ -5,6 +5,9 @@ using Gurobi
 N=evS.N
 S=evS.S
 
+mttr=300
+setSOC=0.5
+
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpem.jl")
 
 fname = "d_PEM_N$(N)"
