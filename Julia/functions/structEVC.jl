@@ -245,7 +245,7 @@ end
     K::Int
     N::Int
     S::Int
-    Tpwl::Array=zeros(K,1)
+    Tpwl::Array=zeros(K,1) # should rename Tpred
     Sn::Array=zeros(K,N)
     Un::Array=zeros(K,N)
     Z::Array=zeros(K,S) #for PWL only
