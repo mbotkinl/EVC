@@ -103,8 +103,10 @@ function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 			setparam!(getrawsolver(m),"SolutionNumber",solNum)
 			getparam(getrawsolver(m),"SolutionNumber")
 			sol=Gurobi.get_dblattrarray(getrawsolver(m),"Xn",1,N)
-		else
+		elseif solCount==1
 			sol=getvalue(u)[1,:]
+		else
+			sol=requiredCh
 		end
 		Rec=sol
 	else
