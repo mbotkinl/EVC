@@ -126,7 +126,6 @@ end
 
 function pemEVCstep(stepI,evS,pemSol,silent)
 
-	packLen=3 #number of time steps
 
 	horzLen=min(packLen,evS.K-stepI)
  	Req=zeros(evS.K,N)

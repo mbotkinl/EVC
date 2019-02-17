@@ -5,7 +5,8 @@ using Gurobi
 N=evS.N
 S=evS.S
 
-mttr=300
+packLen=3 #number of time steps
+mttr=evS.Ts*packLen #300
 setSOC=0.5
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpem.jl")
@@ -34,9 +35,6 @@ if drawFig savefig(p2pem,path*"J_PEM_Curr.png") end
 p3pem=plot(pemSol.Tactual*1000,label="XFRM Temp",xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
 plot!(p3pem,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(p3pem,path*"J_PEM_Temp.png") end
-
-# pRpem=plot(ratio,xlabel="Time",ylabel="Ratio",xlims=(0,horzLen+1),legend=false)
-# if drawFig savefig(pRpem,path*"J_PEM_Ratio.png") end
 
 
 aggUpem=plot(hcat(cSol.uSum,pemSol.uSum),label=["Central" "PEM"],
