@@ -40,7 +40,7 @@ if drawFig savefig(pd1alad,path*"J_decentral_ALADIN_SOC.png") end
 pd2alad=plot(dSolalad.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,evS.K))
 if drawFig savefig(pd2alad,path*"J_decentral_ALADIN_Curr.png") end
 
-pd3alad=plot(hcat(dSolalad.Tactual[:,1],dSolalad.Tpwl[:,1])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
+pd3alad=plot(hcat(dSolalad.Tactual[:,1],dSolalad.Tpred[:,1])*1000,label=["Actual Temp" "Pred Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
 plot!(pd3alad,1:evS.K,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(pd3alad,path*"J_decentral_ALADIN_Temp.png") end
 
