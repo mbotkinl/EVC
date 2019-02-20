@@ -787,6 +787,8 @@ function localXFRMALAD(p::Int,stepI::Int,σI::Float64,σT::Float64,evS::scenario
 	else
 		lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
 	end
+	lambdaTemp=round.(min.(lambdaTemp,0),sigdigits=roundSigFigs)
+
 	iVal=getvalue(itotal)
 	tVal=getvalue(t)
 
@@ -816,7 +818,7 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,
 	Ht=0
 	ρALAD=1e3
 	ρRate=1.1
-	ρALADmax=1e7
+	ρALADmax=1e6
 
 	#coupled QP
 	if relaxedMode==2
@@ -886,8 +888,8 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,
 	α3=1
 	#α1=α1/ceil(p/2)
 
-	dLogaladnl.Lam[:,p]=itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1])
-	#dLogaladnl.Lam[:,p]=max.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),0)
+	#dLogaladnl.Lam[:,p]=round.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),sigdigits=roundSigFigs)
+	dLogaladnl.Lam[:,p]=round.(max.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),0),sigdigits=roundSigFigs)
 	dLogaladnl.Vu[:,p]=round.(itVu[:,1]+α1*(dLogaladnl.Un[:,p]-itVu[:,1])+α2*getvalue(dUn),sigdigits=roundSigFigs)
 	dLogaladnl.Vi[:,p]=round.(itVi[:,1]+α1*(dLogaladnl.Ipred[:,p]-itVi[:,1])+α2*getvalue(dI),sigdigits=roundSigFigs)
 	dLogaladnl.Vs[:,p]=round.(itVs[:,1]+α1*(dLogaladnl.Sn[:,p]-itVs[:,1])+α2*getvalue(dSn),sigdigits=roundSigFigs)
@@ -917,18 +919,23 @@ function runNLALADIt(p,stepI,evS,itLam,itVu,itVs,itVt,itVi,itρ,dLogaladnl,dCMnl
 
     #ALADIN tuning and initial guess
     ##σs are tuned to i_n [.010kA]
-	if eqForm
-		#println("Running Eq ALADIN")
-		scalingF=1
-	else
-		#println("Running ineq ALADIN")
-		scalingF=1e-4
-	end
-    σU=1*ones(N,1)
-    σS=ones(N,1)/1e1
-    σI=1.0*scalingF
-    σT=1.5*scalingF
+	# if eqForm
+	# 	#println("Running Eq ALADIN")
+	# 	scalingF=1
+	# else
+	# 	#println("Running ineq ALADIN")
+	# 	scalingF=1e-4
+	# end
+    # σU=1*ones(N,1)
+    # σS=ones(N,1)/1e1
+    # σI=1.0*scalingF
+    # σT=1.5*scalingF
 	μALADp=1e8
+
+	σI=0.5
+    σT=2.0
+    σU=ones(N,1)/.02
+    σS=ones(N,1)
 
     # μALAD=1e8
     # μRate=1
@@ -1127,7 +1134,8 @@ function runNLALADStep(stepI,maxIt,evS,dSolnl,dCMnl,cSave,eqForm,silent)
     dSolnl.Un[stepI,:]=dLogaladnl.Un[1:N,convIt]
     dSolnl.Sn[stepI,:]=dLogaladnl.Sn[1:N,convIt]
     dSolnl.uSum[stepI,1]=dLogaladnl.uSum[1,convIt]
-    dSolnl.Itotal[stepI,1]=dLogaladnl.Itotal[1,convIt]
+    dSolnl.Ipred[stepI,1]=dLogaladnl.Ipred[1,convIt]
+	dSolnl.Iactual[stepI,1]=dLogaladnl.Iactual[1,convIt]
     dSolnl.Tactual[stepI,1]=dLogaladnl.Tactual[1,convIt]
     dSolnl.convIt[stepI,1]=convIt
 
