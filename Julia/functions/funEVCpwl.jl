@@ -1049,7 +1049,7 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,
     Ht=0
     # Hz=1e-6
     # Ht=1e-6
-    ρRate=1.1
+    ρRate=1.1 #1.04
     ρALADmax=1e7
 
     #coupled QP
@@ -1342,9 +1342,11 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
     # 	xPlot[:,ii]=dLogalad.Sn[collect(ii:N:length(dLogalad.Sn[:,convIt])),convIt]
     #     uPlot[:,ii]=dLogalad.Un[collect(ii:N:length(dLogalad.Un[:,convIt])),convIt]
     # end
-    # plot(uPlot)
+    #
+    # p1=plot(dLogalad.uSum[:,convIt],xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),label="ALADIN Open Loop")
+    # plot!(p1,sum(cSave.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8,label="Central Open Loop")
     # plot(xPlot)
-    # pd3alad=plot(hcat(dLogalad.Tactual[:,convIt],dLogalad.Tpwl[:,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
+    # pd3alad=plot(hcat(dLogalad.Tactual[:,convIt],dLogalad.Tpred[:,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
     # plot!(pd3alad,1:horzLen+1,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
     #
     # #convergence plots
@@ -1357,9 +1359,6 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
     # end
     # uSumPlotalad=plot(dLogalad.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
     # plot!(uSumPlotalad,sum(cSave.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
-    #
-    # p1=plot(dLogalad.uSum[:,convIt],xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),label="ALADIN Open Loop")
-    # plot!(p1,sum(cSave.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8,label="Central Open Loop")
     #
     # zSumPlotalad=plot(dLogalad.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
     # plot!(zSumPlotalad,sum(cSave.Z[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
