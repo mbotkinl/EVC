@@ -144,20 +144,20 @@ function runNLCentralStep(stepI,evS,cSolnl,cSavenl,relaxedMode,silent)
 
 	#calculate actual temp
 	Tactual=zeros(horzLen+1,1)
-	itotal=zeros(horzLen+1,1)
+	Iactual=zeros(horzLen+1,1)
 	for k=1:horzLen+1
-		itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + evS.iD_actual[stepI+(k-1),1]
+		Iactual[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + evS.iD_actual[stepI+(k-1),1]
 	end
-	Tactual[1,1]=evS.τP*t0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
+	Tactual[1,1]=evS.τP*t0+evS.γP*Iactual[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
 	for k=1:horzLen
-		Tactual[k+1,1]=evS.τP*Tactual[k,1]+evS.γP*itotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+(k-1),1]
+		Tactual[k+1,1]=evS.τP*Tactual[k,1]+evS.γP*Iactual[k+1,1]^2+evS.ρP*evS.Tamb[stepI+(k-1),1]
 	end
 
 	cSolnl.Tpred[stepI,1]=tRaw[1]
 	cSolnl.Un[stepI,:]=uRaw[1:N]
 	cSolnl.Sn[stepI,:]=snRaw[1:N]
 	cSolnl.uSum[stepI,1]=uSum[1]
-	cSolnl.Itotal[stepI,1]=itotal[1]
+	cSolnl.Ipred[stepI,1]=itotalRaw[1]
 	cSolnl.Tactual[stepI,1]=Tactual[1]
 	cSolnl.lamCoupl[stepI,1]=lambdaCurr[1]
 	cSolnl.lamTemp[stepI,1]=lambdaTemp[1]
@@ -841,13 +841,13 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,
 	@objective(cM,Min,objExp)
 
 	Unp=round.(dLogaladnl.Un[:,p],digits=8)
-	Ip=round.(dLogaladnl.Itotal[:,p],digits=8)
+	Ip=round.(dLogaladnl.Ipred[:,p],digits=8)
 	@constraint(cM,currCon[k=1:horzLen+1],sum(Unp[(k-1)*(N)+n,1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
 												(Ip[k,1]+dI[k])==-evS.iD_pred[stepI+(k-1)]+relaxS[k,1])
 	@constraint(cM,stateCon1[n=1:N],dSn[n,1]==evS.ηP[n,1]*dUn[n,1])
 	@constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+evS.ηP[n,1]*dUn[n+(k)*(N),1])
-	@constraint(cM,tempCon1,dT[1,1]==2*evS.γP*dLogaladnl.Itotal[1,p]*dI[1])
-	@constraint(cM,tempCon2[k=1:horzLen],dT[k+1,1]==evS.τP*dT[k,1]+2*evS.γP*dLogaladnl.Itotal[k+1,p]*dI[k+1,1])
+	@constraint(cM,tempCon1,dT[1,1]==2*evS.γP*Ip[1]*dI[1])
+	@constraint(cM,tempCon2[k=1:horzLen],dT[k+1,1]==evS.τP*dT[k,1]+2*evS.γP*Ip[k+1,1]*dI[k+1,1])
 
 	#active local constraints
 	if eqForm
@@ -965,16 +965,16 @@ function runNLALADIt(p,stepI,evS,itLam,itVu,itVs,itVt,itVi,itρ,dLogaladnl,dCMnl
 
 	for k=1:horzLen+1
 		dLogaladnl.uSum[k,p]=sum(dLogaladnl.Un[(k-1)*N+n,p] for n=1:N)
-		dLogaladnl.couplConst[k,p]=dLogaladnl.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLogaladnl.Itotal[k,p]
+		dLogaladnl.couplConst[k,p]=dLogaladnl.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLogaladnl.Ipred[k,p]
 	end
 
 	#calculate actual temperature from nonlinear model of XFRM
 	for k=1:horzLen+1
-		dLogaladnl.Itotal[k,p]=dLogaladnl.uSum[k,p] + evS.iD_actual[stepI+(k-1),1]
+		dLogaladnl.Iactual[k,p]=dLogaladnl.uSum[k,p] + evS.iD_actual[stepI+(k-1),1]
 	end
-	dLogaladnl.Tactual[1,p]=evS.τP*t0+evS.γP*dLogaladnl.Itotal[1,p]^2+evS.ρP*evS.Tamb[stepI,1] #fix for mpc
+	dLogaladnl.Tactual[1,p]=evS.τP*t0+evS.γP*dLogaladnl.Iactual[1,p]^2+evS.ρP*evS.Tamb[stepI,1] #fix for mpc
 	for k=1:horzLen
-		dLogaladnl.Tactual[k+1,p]=evS.τP*dLogaladnl.Tactual[k,p]+evS.γP*dLogaladnl.Itotal[k,p]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
+		dLogaladnl.Tactual[k+1,p]=evS.τP*dLogaladnl.Tactual[k,p]+evS.γP*dLogaladnl.Iactual[k,p]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
 	end
 
 	@printf "%s: Running Coord Opt \n" Dates.format(Dates.now(),"HH:MM:SS")

@@ -205,10 +205,11 @@ end
     Tpred::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
     Sn::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
     Un::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
-    Itotal::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
+    Ipred::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
     slackSn::Array=zeros(N,1)
 
     #extra model variables
+    Iactual::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
     Tactual::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
     uSum::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
     couplConst::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
