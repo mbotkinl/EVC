@@ -41,6 +41,8 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
     end
     if slack append!(objExp,sum(1e3*evS.β[n]*slackSn[n]^2 for n=1:N)) end
     if tempAugment append!(objExp,ψ*sum((evS.Tmax-t[k]) for k=1:horzLen+1)) end
+    #if slack objExp=objExp+sum(1e6*evS.β[n]*slackSn[n]^2 for n=1:N) end
+    #if tempAugment objExp=ψ*sum((evS.Tmax-t[k]) for k=1:horzLen+1) end
     @objective(centralModel,Min,objExp)
 
     if !silent println("constraints") end
@@ -886,7 +888,7 @@ end
 
 #ALADIN
 function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Array{Float64,2},evS::scenarioStruct,dLogalad::itLogPWL,
-    ind,evVu,evVs,prevLam,s0,ρALADp,slack,solverSilent,silent)
+    ind,evVu,evVs,itLam,s0,itρ,slack,solverSilent,silent)
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,evS.K-stepI)
@@ -903,9 +905,9 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     @variable(evM,u[1:(horzLen+1)])
     if slack @variable(evM,slackSn) end
     objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
-                            prevLam[k,1]*(u[k,1])+
-                            ρALADp/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
-                            ρALADp/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)
+                            itLam[k,1]*(u[k,1])+
+                            itρ/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
+                            itρ/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)
     if slack
         append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
     end
