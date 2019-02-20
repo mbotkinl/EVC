@@ -888,7 +888,7 @@ end
 
 #ALADIN
 function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Array{Float64,2},evS::scenarioStruct,dLogalad::itLogPWL,
-    ind,evVu,evVs,itLam,s0,itρ,slack,solverSilent,silent)
+    ind,evVu,evVs,itLam,s0,itρ,slack,solverSilent,roundSigFigs,silent)
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,evS.K-stepI)
@@ -972,7 +972,7 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
 end
 
 function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenarioStruct,dLogalad::itLogPWL,
-    itLam,itVz,itVt,itρ)
+    itLam,itVz,itVt,itρ,roundSigFigs)
     N=evS.N
     S=evS.S
     deltaI=evS.deltaI
@@ -1035,7 +1035,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenario
 end
 
 function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,itVu,itVs,itVz,itVt,itρ,
-    dLogalad::itLogPWL)
+    dLogalad::itLogPWL,roundSigFigs)
     N=evS.N
     S=evS.S
     deltaI=evS.deltaI
@@ -1153,7 +1153,7 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,
     return nothing
 end
 
-function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSol,cSave,eqForm,silent)
+function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSol,cSave,eqForm,roundSigFigs,silent)
     K=evS.K
     N=evS.N
     S=evS.S
@@ -1203,7 +1203,7 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
             end
             evVu=itVu[ind,1]
             evVs=itVs[ind,1]
-            localEVALAD(evInd,p,stepI,σU,σS,evS,dLogalad,ind,evVu,evVs,itLam,s0,itρ,slack,solverSilent,silent)
+            localEVALAD(evInd,p,stepI,σU,σS,evS,dLogalad,ind,evVu,evVs,itLam,s0,itρ,slack,solverSilent,roundSigFigs,silent)
         end
     else
         for evInd=1:N
@@ -1214,12 +1214,12 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
             end
             evVu=itVu[ind,1]
             evVs=itVs[ind,1]
-            localEVALAD(evInd,p,stepI,σU,σS,evS,dLogalad,ind,evVu,evVs,itLam,s0,itρ,slack,solverSilent,silent)
+            localEVALAD(evInd,p,stepI,σU,σS,evS,dLogalad,ind,evVu,evVs,itLam,s0,itρ,slack,solverSilent,roundSigFigs,silent)
         end
     end
     #@printf "2"
 
-    localXFRMALAD(p,stepI,σZ,σT,evS,dLogalad,itLam,itVz,itVt,itρ)
+    localXFRMALAD(p,stepI,σZ,σT,evS,dLogalad,itLam,itVz,itVt,itρ,roundSigFigs)
 
     for k=1:horzLen+1
         dLogalad.uSum[k,p]=sum(dLogalad.Un[(k-1)*N+n,p] for n=1:N)
@@ -1236,7 +1236,7 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
         dLogalad.Tactual[k+1,p]=evS.τP*dLogalad.Tactual[k,p]+evS.γP*dLogalad.Itotal[k,p]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
     end
 
-    coordALAD(p,stepI,μALADp,evS,itLam,itVu,itVs,itVz,itVt,itρ,dLogalad)
+    coordALAD(p,stepI,μALADp,evS,itLam,itVu,itVs,itVz,itVt,itρ,dLogalad,roundSigFigs)
 
     #check for convergence
     constGap=norm(dLogalad.couplConst[:,p],1)
@@ -1299,7 +1299,7 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
     return false
 end
 
-function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
+function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent)
     K=evS.K
     N=evS.N
     S=evS.S
@@ -1329,7 +1329,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
             itVt=round.(dLogalad.Vt[:,(p-1)],sigdigits=roundSigFigs)
             itρ=round.(dLogalad.itUpdate[1,(p-1)],sigdigits=roundSigFigs)
         end
-        cFlag=runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSol,cSave,eqForm,silent)
+        cFlag=runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSol,cSave,eqForm,roundSigFigs,silent)
         global convIt=p
         if cFlag
             break
@@ -1397,6 +1397,10 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
     # convItPlotalad=plot(dCM.lamIt2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm It Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convPlotalad=plot(dCM.lam2Norm[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # constPlotalad=plot(dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    #
+    # checkPlot=plot(convItPlotalad,constPlotalad,fPlotalad,convPlotalad,layout=(2,2))
+    # pubPlot(checkPlot,thickscale=1,sizeWH=(600,400),dpi=60)
+    # savefig(checkPlot,path*"checkPlot"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
 
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLogalad.Tpred[1,convIt]
@@ -1457,7 +1461,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
     return nothing
 end
 
-function pwlEValad(maxIt::Int,evS::scenarioStruct,cSave::centralLogStruct,slack::Bool,eqForm::Bool,silent::Bool)
+function pwlEValad(maxIt::Int,evS::scenarioStruct,cSave::centralLogStruct,slack::Bool,eqForm::Bool,roundSigFigs::Int,silent::Bool)
 
     horzLen=evS.K1
     K=evS.K
@@ -1471,7 +1475,7 @@ function pwlEValad(maxIt::Int,evS::scenarioStruct,cSave::centralLogStruct,slack:
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)" progress=stepI/K _id=id
             @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
             try
-                runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
+                runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent)
                 @printf "convIt: %g\n" dSol.convIt[stepI,1]
             catch e
                 @printf "error: %s" e
