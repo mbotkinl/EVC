@@ -24,9 +24,9 @@ else
     prevVz=.01*ones(evS.S*(evS.K1+1),1)
     prevVu=.01*ones(evS.N*(evS.K1+1),1)
     prevVs=.5*ones(evS.N*(evS.K1+1),1)
-	ρALADp = 1e3
+	ρALADp = 10
 
-	roundSigFigs=8
+	roundSigFigs=18
 
 	println("Running ALAD Sim")
 	timeT=@elapsed dSolalad,dCMalad=pwlEValad(maxIt,evS,cSave,slack,eqForm,silent)

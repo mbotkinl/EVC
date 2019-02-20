@@ -1049,8 +1049,8 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,
     Ht=0
     # Hz=1e-6
     # Ht=1e-6
-    ρRate=1.1 #1.04
-    ρALADmax=1e7
+    ρRate=1.1
+    ρALADmax=1e6
 
     #coupled QP
     cM = Model(solver = GurobiSolver(NumericFocus=3))
@@ -1170,17 +1170,23 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
     # global ρALADp
 
     #ALADIN tuning
-    if eqForm
-        #println("Running Eq ALADIN")
-        scalingF=1e-4
-    else
-        #println("Running ineq ALADIN")
-        scalingF=1e-4
-    end
-    σZ=scalingF*1e1
-    σT=scalingF
-    σU=ones(N,1)
-    σS=ones(N,1)/10#for kA
+    # if eqForm
+    #     #println("Running Eq ALADIN")
+    #     scalingF=1e-4
+    # else
+    #     #println("Running ineq ALADIN")
+    #     scalingF=1e-4
+    # end
+    # σZ=scalingF*1e1
+    # σT=scalingF
+    # σU=ones(N,1)
+    # σS=ones(N,1)/10#for kA
+
+    σZ=4.0
+    σT=2.0
+    σU=ones(N,1)/.02
+    σS=ones(N,1)
+
 
     μALADp=1e8
     # μALAD=1e8
@@ -1234,8 +1240,8 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
 
     #check for convergence
     constGap=norm(dLogalad.couplConst[:,p],1)
-    cc=norm(vcat(σU[1]*(itVu[:,1]-dLogalad.Un[:,p]),σZ*(itVz[:,1]-dLogalad.Z[:,p]),
-                 σT*(itVt[:,1]-dLogalad.Tpred[:,p]),σS[1]*(itVs[:,1]-dLogalad.Sn[:,p])),1)
+    # cc=norm(vcat(σU[1]*(itVu[:,1]-dLogalad.Un[:,p]),σZ*(itVz[:,1]-dLogalad.Z[:,p]),
+    #              σT*(itVt[:,1]-dLogalad.Tpred[:,p]),σS[1]*(itVs[:,1]-dLogalad.Sn[:,p])),1)
     #cc=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
     objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1] for n=1:N) +
                      sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]       for n=1:N) for k=1:horzLen+1)
@@ -1280,7 +1286,7 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
         return true
     else
         if !silent
-            @printf "convCheck  %e after %g iterations\n" cc p
+            #@printf "convCheck  %e after %g iterations\n" cc p
             @printf "lamIt      %e after %g iterations\n" itGap p
             @printf "constGap   %e after %g iterations\n\n" constGap p
             #@printf "snGap      %e after %g iterations\n" snGap p
@@ -1404,7 +1410,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
     dSol.convIt[stepI,1]=convIt
 
     # new states
-    global t0=dSol.Tactual[stepI,1]
+    global t0=round(dSol.Tactual[stepI,1],sigdigits=roundSigFigs)
     global s0=dSol.Sn[stepI,:]
 
     #function getAttr()
