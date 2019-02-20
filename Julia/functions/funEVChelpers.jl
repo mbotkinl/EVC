@@ -500,6 +500,38 @@ function calcPrivacy(N,K,S)
     alad/1e6 #megabit
 end
 
+function pwlSegPlot()
+    #plot central PWL solutions
+    I=evS.ItotalMax
+    S=evS.S
+    deltaI=I/S
+
+    solX=sum(cSol.Z,dims=2)
+    solY=zeros(evS.K,1)
+    for i=1:S
+        global solY[:,1]=solY[:,1].+deltaI*(2*i-1)*cSol.Z[:,i]
+    end
+    tightT=abs.(cSol.Tactual.-evS.Tmax).<1e-4
+    indT=findlast(tightT.==true)[1]
+    segP=scatter(solX[1:indT],solY[1:indT],label="PWL Tight",markersize=20,seriescolor="green",xlims=(minimum(solX)-deltaI,maximum(solX)+deltaI))
+    scatter!(segP,solX[indT+1:evS.K],solY[indT+1:evS.K],label="PWL Loose",markersize=10,seriescolor="red")
+
+    dX=100
+    x=range(0,I,length=S*dX)
+    plot!(segP,x,x.^2,label=L"i^2")
+    segs=zeros(length(x))
+    prevY=0
+    for i=1:S
+        tempY=(i-1)*dX+1:i*dX
+        alpha=(2*i-1)*deltaI
+        segs[tempY]=x[2:dX+1]*alpha.+prevY
+        global prevY=segs[i*dX]
+    end
+    plot!(segP,x,segs,label="PWL seg",ylims=(0,5),xlabel="Current (kA)")
+    pubPlot(segP,thickscale=1,sizeWH=(600,400),dpi=60)
+    savefig(segP,path*"pwlSegPlot.png")
+end
+
 function othergraphs()
     c1=plot(hcat(dCM.couplConst,dCMadmm.couplConst,dCMalad.couplConst),labels=["Dual Ascent" "ADMM" "ALADIN"],
         xlabel="",ylabel="2-Norm Coupling Gap",yscale=:log10,legend=false)

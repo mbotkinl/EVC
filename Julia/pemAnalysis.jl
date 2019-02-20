@@ -114,21 +114,3 @@ plot!(parPlot,mean(cSol.Sn,dims=2),label="Central",seriescolor=allColors[1])
 resPlot=plot(p3pem,aggUpem,parPlot,layout=(3,1))
 pubPlot(resPlot,thickscale=0.7,sizeWH=(600,400),dpi=60)
 #savefig(resPlot,path*"setSOCAnalaysisPlot.png")
-
-
-
-
-
-
-#plot central PWL solutions
-
-x=range(0,4,length=evS.S*10)
-
-plot(x,x.^2)
-
-for i=1:evS.S
-	temp=zeros(length(x))
-	plot!(1:10,)
-
-
-end
