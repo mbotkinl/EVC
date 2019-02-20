@@ -956,14 +956,14 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     dLogalad.Csl[ind,p]=-1cValMin
 
     dLogalad.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
-    dLogalad.Sn[ind,p]=round.(snVal,digits=6)
-    dLogalad.Un[ind,p]=round.(uVal,digits=8)
+    dLogalad.Sn[ind,p]=round.(snVal,sigdigits=roundSigFigs)
+    dLogalad.Un[ind,p]=round.(uVal,sigdigits=roundSigFigs)
 
     # dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
     # dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
 
-    dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,digits=8)
-    dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],digits=8)
+    dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,sigdigits=roundSigFigs)
+    dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],sigdigits=roundSigFigs)
 
     #use convex ALADIN approach
     #dLogalad.Gu[ind,p]=σU[evInd,1]*(evVu-uVal)-prevLam[:,1]
@@ -1024,8 +1024,8 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenario
     dLogalad.Ctu[:,p]=1cValMax
     dLogalad.Ctl[:,p]=-1cValMin
 
-    dLogalad.Tpred[:,p]=round.(tVal,digits=6)
-    dLogalad.Z[:,p]=round.(zVal,digits=8)
+    dLogalad.Tpred[:,p]=round.(tVal,sigdigits=roundSigFigs)
+    dLogalad.Z[:,p]=round.(zVal,sigdigits=roundSigFigs)
     dLogalad.Gz[:,p].=0
     dLogalad.Gt[:,p].=0
 
@@ -1079,8 +1079,8 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,
 
     # Unp=dLogalad.Un[:,p]
     # Zp=dLogalad.Z[:,p]
-    Unp=round.(dLogalad.Un[:,p],digits=8)
-    Zp=round.(dLogalad.Z[:,p],digits=8)
+    Unp=round.(dLogalad.Un[:,p],sigdigits=roundSigFigs)
+    Zp=round.(dLogalad.Z[:,p],sigdigits=roundSigFigs)
     @constraint(cM,currCon[k=1:horzLen+1],sum(Unp[(k-1)*(N)+n,1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
                                           sum(Zp[(k-1)*(S)+s,1]+dZ[(k-1)*(S)+s,1] for s=1:S)==
                                           -evS.iD_pred[stepI+(k-1)]+relaxS[k,1])
@@ -1127,12 +1127,12 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,
     α3=1
     #α3=1/ceil(p/2)
 
-    dLogalad.Lam[:,p]=itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1])
+    dLogalad.Lam[:,p]=round.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),sigdigits=roundSigFigs)
     #dLogalad.Lam[:,p]=max.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),0)
-    dLogalad.Vu[:,p]=itVu[:,1]+α1*(dLogalad.Un[:,p]-itVu[:,1])+α2*getvalue(dUn)
-    dLogalad.Vz[:,p]=itVz[:,1]+α1*(dLogalad.Z[:,p]-itVz[:,1])+α2*getvalue(dZ)
-    dLogalad.Vs[:,p]=itVs[:,1]+α1*(dLogalad.Sn[:,p]-itVs[:,1])+α2*getvalue(dSn)
-    dLogalad.Vt[:,p]=itVt[:,1]+α1*(dLogalad.Tpred[:,p]-itVt[:,1])+α2*getvalue(dT)
+    dLogalad.Vu[:,p]=round.(itVu[:,1]+α1*(dLogalad.Un[:,p]-itVu[:,1])+α2*getvalue(dUn),sigdigits=roundSigFigs)
+    dLogalad.Vz[:,p]=round.(itVz[:,1]+α1*(dLogalad.Z[:,p]-itVz[:,1])+α2*getvalue(dZ),sigdigits=roundSigFigs)
+    dLogalad.Vs[:,p]=round.(itVs[:,1]+α1*(dLogalad.Sn[:,p]-itVs[:,1])+α2*getvalue(dSn),sigdigits=roundSigFigs)
+    dLogalad.Vt[:,p]=round.(itVt[:,1]+α1*(dLogalad.Tpred[:,p]-itVt[:,1])+α2*getvalue(dT),sigdigits=roundSigFigs)
 
     # lamPlot=plot(dLogalad.Lam[:,p],label="ineq")
     # vtPlot=plot(dLogalad.Vt[:,p],label="ineq")
@@ -1316,12 +1316,12 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
             itVt=prevVt
             itρ=ρALADp
         else
-            itLam=round.(dLogalad.Lam[:,(p-1)],digits=8)
-            itVu=round.(dLogalad.Vu[:,(p-1)],digits=8)
-            itVz=round.(dLogalad.Vz[:,(p-1)],digits=8)
-            itVs=round.(dLogalad.Vs[:,(p-1)],digits=6)
-            itVt=round.(dLogalad.Vt[:,(p-1)],digits=6)
-            itρ=round.(dLogalad.itUpdate[1,(p-1)],digits=2)
+            itLam=round.(dLogalad.Lam[:,(p-1)],sigdigits=roundSigFigs)
+            itVu=round.(dLogalad.Vu[:,(p-1)],sigdigits=roundSigFigs)
+            itVz=round.(dLogalad.Vz[:,(p-1)],sigdigits=roundSigFigs)
+            itVs=round.(dLogalad.Vs[:,(p-1)],sigdigits=roundSigFigs)
+            itVt=round.(dLogalad.Vt[:,(p-1)],sigdigits=roundSigFigs)
+            itρ=round.(dLogalad.itUpdate[1,(p-1)],sigdigits=roundSigFigs)
         end
         cFlag=runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSol,cSave,eqForm,silent)
         global convIt=p
@@ -1441,11 +1441,11 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
         end
     end
 
-    global prevLam=round.(newLam,digits=8)
-    global prevVu=round.(newVu,digits=8)
-    global prevVz=round.(newVz,digits=8)
-    global prevVt=round.(newVt,digits=6)
-    global prevVs=round.(newVs,digits=6)
+    global prevLam=round.(newLam,sigdigits=roundSigFigs)
+    global prevVu=round.(newVu,sigdigits=roundSigFigs)
+    global prevVz=round.(newVz,sigdigits=roundSigFigs)
+    global prevVt=round.(newVt,sigdigits=roundSigFigs)
+    global prevVs=round.(newVs,sigdigits=roundSigFigs)
     #global ρALADp=round.(ogρ,digits=2)
 
     return nothing

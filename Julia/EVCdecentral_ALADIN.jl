@@ -26,6 +26,8 @@ else
     prevVs=.5*ones(evS.N*(evS.K1+1),1)
 	ρALADp = 1e3
 
+	roundSigFigs=8
+
 	println("Running ALAD Sim")
 	timeT=@elapsed dSolalad,dCMalad=pwlEValad(maxIt,evS,cSave,slack,eqForm,silent)
 	if saveResults saveRun(path,fname,timeT,dSolalad,convMetrics=dCMalad) end
