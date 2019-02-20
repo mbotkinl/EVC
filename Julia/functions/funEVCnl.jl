@@ -640,7 +640,7 @@ end
 
 #aladin
 function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Array{Float64,2},evS::scenarioStruct,dLogaladnl::itLogNL,
-    ind,evVu,evVs,itLam,s0,itρ,slack,solverSilent,silent)
+    ind,evVu,evVs,itLam,s0,itρ,slack,relaxedMode,solverSilent,roundSigFigs,silent)
 	N=evS.N
     horzLen=min(evS.K1,evS.K-stepI)
 
