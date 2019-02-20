@@ -30,7 +30,7 @@ if drawFig savefig(p1,path*"J_central_SOC.png") end
 p2=plot(cSol.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(1,evS.K))
 if drawFig savefig(p2,path*"J_central_Curr.png") end
 
-p3=plot(hcat(cSol.Tpwl*1000,cSol.Tactual*1000),label=["PWL Temp" "Actual Temp"],xlims=(1,evS.K),xlabel="Time",ylabel="Temp (K)")
+p3=plot(hcat(cSol.Tpred*1000,cSol.Tactual*1000),label=["Pred Temp" "Actual Temp"],xlims=(1,evS.K),xlabel="Time",ylabel="Temp (K)")
 plot!(p3,1:evS.K,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(p3,path*"J_central_Temp.png") end
 
@@ -38,7 +38,6 @@ p4b=plot(cSol.lamTemp,xlabel="Time",ylabel=raw"Lambda ($/K)",xlims=(1,evS.K),leg
 p4=plot(cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,evS.K),legend=false)
 if drawFig savefig(p4,path*"J_central_Lam.png") end
 
-fName="J_Central.png"
 
 #draw(PNG(path*fName, 13inch, 14inch), vstack(p1,p2,p3,p4))
 
