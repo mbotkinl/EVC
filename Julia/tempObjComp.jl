@@ -1,13 +1,17 @@
 # test temperature augmented objective expressions
 
-@everywhere using Gurobi
-@everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
+using Gurobi
+include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 
 tempAugment=true
 slack=true
+silent=true
 #ψs=-range(maxPsi/numPsi,maxPsi,length=numPsi)
-setRange=range(2, stop=6, length=6)
-ψs=- vcat(0,round.(exp10.(setRange)))
+# setRange=range(2, stop=6, length=6)
+# ψs=- vcat(0,round.(exp10.(setRange)))
+ψs=[0 -1e6 -5e6 -1e7]
+#ψs=[0 -1e4 -1e5 -1e6 -1e7]
+#ψs=[0 -1e1 -1e3 -1e5 -1e6 -1e7]
 
 lenCals=length(ψs)
 uSum=zeros(evS.K,lenCals)
@@ -20,11 +24,14 @@ for i=1:lenCals
     global s0=evS.s0
     global ψ=ψs[i]
     timeT=@elapsed cSol, cSave=pwlEVcentral(evS,slack,silent)
+    @printf "SOC satisfied %s \n" checkDesiredStates(cSol.Sn,evS.Kn,evS.Snmin)
     uSum[:,i]=cSol.uSum
     lamCoupl[:,i]=cSol.lamCoupl
     Tactual[:,i]=cSol.Tactual
     plotLabels[i]=@sprintf "ψ=%s" ψ
 end
+
+
 
 allColors=get_color_palette(:auto, plot_color(:white), lenCals+1)
 plotColors=allColors[1:lenCals]'
