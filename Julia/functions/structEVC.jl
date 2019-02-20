@@ -196,6 +196,8 @@ end
 end
 
 @with_kw struct itLogNL
+    horzLen::Int
+    N::Int
     # objective value
     objVal::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 

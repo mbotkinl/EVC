@@ -20,18 +20,24 @@ if loadResults
 	dCMnlalad=loadF["convMetrics"]
 	convIt=loadF["convIt"]
 else
+	t0=evS.t0
+	s0=evS.s0
+
+	#prevLam=cSolnl.lamCoupl[1:evS.K1+1]
+	prevLam=2e3*ones(evS.K1+1,1)
+    prevVt=evS.Tmax*ones(evS.K1+1,1)
+    prevVi=evS.ItotalMax*ones(evS.K1+1,1)
+    prevVu=.01*ones(evS.N*(evS.K1+1),1)
+    prevVs=.5*ones(evS.N*(evS.K1+1),1)
+	ρALADp = 1e3
+
+
 	println("Running NL AlAD Sim")
-	timeT=@elapsed dLognlalad,dCMnlalad,convIt,ΔY,convCheck=nlEValad(N,S,horzLen,maxIt,evS,cSolnl,forecastError,relaxedMode,slack,eqForm)
-	if saveResults saveRun(path,fname,timeT, evS,dLognlalad, dCMnlalad, convIt) end
+	timeT=@elapsed dSolaladnl,dCMaladnl=nlEValad(maxIt,evS,cSavenl,slack,eqForm,silent)
+	if saveResults saveRun(path,fname,timeT,dSolaladnl,convMetrics=dCMaladnl) end
 end
 
 println("plotting....")
-xPlot=zeros(horzLen+1,N)
-uPlot=zeros(horzLen+1,N)
-for ii= 1:N
-	xPlot[:,ii]=dLognlalad.Sn[collect(ii:N:length(dLognlalad.Sn[:,convIt])),convIt]
-    uPlot[:,ii]=dLognlalad.Un[collect(ii:N:length(dLognlalad.Un[:,convIt])),convIt]
-end
 
 pd1aladNL=plot(xPlot,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,horzLen+1),ylims=(0,1))
 if drawFig==1 savefig(pd1aladNL,path*"J_decentralNL_ALADIN_SOC.png") end

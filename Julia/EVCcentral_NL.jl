@@ -6,13 +6,9 @@ elseif relaxedMode==1 #QCQP
 	using Gurobi
 else
 	using Ipopt
+	using Gurobi
 end
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
-
-#pull out a few key variables
-N=evS.N
-S=evS.S
-horzLen=evS.K1
 
 relaxString= "_R$(relaxedMode)"
 errorString= if forecastError "_Error" else "" end
@@ -21,35 +17,31 @@ fname = "central_NL_N$(N)"*relaxString*errorString
 if loadResults
 	println("Reading in NL Central Sim")
 	loadF=load(path*fname*".jld2")
-	evS=loadF["scenario"]
+	cSavenl=loadF["centralLog"]
 	cSolnl=loadF["solution"]
 else
+	#initialize
+	t0=evS.t0
+	s0=evS.s0
+
 	println("Running NL Central Sim")
-	timeT=@elapsed cSolnl=nlEVcentral(N,S,horzLen,evS,forecastError,relaxedMode,slack)
-	if saveResults saveRun(path,fname,timeT, evS,cSolnl) end
+	timeT=@elapsed cSolnl,cSave=nlEVcentral(evS,slack,relaxedMode,silent)
+	if saveResults saveRun(path,fname,timeT, cSolnl,cSave=cSavenl) end
 end
 
 println("plotting....")
-snPlot=zeros(horzLen+1,N)
-#xPlot2=zeros(horzLen+1,N)
-uPlot=zeros(horzLen+1,N)
-for ii= 1:N
-	snPlot[:,ii]=cSolnl.Sn[collect(ii:N:length(cSolnl.Sn))]
-	#xPlot2[:,ii]=(evS.Snmin[ii,1]-xPlot[:,ii])./(evS.Kn[ii,1]-(1:1:length(xPlot[:,ii])))
-    uPlot[:,ii]=cSolnl.Un[collect(ii:N:length(cSolnl.Un))]
-end
 
-
-p1nl=plot(snPlot,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(1,horzLen+1),ylims=(0,1))
+p1nl=plot(cSolnl.Sn,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(1,evS.K),ylims=(0,1))
 if drawFig==1 savefig(p1nl,path*"J_centralNL_SOC.png") end
-p2nl=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(1,horzLen+1))
+p2nl=plot(cSolnl.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(1,evS.K))
 if drawFig==1 savefig(p2nl,path*"J_centralNL_Curr.png") end
 
-p3nl=plot(1:horzLen+1,cSolnl.Xt*1000,label="XFRM Temp",xlims=(1,horzLen+1),xlabel="Time",ylabel="Temp (K)")
-plot!(p3nl,1:horzLen+1,evS.Tmax*ones(horzLen+1)*1000,label="XFRM Limit",line=(:dash,:red))
+p3nl=plot(cSolnl.Tactual*1000,label="XFRM Temp",xlims=(1,evS.K),xlabel="Time",ylabel="Temp (K)")
+plot!(p3nl,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
+plot!(p3nl,cSolnl.Tpred*1000,label="Predict Temp")
 if drawFig==1 savefig(p3nl,path*"J_centralNL_Temp.png") end
 
-p4nl=plot(1:horzLen+1,cSolnl.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,horzLen+1),legend=false)
+p4nl=plot(cSolnl.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,evS.K),legend=false)
 if drawFig==1 savefig(p4nl,path*"J_centralNL_Lam.png") end
 
 fName="J_Central.png"
