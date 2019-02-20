@@ -107,7 +107,11 @@ end
     logLength::Int
     convIt::Array{Float64,3}=zeros(1,1,logLength)
     coupl1Norm::Array=zeros(maxIt,logLength)
+    coupl2Norm::Array=zeros(maxIt,logLength)
+    couplInfNorm::Array=zeros(maxIt,logLength)
+    lamIt1Norm::Array=zeros(maxIt,logLength)
     lamIt2Norm::Array=zeros(maxIt,logLength)
+    lamItInfNorm::Array=zeros(maxIt,logLength)
 
     # only if central open loop is availble
     objAbs::Array=zeros(maxIt,logLength)

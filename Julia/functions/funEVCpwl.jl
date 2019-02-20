@@ -1252,7 +1252,11 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
     if stepI in saveLogInd
         ind=findall(x->x==stepI,saveLogInd)[1]
         dCM.coupl1Norm[p,ind]=constGap
+        dCM.coupl2Norm[p,ind]=norm(dLogalad.couplConst[:,p],2)
+        dCM.couplInfNorm[p,ind]=norm(dLogalad.couplConst[:,p],Inf)
+        dCM.lamIt1Norm[p,ind]= norm(dLogalad.Lam[:,p]-itLam[:,1],1)
         dCM.lamIt2Norm[p,ind]=itGap
+        dCM.lamItInfNorm[p,ind]= norm(dLogalad.Lam[:,p]-itLam[:,1],Inf)
         dCM.objAbs[p,ind]=abs(dLogalad.objVal[1,p]-cSave.Obj[1,1,ind])
         dCM.objPerc[p,ind]=abs(dLogalad.objVal[1,p]-cSave.Obj[1,1,ind])/cSave.Obj[1,1,ind]*100
         dCM.lam1Norm[p,ind]= norm(dLogalad.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],1)
@@ -1348,7 +1352,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     # 	xPlot[:,ii]=dLogalad.Sn[collect(ii:N:length(dLogalad.Sn[:,convIt])),convIt]
     #     uPlot[:,ii]=dLogalad.Un[collect(ii:N:length(dLogalad.Un[:,convIt])),convIt]
     # end
-    #
+    #  
     # p1=plot(dLogalad.uSum[:,convIt],xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),label="ALADIN Open Loop")
     # plot!(p1,sum(cSave.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8,label="Central Open Loop")
     # plot(xPlot)
@@ -1394,9 +1398,18 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     # #solChangesplot=plot(2:convIt,hcat(ΔY[2:convIt],convCheck[2:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
     #
     # fPlotalad=plot(dCM.objAbs[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
-    # convItPlotalad=plot(dCM.lamIt2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm It Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convPlotalad=plot(dCM.lam2Norm[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
-    # constPlotalad=plot(dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # convItPlotalad1=plot(dCM.lamIt1Norm[1:convIt,1],xlabel="Iteration",ylabel="1-Norm Dual",xlims=(1,convIt),legend=false,yscale=:log10)
+    # convItPlotalad2=plot(dCM.lamIt2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Dual",xlims=(1,convIt),legend=false,yscale=:log10)
+    # convItPlotaladInf=plot(dCM.lamItInfNorm[1:convIt,1],xlabel="Iteration",ylabel="Inf-Norm Dual",xlims=(1,convIt),legend=false,yscale=:log10)
+    # constPlotalad1=plot(dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="1-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
+    # constPlotalad2=plot(dCM.coupl2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
+    # constPlotaladInf=plot(dCM.couplInfNorm[1:convIt,1],xlabel="Iteration",ylabel="Inf-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
+    #
+    # checkPlot2=plot(convItPlotalad1,constPlotalad1,convItPlotalad2,
+    #                 constPlotalad2,convItPlotaladInf,constPlotaladInf,layout=(3,2))
+    # pubPlot(checkPlot2,thickscale=1,sizeWH=(600,400),dpi=60)
+    # savefig(checkPlot2,path*"checkPlot2"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
     #
     # checkPlot=plot(convItPlotalad,constPlotalad,fPlotalad,convPlotalad,layout=(2,2))
     # pubPlot(checkPlot,thickscale=1,sizeWH=(600,400),dpi=60)
