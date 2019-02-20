@@ -31,6 +31,7 @@ else
     prevVs=.5*ones(evS.N*(evS.K1+1),1)
 	ρALADp = 1e3
 
+	roundSigFigs=12
 
 	println("Running NL AlAD Sim")
 	timeT=@elapsed dSolaladnl,dCMaladnl=nlEValad(maxIt,evS,cSavenl,slack,eqForm,silent)
