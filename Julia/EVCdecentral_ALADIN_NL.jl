@@ -29,7 +29,7 @@ else
     prevVi=evS.ItotalMax*ones(evS.K1+1,1)
     prevVu=.01*ones(evS.N*(evS.K1+1),1)
     prevVs=.5*ones(evS.N*(evS.K1+1),1)
-	ρALADp = 1e3
+	ρALADp = 1
 
 	roundSigFigs=12
 
