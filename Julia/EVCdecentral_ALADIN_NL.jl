@@ -6,7 +6,7 @@
 #formulation try 2
 #u, sn, xt, and z are all in "y", v is the auxilliary variable corresponding to x in literature
 #current constraint is coupling
-include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
+@everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
 eqString=if eqForm "_eq" else "_ineq" end
 relaxString= "_R$(relaxedMode)"
@@ -34,7 +34,7 @@ else
 	roundSigFigs=12
 
 	println("Running NL AlAD Sim")
-	timeT=@elapsed dSolaladnl,dCMaladnl=nlEValad(maxIt,evS,cSavenl,slack,eqForm,silent)
+	timeT=@elapsed dSolaladnl,dCMaladnl=nlEValad(maxIt,evS,cSavenl,slack,eqForm,roundSigFigs,silent)
 	if saveResults saveRun(path,fname,timeT,dSolaladnl,convMetrics=dCMaladnl) end
 end
 

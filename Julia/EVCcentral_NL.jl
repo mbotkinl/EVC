@@ -5,8 +5,8 @@ if relaxedMode==2 #SOCP
 elseif relaxedMode==1 #QCQP
 	using Gurobi
 else
+	@everywhere using Gurobi
 	using Ipopt
-	using Gurobi
 end
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCnl.jl")
 
