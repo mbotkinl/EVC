@@ -110,7 +110,7 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
         uSum[k,1]=sum(uRaw[(k-1)*N+n,1] for n=1:N)
     end
 
-    cSol.Tpwl[stepI,1]=tRaw[1]
+    cSol.Tpred[stepI,1]=tRaw[1]
     cSol.Un[stepI,:]=uRaw[1:N]
     cSol.Sn[stepI,:]=snRaw[1:N]
     cSol.Z[stepI,:]=zRaw[1:S]
@@ -144,7 +144,7 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
         #cSave.zSum[1:(horzLen+1),:,ind]=zSum
         #cSave.Sn[1:(horzLen+1),:,ind]=snRaw
         cSave.Tactual[1:(horzLen+1),:,ind]=Tactual
-        #cSave.Tpwl[1:(horzLen+1),:,ind]=tRaw
+        #cSave.Tpred[1:(horzLen+1),:,ind]=tRaw
     end
 
     # new states
@@ -266,7 +266,7 @@ function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,itLa
 
         @assert statusC==:Optimal "Dual Ascent XFRM optimization not solved to optimality"
 
-         dLog.Tpwl[:,p]=round.(getvalue(t),digits=6)
+         dLog.Tpred[:,p]=round.(getvalue(t),digits=6)
          dLog.Z[:,p]=round.(getvalue(z),digits=8)
 
         #grad of lagragian
@@ -461,7 +461,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
     # constPlot=plot(1:convIt,dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(2,convIt),legend=false,yscale=:log10)
 
     #save current state and update for next timeSteps
-    dSol.Tpwl[stepI,1]=dLog.Tpwl[1,convIt]
+    dSol.Tpred[stepI,1]=dLog.Tpred[1,convIt]
     dSol.Un[stepI,:]=dLog.Un[1:N,convIt]
     dSol.Sn[stepI,:]=dLog.Sn[1:N,convIt]
     dSol.Z[stepI,:]=dLog.Z[1:S,convIt]
@@ -604,7 +604,7 @@ function localXFRMADMM(p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL,
 
     @assert statusC==:Optimal "ADMM XFRM NLP optimization not solved to optimality"
 
-    dLogadmm.Tpwl[:,p]=round.(getvalue(t),digits=6)
+    dLogadmm.Tpred[:,p]=round.(getvalue(t),digits=6)
     dLogadmm.Z[:,p]=round.(getvalue(z),digits=8)
     return nothing
 end
@@ -810,7 +810,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
     # plot!(lamPlotadmm,cSave.Lam[:,:,ind],seriescolor=:black,linewidth=2,linealpha=0.8)
 
     #save current state and update for next timeSteps
-    dSol.Tpwl[stepI,1]=dLogadmm.Tpwl[1,convIt]
+    dSol.Tpred[stepI,1]=dLogadmm.Tpred[1,convIt]
     dSol.Un[stepI,:]=dLogadmm.Un[1:N,convIt]
     dSol.Sn[stepI,:]=dLogadmm.Sn[1:N,convIt]
     dSol.Z[stepI,:]=dLogadmm.Z[1:S,convIt]
@@ -1022,7 +1022,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenario
     dLogalad.Ctu[:,p]=1cValMax
     dLogalad.Ctl[:,p]=-1cValMin
 
-    dLogalad.Tpwl[:,p]=round.(tVal,digits=6)
+    dLogalad.Tpred[:,p]=round.(tVal,digits=6)
     dLogalad.Z[:,p]=round.(zVal,digits=8)
     dLogalad.Gz[:,p].=0
     dLogalad.Gt[:,p].=0
@@ -1130,7 +1130,7 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,
     dLogalad.Vu[:,p]=itVu[:,1]+α1*(dLogalad.Un[:,p]-itVu[:,1])+α2*getvalue(dUn)
     dLogalad.Vz[:,p]=itVz[:,1]+α1*(dLogalad.Z[:,p]-itVz[:,1])+α2*getvalue(dZ)
     dLogalad.Vs[:,p]=itVs[:,1]+α1*(dLogalad.Sn[:,p]-itVs[:,1])+α2*getvalue(dSn)
-    dLogalad.Vt[:,p]=itVt[:,1]+α1*(dLogalad.Tpwl[:,p]-itVt[:,1])+α2*getvalue(dT)
+    dLogalad.Vt[:,p]=itVt[:,1]+α1*(dLogalad.Tpred[:,p]-itVt[:,1])+α2*getvalue(dT)
 
     # lamPlot=plot(dLogalad.Lam[:,p],label="ineq")
     # vtPlot=plot(dLogalad.Vt[:,p],label="ineq")
@@ -1233,7 +1233,7 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
     #check for convergence
     constGap=norm(dLogalad.couplConst[:,p],1)
     cc=norm(vcat(σU[1]*(itVu[:,1]-dLogalad.Un[:,p]),σZ*(itVz[:,1]-dLogalad.Z[:,p]),
-                 σT*(itVt[:,1]-dLogalad.Tpwl[:,p]),σS[1]*(itVs[:,1]-dLogalad.Sn[:,p])),1)
+                 σT*(itVt[:,1]-dLogalad.Tpred[:,p]),σS[1]*(itVs[:,1]-dLogalad.Sn[:,p])),1)
     #cc=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
     objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1] for n=1:N) +
                      sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]       for n=1:N) for k=1:horzLen+1)
@@ -1392,7 +1392,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,silent)
     # constPlotalad=plot(dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 
     #save current state and update for next timeSteps
-    dSol.Tpwl[stepI,1]=dLogalad.Tpwl[1,convIt]
+    dSol.Tpred[stepI,1]=dLogalad.Tpred[1,convIt]
     dSol.Un[stepI,:]=dLogalad.Un[1:N,convIt]
     dSol.Sn[stepI,:]=dLogalad.Sn[1:N,convIt]
     dSol.Z[stepI,:]=dLogalad.Z[1:S,convIt]

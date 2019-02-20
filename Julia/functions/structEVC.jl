@@ -138,7 +138,7 @@ end
     #Sn::Array{Float64,3}=zeros(horzLen+1,N,logLength) #row are time, column are EV, stack is iteration
     Lam::Array{Float64,3}=zeros(horzLen+1,1,logLength)
     Tactual::Array{Float64,3}=zeros(horzLen+1,1,logLength)
-    #Tpwl::Array{Float64,3}=zeros(horzLen+1,1,logLength)
+    #Tpred::Array{Float64,3}=zeros(horzLen+1,1,logLength)
     #uSum::Array{Float64,3}=zeros(horzLen+1,1,logLength)
     #zSum::Array{Float64,3}=zeros(horzLen+1,1,logLength)
     #Itotal::Array{Float64,3}=zeros(horzLen+1,1,logLength)
@@ -153,7 +153,7 @@ end
     objVal::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 
     #model variables
-    Tpwl::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
+    Tpred::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
     Sn::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
     Un::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
     Z::Array{Float64}=zeros(S*(horzLen+1),maxIt+1)  #row are time,  columns are iteration
@@ -200,7 +200,7 @@ end
     objVal::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 
     #model variables
-    Xt::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
+    Tpred::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
     Sn::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
     Un::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
     Itotal::Array{Float64}=zeros((horzLen+1),maxIt+1)  #row are time,  columns are iteration
@@ -245,7 +245,7 @@ end
     K::Int
     N::Int
     S::Int
-    Tpwl::Array=zeros(K,1) # should rename Tpred
+    Tpred::Array=zeros(K,1)
     Sn::Array=zeros(K,N)
     Un::Array=zeros(K,N)
     Z::Array=zeros(K,S) #for PWL only
@@ -267,7 +267,7 @@ end
     U::Array=zeros(K,H) #row are time, column are hub
     D::Array=zeros(K,H) #row are time, column are hub
     Itotal::Array=zeros(K,1) #row are time
-    Tpwl::Array=zeros(K,1) #row are time
+    Tpred::Array=zeros(K,1) #row are time
     Tactual::Array=zeros(K,1) #row are time
     uSum::Array=zeros(K,1) #row are time
     zSum::Array=zeros(K,1) #row are time
@@ -302,7 +302,7 @@ end
     U::Array{Float64,3}=zeros(horzLen+1,H,maxIt) #row are time, column are hub, stack is iteration
     D::Array{Float64,3}=zeros(horzLen+1,H,maxIt) #row are time, column are hub, stack is iteration
     Z::Array{Float64,3}=zeros(horzLen+1,S,maxIt) #row are time, column are segment, stack is iteration
-    Tpwl::Array{Float64,3}=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
+    Tpred::Array{Float64,3}=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
     Lam::Array{Float64,3}=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
     couplConst::Array{Float64,3}=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
     Itotal::Array{Float64,3}=zeros(horzLen+1,1,maxIt) #row are time, stack is iteration
