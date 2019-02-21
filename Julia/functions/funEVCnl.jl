@@ -1170,11 +1170,13 @@ function runNLALADStep(stepI,maxIt,evS,dSolnl,dCMnl,cSave,eqForm,roundSigFigs,si
             newLam=prevLam[2:horzLen+1,1]
             newVu=prevVu[(N+1):(N*(horzLen+1)),1]
             newVt=prevVt[2:horzLen+1,1]
+			newVi=prevVi[2:horzLen+1,1]
             newVs=prevVs[(N+1):(N*(horzLen+1)),1]
         else
             newLam=vcat(prevLam[2:horzLen+1,1],prevLam[horzLen+1,1])
             newVu=vcat(prevVu[(N+1):(N*(horzLen+1)),1],prevVu[((N*horzLen)+1):(N*(horzLen+1)),1])
             newVt=vcat(prevVt[2:horzLen+1,1],prevVt[horzLen+1,1])
+			newVi=vcat(prevVi[2:horzLen+1,1],prevVi[horzLen+1,1])
             newVs=vcat(prevVs[(N+1):(N*(horzLen+1)),1],prevVs[((N*horzLen)+1):(N*(horzLen+1)),1])
         end
     else
@@ -1183,11 +1185,13 @@ function runNLALADStep(stepI,maxIt,evS,dSolnl,dCMnl,cSave,eqForm,roundSigFigs,si
             newLam=dLogaladnl.Lam[2:horzLen+1,convIt-1]
             newVu=dLogaladnl.Vu[(N+1):(N*(horzLen+1)),convIt-1]
             newVt=dLogaladnl.Vt[2:horzLen+1,convIt-1]
+			newVi=dLogaladnl.Vi[2:horzLen+1,convIt-1]
             newVs=dLogaladnl.Vs[(N+1):(N*(horzLen+1)),convIt-1]
         else
             newLam=vcat(dLogaladnl.Lam[2:horzLen+1,convIt-1],dLogaladnl.Lam[horzLen+1,convIt-1])
             newVu=vcat(dLogaladnl.Vu[(N+1):(N*(horzLen+1)),convIt-1],dLogaladnl.Vu[((N*horzLen)+1):(N*(horzLen+1)),convIt-1])
             newVt=vcat(dLogaladnl.Vt[2:horzLen+1,convIt-1],dLogaladnl.Vt[horzLen+1,convIt-1])
+			newVi=vcat(dLogaladnl.Vi[2:horzLen+1,convIt-1],dLogaladnl.Vi[horzLen+1,convIt-1])
             newVs=vcat(dLogaladnl.Vs[(N+1):(N*(horzLen+1)),convIt-1],dLogaladnl.Vs[((N*horzLen)+1):(N*(horzLen+1)),convIt-1])
         end
     end
@@ -1195,6 +1199,7 @@ function runNLALADStep(stepI,maxIt,evS,dSolnl,dCMnl,cSave,eqForm,roundSigFigs,si
     global prevLam=round.(newLam,sigdigits=roundSigFigs)
     global prevVu=round.(newVu,sigdigits=roundSigFigs)
     global prevVt=round.(newVt,sigdigits=roundSigFigs)
+	global prevVi=round.(newVi,sigdigits=roundSigFigs)
     global prevVs=round.(newVs,sigdigits=roundSigFigs)
     #global ρALADp=round.(ogρ,digits=2)
 
