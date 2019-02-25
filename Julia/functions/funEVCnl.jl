@@ -1000,8 +1000,12 @@ function runNLALADIt(p,stepI,evS,itLam,itVu,itVs,itVt,itVi,itρ,dLogaladnl,dCMnl
 	#only if saving
     if stepI in saveLogInd
         ind=findall(x->x==stepI,saveLogInd)[1]
-        dCMnl.coupl1Norm[p,ind]=constGap
-        dCMnl.lamIt2Norm[p,ind]=itGap
+		dCMnl.coupl1Norm[p,ind]=constGap
+		dCMnl.coupl2Norm[p,ind]=norm(dLogaladnl.couplConst[:,p],2)
+		dCMnl.couplInfNorm[p,ind]=norm(dLogaladnl.couplConst[:,p],Inf)
+		dCMnl.lamIt1Norm[p,ind]= norm(dLogaladnl.Lam[:,p]-itLam[:,1],1)
+		dCMnl.lamIt2Norm[p,ind]=itGap
+		dCMnl.lamItInfNorm[p,ind]= norm(dLogaladnl.Lam[:,p]-itLam[:,1],Inf)
         dCMnl.objAbs[p,ind]=abs(dLogaladnl.objVal[1,p]-cSavenl.Obj[1,1,ind])
         dCMnl.objPerc[p,ind]=abs(dLogaladnl.objVal[1,p]-cSavenl.Obj[1,1,ind])/cSavenl.Obj[1,1,ind]*100
         dCMnl.lam1Norm[p,ind]= norm(dLogaladnl.Lam[:,p]-cSavenl.Lam[1:(horzLen+1),:,ind],1)
@@ -1075,7 +1079,6 @@ function runNLALADStep(stepI,maxIt,evS,dSolnl,dCMnl,cSave,eqForm,roundSigFigs,si
         dCMnl.convIt[1,1,ind]=convIt
     end
 	# print(round(now()-timeStart,Second))
-    # #
 	#
 	# indCheck=2
 	# plot(hcat(dLogaladnl.uSum[:,indCheck],dLogalad.uSum[:,indCheck]),label=["NL" "PWL"])
@@ -1083,12 +1086,9 @@ function runNLALADStep(stepI,maxIt,evS,dSolnl,dCMnl,cSave,eqForm,roundSigFigs,si
 	# plot(hcat(dLogaladnl.Lam[:,indCheck],dLogalad.Lam[:,indCheck]),label=["NL" "PWL"])
 	# plot(hcat(dLogaladnl.Ipred[:,indCheck],dLogalad.Itotal[:,indCheck]),label=["NL" "PWL"])
 	# plot(hcat(dLogaladnl.couplConst[:,indCheck],dLogalad.couplConst[:,indCheck]),label=["NL" "PWL"])
-	#
 	# plot(hcat(dLogaladnl.Gu[:,indCheck],dLogalad.Gu[:,indCheck]),label=["NL" "PWL"])
 	# plot(hcat(dLogaladnl.Gs[:,indCheck],dLogalad.Gs[:,indCheck]),label=["NL" "PWL"])
 	# plot(hcat(dLogaladnl.Ctu[:,indCheck],dLogalad.Ctu[:,indCheck]),label=["NL" "PWL"])
-	#
-	#
 	# plot(hcat(dLogaladnl.Vt[:,indCheck],dLogalad.Vt[:,indCheck]),label=["NL" "PWL"])
 	# plot(hcat(dLogaladnl.Vu[:,indCheck],dLogalad.Vu[:,indCheck]),label=["NL" "PWL"])
 	# plot(hcat(dLogaladnl.Vs[:,indCheck],dLogalad.Vs[:,indCheck]),label=["NL" "PWL"])
@@ -1143,10 +1143,20 @@ function runNLALADStep(stepI,maxIt,evS,dSolnl,dCMnl,cSave,eqForm,roundSigFigs,si
     #                   legend=false,xlims=(2,convIt))
     # #solChangesplot=plot(2:convIt,hcat(ΔY[2:convIt],convCheck[2:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
 	#
-    # fPlotalad=plot(dCMnl.objAbs[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
-    # convItPlotalad=plot(dCMnl.lamIt2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm It Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
+	# fPlotalad=plot(dCMnl.objAbs[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convPlotalad=plot(dCMnl.lam2Norm[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
-    # constPlotalad=plot(dCMnl.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # convItPlotalad1=plot(dCMnl.lamIt1Norm[1:convIt,1],xlabel="Iteration",ylabel="1-Norm Dual",xlims=(1,convIt),legend=false,yscale=:log10)
+    # convItPlotalad2=plot(dCMnl.lamIt2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Dual",xlims=(1,convIt),legend=false,yscale=:log10)
+    # convItPlotaladInf=plot(dCMnl.lamItInfNorm[1:convIt,1],xlabel="Iteration",ylabel="Inf-Norm Dual",xlims=(1,convIt),legend=false,yscale=:log10)
+    # constPlotalad1=plot(dCMnl.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="1-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
+    # constPlotalad2=plot(dCMnl.coupl2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
+    # constPlotaladInf=plot(dCMnl.couplInfNorm[1:convIt,1],xlabel="Iteration",ylabel="Inf-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
+	#
+	# checkPlot2=plot(convItPlotalad1,constPlotalad1,convItPlotalad2,
+    #                 constPlotalad2,convItPlotaladInf,constPlotaladInf,layout=(3,2))
+    # pubPlot(checkPlot2,thickscale=1,sizeWH=(600,400),dpi=60)
+    # savefig(checkPlot2,path*"checkPlot2"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
+
 
     #save current state and update for next timeSteps
     dSolnl.Tpred[stepI,1]=dLogaladnl.Tpred[1,convIt]

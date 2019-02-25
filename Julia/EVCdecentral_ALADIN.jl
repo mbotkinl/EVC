@@ -15,7 +15,6 @@ if loadResults
 	loadF=load(path*fname*".jld2")
 	dLogalad=loadF["solution"]
 	dCMalad=loadF["convMetrics"]
-	convIt=loadF["convIt"]
 else
 	t0=evS.t0
 	s0=evS.s0
