@@ -3,44 +3,62 @@
 #4/13/18
 #from Mads Almassakhi code
 
-#functions
-function setupScenario(N;Tmax=.393,Dload_amplitude=0,Dload_error=0,saveS=false,path=pwd())
+function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd())
 
     #model parameters
     a   = rand(N,1)*.1 .+ 0.8               # efficiency of Li-ion batts is ~80-90%
-    b   = (6*rand(N,1).+12)*3.6e6           # battery capacity (12-18 kWh = 43.3-64.8 MJ)
+    b_high=100 #kWh
+    b_low = 20 #kWh
+    b_kWh=(b_high-b_low)*rand(Beta(2, 3),N,1).+b_low  # battery capacity (20-100 kWh)
+    # histogram(b_kWh,nbins=40)
+    b=b_kWh*3.6e6 # battery capacity (MJ)
     # a   = 0.8 *ones(N,1)              # efficiency of Li-ion batts is 80%
     # b   = 12*3.6e6                    # battery capacity (12kWh = 43.3-)
 
-    m   = 2000                             # transformer mass in kg
-    C   = 450*m                            # heat cap. thermal mass J/K ----- spec. heat cap. of C = {carbon steel, iron, veg. oil} = {490, 450, 1670} J/(kg*K)
-    Rh   = 1070e-4/(35*5*(m/7870)^(2/3))   # heat outflow resistance K/W : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
-    Rw  = 1                                # coil winding resistance --- ohms:
+    xfrmR  = 25e3/3                          # single phase transformer rating kVA
+    # m   = 5e3                             # transformer mass in kg
+    # C   = 450*m                            # heat cap. thermal mass J/K ----- spec. heat cap. of C = {carbon steel, iron, veg. oil} = {490, 450, 1670} J/(kg*K)
+    # Rh   = 1070e-4/(35*5*(m/7870)^(2/3))   # heat outflow resistance K/W : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
+    # Rw  = 0.01                                # coil winding resistance --- ohms:
     Vac = 240                              # PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
     Vtf = 8320                             # distr-level transformer rms voltage --- V [used in inelastic kW -> kA conv]
     Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
 
     # Discretization parameters:
-    #Ts = Rh*C/9              # s, sampling time in seconds
-    Ts=180
+    # Ts = Rh*C/9              # s, sampling time in seconds
+    # #Ts=180
+    # ηP = round.(Ts*Vac*a./b*1000,digits=4)  # 1/kA, normalized battery sizes (0-1)
+    # #ηP = Ts*Vac*a./b  # 1/A, normalized battery sizes (0-1)
+    #
+    # #τP = 1 - Ts/(Rh*C)      # no units, temp time constant: 1 - 1/RC
+    # τP = exp(- Ts/(Rh*C))
+    #
+    # ρP = 1 - τP            # no units, ambient-to-temp param: 1/RC
+    # # γP = Ts*Rw/(C*Ntf)*1000^2    # K/kW, ohmic losses-to-temp parameter
+    # #γP = Ts*Rw/(C*Ntf)    # K/W, ohmic losses-to-temp parameter
+    #
+    # #γP = Rh*Rw/(Ntf)*ρP*1000^2    # K/kW, ohmic losses-to-temp parameter
+    # γP = Rh*Rw/(Ntf)*ρP*1000^2/1000    # kK/kW, ohmic losses-to-temp parameter
+    #     Ts*Rw/(C*Ntf)*1000^2/1000
+
+
+    # New Discretization Paramters
+    power_weight = 0.000939/(1e3/3)^2*1.5/60
+    curr_weight = power_weight*Vac^2
+    beta = 0.0149*2/60
+    alpha = 0.178*5/60
+
+    Ts=3*60 #seconds
+    τP = exp(- Ts*beta)
+    ρP = 1 - τP
+    γP = 1/beta*ρP*curr_weight
     ηP = round.(Ts*Vac*a./b*1000,digits=4)  # 1/kA, normalized battery sizes (0-1)
-    #ηP = Ts*Vac*a./b  # 1/A, normalized battery sizes (0-1)
-
-    #τP = 1 - Ts/(Rh*C)      # no units, temp time constant: 1 - 1/RC
-    τP = exp(- Ts/(Rh*C))
-
-    ρP = 1 - τP            # no units, ambient-to-temp param: 1/RC
-    # γP = Ts*Rw/(C*Ntf)*1000^2    # K/kW, ohmic losses-to-temp parameter
-    #γP = Ts*Rw/(C*Ntf)    # K/W, ohmic losses-to-temp parameter
-
-    #γP = Rh*Rw/(Ntf)*ρP*1000^2    # K/kW, ohmic losses-to-temp parameter
-    γP = Rh*Rw/(Ntf)*ρP*1000^2/1000    # kK/kW, ohmic losses-to-temp parameter
 
     # PWL Parameters:
     #S = 3;
     S=15
     #ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
-    ItotalMax =  4 #kA
+    ItotalMax =  (xfrmR/Vtf)*Ntf*1.5 #kA can overload by 1.5 p.u
     #ItotalMax = 4000  #A
     deltaI = ItotalMax/S
 
@@ -54,20 +72,35 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,Dload_error=0,saveS=false,p
     # Constraint parameters:
     #Tmax = 393                             # Short-term over-loading --> 120 C = 393 Kelvin
     imin = zeros(N,1)                      # A, q_min < 0 if V2G is allowed
-    imax = round.((10 .+ 16*rand(N,1))/1000,digits=6)             # kA, charging with 10-24 A
+    imax = round.(((80-10)*rand(Beta(3, 6),N,1).+10)/1000,digits=6)  # kA, charging with 10-80 A
+    b_nom = (b_kWh.-b_low)/(b_high-b_low)
+
+
+    i_nom = min.(max.((b_nom .+ rand(Beta(3,6),N,1)/10),0),1)
+    # i_nom = min.(max.((b_nom .+ rand(Normal(0,1),N*1000,1)/10),0),1)
+    imax =round.(((80-10)*i_nom.+10)/1000,digits=6)
+
+    # histogram(b_nom,nbins=40)
+    # histogram(i_nom,nbins=40)
+    # histogram(imax,nbins=40)
+
+
     #imax=10/1000*ones(N,1)
-    #imax = (10 + 16*rand(N,1))             # A, charging with 10-24 A
 
     # Initial conditions:
-    #s0=0.98*ones(N,1)
-    s0 = round.(0.2*rand(N,1),digits=4)       # initial states of charge (0 - 0.20)
-    t0 = 370/1000                 # initial temp (~65 K below Tmax) 368K
+    #s0=0.6*ones(N,1)
+    s0 = round.(((.7)*rand(Beta(4, 3),N,1)),digits=4)   # initial states of charge
+    #histogram(s0,nbins=40)
+    #t0 = 320/1000                 # initial temp (~65 K below Tmax) 368K
+    t0=40
 
     #desired states
-    Snmin = round.(1 .- 0.20*rand(N,1),digits=4)           # Required min final states of charge (~0.80-1)
-    #Snmin=ones(N,1)
-    FullChargeTime_relative = .25*rand(N,1).+.75
+    Snmin = round.(((1-.75)*rand(Beta(3, 2),N,1).+.75),digits=4)   # Required min final states of charge (~0.80-1)
+    FullChargeTime_relative = round.(((1-.75)*rand(Beta(2, 3),N,1).+.75),digits=4)
+    #histogram(FullChargeTime_relative,nbins=40)
+
     #Kn=ones(N,1)
+    #Snmin=ones(N,1)
     Kn = convert(Array{Int,2},round.(K*FullChargeTime_relative))
 
     # Disturbances
@@ -75,24 +108,38 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,Dload_error=0,saveS=false,p
     #Dload_amplitude = 85 #kWatts?
     #Dload_amplitude = 75000 #Watts?
     #Dload_amplitude = 0
-    Tamb_amplitude  = 303/1000   # assume hot night in summer (30 C) 303K
+    #Tamb_amplitude  = 313/1000   # assume hot night in summer (30 C) 303K
+    Tamb_amplitude = 30 #C
 
     # Disturbance scenario:
+    #num_homes= 1000
+    peak_demand_house = 4500 #W
+    min_demand_house = 800 #W
+    Dload_amplitude=num_homes*peak_demand_house #W
+    Dload_minimum = num_homes*min_demand_house
+
     #dist = [range(0,stop=8,length=Int(round(K/2)));range(8,stop=0,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
     dist = [range(-1,stop=10,length=Int(round(K/2)));range(-10,stop=-1,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
     d = Normal(0,3)
     inelasticDemand = pdf.(d,dist)
-    FullinelasticDemand = 100*(200*(inelasticDemand.-minimum(inelasticDemand))/(maximum(inelasticDemand)-minimum(inelasticDemand)) .+ 600)/1000; # total non-EV demand (in kW) = N/PEVpenetration*inelasticDemandperHouse
+    FullinelasticDemand = (inelasticDemand.-minimum(inelasticDemand))/(maximum(inelasticDemand)-minimum(inelasticDemand))
+
     #FullinelasticDemand = [FullinelasticDemand; FullinelasticDemand[length(FullinelasticDemand)]*ones(K2+1,1)]
-    FullDload   = Dload_amplitude.*reshape(FullinelasticDemand,(K,1));    # peaks during mid-day
-    iD_pred = round.(FullDload/Vtf,digits=6);                                     #background demand current
+    FullDload=reshape(Dload_amplitude*FullinelasticDemand.+Dload_minimum,(K,1));    # total non-EV demand (in W)
+    iD_pred = round.(FullDload/Vac/1e3,digits=6)    #background demand current (kA)
     noisePerc= Dload_error/Dload_amplitude
     iD_actual = round.(iD_pred+2*noisePerc*iD_pred.*rand(length(iD_pred),1).-iD_pred*noisePerc,digits=6)
-    Tamb  = round.(Tamb_amplitude*ones(K+1,1).-0.1*pdf.(d,range(-10,stop=10,length=K+1)),digits=6);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
+    Tamb_raw  = round.(Tamb_amplitude*ones(K+1,1).-pdf.(d,range(-10,stop=10,length=K+1))*100,digits=6);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
+
+    Tamb = Tamb_raw.+alpha/beta
+
+    #plot(evS.iD_pred*240/num_homes)
+    #plot(Tamb.-alpha/beta)
+
 
     # penalty matrix new (need to fix for k>Ki)
-    Ru   = 0.1*1000^2;              # Stage and terminal penalty on local power flow (inputs u)
-    #Ru   = 1000;              # Stage and terminal penalty on local power flow (inputs u)
+    Ru   = 0.1*1000^2              # Stage and terminal penalty on local power flow (inputs u)
+    #Ru   = 0;              # Stage and terminal penalty on local power flow (inputs u)
     #RKi   = 10;            # Stage and terminal penalty on local power flow (inputs q), for k >= Ki
     Qs  = 10;               # Stage and terminal penalty on charge difference with respect to 1 (states s)
     #Qs  = 100;               # Stage and terminal penalty on charge difference with respect to 1 (states s)
@@ -106,19 +153,18 @@ function setupScenario(N;Tmax=.393,Dload_amplitude=0,Dload_error=0,saveS=false,p
     #for slack
     β=1e3*rand(N,1)
 
-
     #move this into struct???
-    @assert all(ηP.*K.*FullChargeTime_relative.*imax+s0 .>= Snmin) "Some PEVs may not be able to meet SOC min level by desired time!"
+    @assert all(ηP.*Kn.*imax+s0 .>= Snmin) "Some PEVs may not be able to meet SOC min level by desired time!"
 
 
-    evScenario=scenarioStruct(N,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,
-                              ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD_pred,iD_actual,Tamb,Qsi,Ri,β)
+    evS=scenarioStruct(N,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,
+                       ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD_pred,iD_actual,Tamb,Tamb_raw,Qsi,Ri,β)
 
     if saveS==true
-        save(path*"EVCscenarioN$(N).jld2","evScenario",evScenario)
+        save(path*"EVCscenarioN$(N).jld2","evScenario",evS)
     end
 
-    return evScenario
+    return evS
 end
 
 function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd())

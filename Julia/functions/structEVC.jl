@@ -12,7 +12,7 @@ struct scenarioStruct
 
     #PWL
     S::Int
-    ItotalMax::Int
+    ItotalMax::Float64
     deltaI::Float64
 
     #limits
@@ -38,6 +38,7 @@ struct scenarioStruct
     iD_pred::Array{Float64,2}
     iD_actual::Array{Float64,2}
     Tamb::Array{Float64,2}
+    Tamb_raw::Array{Float64,2}
 
     #User def penalty matrix
     Qsi::Array{Float64,2}
