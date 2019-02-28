@@ -978,7 +978,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenario
     deltaI=evS.deltaI
     horzLen=min(evS.K1,evS.K-stepI)
 
-    tolT=1e-6
+    tolT=1e-3
     tolZ=1e-6
 
     #N+1 decoupled problem aka transformer current
@@ -1182,9 +1182,9 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
     # σU=ones(N,1)
     # σS=ones(N,1)/10#for kA
 
-    σZ=4.0
-    σT=2.0
-    σU=ones(N,1)/.02
+    σZ=1.0/2.5
+    σT=1/80
+    σU=ones(N,1)/.1
     σS=ones(N,1)
 
 
