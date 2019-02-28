@@ -22,7 +22,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     # a   = 0.8 *ones(N,1)              # efficiency of Li-ion batts is 80%
     # b   = 12*3.6e6                    # battery capacity (12kWh = 43.3-)
 
-    xfrmR  = 25e3/3                          # single phase transformer rating kVA
+    xfrmR  = 10e3/3                          # single phase transformer rating kVA
     # m   = 5e3                             # transformer mass in kg
     # C   = 450*m                            # heat cap. thermal mass J/K ----- spec. heat cap. of C = {carbon steel, iron, veg. oil} = {490, 450, 1670} J/(kg*K)
     # Rh   = 1070e-4/(35*5*(m/7870)^(2/3))   # heat outflow resistance K/W : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
@@ -50,7 +50,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
 
 
     # New Discretization Paramters
-    power_weight = 0.000939/(1e3/3)^2*1.5/60
+    power_weight = 0.000939/(1e3/3/2.5)^2*1.5/60
     curr_weight = power_weight*Vac^2
     beta = 0.0149*2/60
     alpha = 0.178*5/60
@@ -65,7 +65,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     #S = 3;
     S=10
     #ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
-    ItotalMax =  (xfrmR/Vtf)*Ntf*1.5 #kA can overload by 1.5 p.u
+    ItotalMax =  (xfrmR/Vtf)*Ntf*1.8 #kA can overload by 1.5 p.u
     #ItotalMax = 4000  #A
     deltaI = ItotalMax/S
 
@@ -117,7 +117,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
 
     # Disturbance scenario:
     #num_homes= 1000
-    peak_demand_house = 4500 #W
+    peak_demand_house = 4000 #W
     min_demand_house = 800 #W
     Dload_amplitude=num_homes*peak_demand_house #W
     Dload_minimum = num_homes*min_demand_house

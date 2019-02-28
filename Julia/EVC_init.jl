@@ -31,7 +31,7 @@ using Plots;pyplot()
 #using Dates
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
-N=200
+N=100
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_old\\"
 datafile="n" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
@@ -55,7 +55,7 @@ drawFig=false
 saveResults=false
 saveS=false
 loadResults=false
-silent=true
+silent=false
 solverSilent=true
 
 
@@ -72,8 +72,8 @@ if datafile=="jld2"
 else #create scenario
 	println("Creating EV Scenario...")
 	#Tmax=500/1000
-	Tmax=100 # Celsius
-	num_homes=1800
+	Tmax=120 # Celsius
+	num_homes=1000
 	Dload_error=0
 
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
