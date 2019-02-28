@@ -15,7 +15,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     b_high=100 #kWh
     b_low = 40 #kWh
     b_options = [40 60 75 100]
-    b_prob = [.3 .4 .8]
+    b_prob = [.2 .5 .9]
     r_ind = rand(N,1)
     b_kWh = b_options[1]*ones(N,1)
     b_kWh[r_ind.>b_prob[1]] .= b_options[2]
@@ -75,14 +75,14 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
 
     # PWL Parameters:
     #S = 3;
-    S=10
+    S=6
     #ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
     ItotalMax =  (xfrmR/Vtf)*Ntf*1.8 #kA can overload by 1.5 p.u
     #ItotalMax = 4000  #A
     deltaI = ItotalMax/S
 
     ## MPC Paramters
-    T1=10
+    T1=6
     T2=14-T1
     K1 = round(Int,T1*3600/Ts);            # Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
     K2 = round(Int,T2*3600/Ts);             # Additional time instants past control horizon
@@ -90,18 +90,18 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
 
     # Constraint parameters:
     #Tmax = 393                             # Short-term over-loading --> 120 C = 393 Kelvin
-    imin = zeros(N,1)                      # A, q_min < 0 if V2G is allowed
-    #imax = round.(((80-10)*rand(Beta(3, 6),N,1).+10)/1000,digits=6)  # kA, charging with 10-80 A
+    imin = zeros(N,1)                      # kA, q_min < 0 if V2G is allowed
     b_nom = (b_kWh.-b_low)/(b_high-b_low)
     shift=2
-    i_nom = min.(max.((b_nom .+ rand(Beta(6,3),N,1)/shift .- 1/(2*shift)),0),1)
-    #i_nom = min.(max.((b_nom .+ rand(Normal(0,.1),N,1)),0),1)
+    i_nom = min.(max.((b_nom .+ rand(Beta(4,3),N,1)/shift .- 1/(2*shift)),0),1)
     imax =round.(((80-12)*i_nom.+12)/1000,digits=6)  # kA, charging with 12-80 A
     #histogram(b_nom,nbins=40)
     #histogram(i_nom,nbins=40)
     #histogram(imax,nbins=40)
     #cor(b_kWh,imax)
-    #histogram(rand(Beta(6,3),N,1)/2 .- 0.25,nbins=40)
+    # mean(imax)*240
+    # minimum(imax)*240
+    # maximum(imax)*240
     #imax=10/1000*ones(N,1)
 
     # Initial conditions:
@@ -109,16 +109,17 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     s0 = round.(((.7)*rand(Beta(4, 3),N,1)),digits=4)   # initial states of charge
     #histogram(s0,nbins=40)
     #t0 = 320/1000                 # initial temp (~65 K below Tmax) 368K
-    t0=40
+    t0=Tmax-65
 
     #desired states
     Snmin = round.(((1-.75)*rand(Beta(3, 2),N,1).+.75),digits=4)   # Required min final states of charge (~0.80-1)
     FullChargeTime_relative = round.(((1-.75)*rand(Beta(2, 3),N,1).+.75),digits=4)
     #histogram(FullChargeTime_relative,nbins=40)
-
     #Kn=ones(N,1)
     #Snmin=ones(N,1)
     Kn = convert(Array{Int,2},round.(K*FullChargeTime_relative))
+
+    #histogram2d(evS.Kn*evS.Ts/(60*60).+(20-24),evS.Snmin,nbins=15,xlabel="AM Time",ylabel="Minimum Departure SoC")
 
     # Disturbances
     #Dload_amplitude = 2;  # base-demand factor
@@ -157,6 +158,8 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     # Xlabels=vcat(collect(stT1:Dates.Second(round(Ts)):endT1),collect(stT2:Dates.Second(round(Ts)):endT2))
     # xticks=(1:40:K,Dates.format.(Xlabels[1:40:K],"HH:MM"))
     # plot(iD_pred*240/num_homes,xticks=xticks)
+    # mean(iD_pred*240/num_homes)
+    # maximum(iD_pred*240/num_homes)
     # plot(Tamb_raw,xticks=xticks)
 
 

@@ -55,7 +55,7 @@ drawFig=false
 saveResults=false
 saveS=false
 loadResults=false
-silent=false
+silent=true
 solverSilent=true
 
 

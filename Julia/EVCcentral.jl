@@ -30,8 +30,8 @@ if drawFig savefig(p1,path*"J_central_SOC.png") end
 p2=plot(cSol.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(1,evS.K))
 if drawFig savefig(p2,path*"J_central_Curr.png") end
 
-p3=plot(hcat(cSol.Tpred*1000,cSol.Tactual*1000),label=["Pred Temp" "Actual Temp"],xlims=(1,evS.K),xlabel="Time",ylabel="Temp (K)")
-plot!(p3,1:evS.K,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
+p3=plot(hcat(cSol.Tpred,cSol.Tactual,evS.Tamb_raw[2:evS.K+1]),label=["Pred Temp" "Actual Temp" "Ambient Temp"],xlims=(1,evS.K),xlabel="Time",ylabel="Temp (K)")
+plot!(p3,1:evS.K,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(p3,path*"J_central_Temp.png") end
 
 p4b=plot(cSol.lamTemp,xlabel="Time",ylabel=raw"Lambda ($/K)",xlims=(1,evS.K),legend=false)
@@ -40,28 +40,7 @@ if drawFig savefig(p4,path*"J_central_Lam.png") end
 
 
 #draw(PNG(path*fName, 13inch, 14inch), vstack(p1,p2,p3,p4))
+aggU=plot(hcat(cSol.uSum,cSol.Itotal,evS.iD_actual),label=["Central" "Total" "iD"],xlims=(0,evS.K),xlabel="Time",ylabel="Current (kA)")
+plot!(aggU,1:evS.K,evS.ItotalMax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
 
 checkDesiredStates(cSol.Sn,evS.Kn,evS.Snmin)
-
-
-#uPlotNoLim=uPlot
-#do this more elegantly
-# aggU=plot(layer(x=1:horzLen+1,y=sum(uPlot[:,i] for i=1:N),Geom.line,Theme(default_color=colorant"blue")),
-# 		layer(x=1:horzLen+1,y=sum(uPlotNoLim[:,i] for i=1:N),Geom.line,Theme(default_color=colorant"red")),
-# 		Guide.xlabel("Time"), Guide.ylabel("PEV Current (kA)"),
-# 		Coord.Cartesian(xmin=0,xmax=horzLen+1),
-# 		Theme(background_color=colorant"white"),
-# 		Guide.manual_color_key("", ["Aggregate Current", "Unconstrained Aggregate Current"], ["blue","red"]))
-# fName="aggCentral_noLim.png"
-#  draw(PNG(path*fName, 13inch, 14inch), aggU)
-
-
-# p3nolimit=plot(layer(x=1:horzLen+1,y=xtRaw,Geom.line,Theme(default_color=colorant"blue")),
-# 		layer(x=1:horzLen+1,y=Tactual,Geom.line,Theme(default_color=colorant"green")),
-# 		layer(x=1:horzLen+1,y=noLimitt,Geom.line,Theme(default_color=colorant"red")),
-# 		yintercept=[Tmax],Geom.hline(color=["red"],style=:dot),
-# 		Guide.xlabel("Time"), Guide.ylabel("Xfrm Temp (K)",orientation=:vertical),
-# 		Coord.Cartesian(xmin=0,xmax=horzLen+1),Theme(background_color=colorant"white",key_position = :top),
-# 		Guide.manual_color_key("", ["PWL Temp", "Actual Temp","Unconstrained Temp"], ["blue", "green","red"]))
-# fName="Temp_w_nolimit.png"
-# draw(PNG(path*fName, 13inch, 14inch), p3nolimit)
