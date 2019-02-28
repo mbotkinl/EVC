@@ -7,9 +7,21 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
 
     #model parameters
     a   = rand(N,1)*.1 .+ 0.8               # efficiency of Li-ion batts is ~80-90%
+    # b_high=100 #kWh
+    #b_low = 20 #kWh
+    # b_kWh=(b_high-b_low)*rand(Beta(1.5, 1.8),N,1).+b_low  # battery capacity (20-100 kWh)
+
+
     b_high=100 #kWh
-    b_low = 20 #kWh
-    b_kWh=(b_high-b_low)*rand(Beta(1.5, 1.8),N,1).+b_low  # battery capacity (20-100 kWh)
+    b_low = 40 #kWh
+    b_options = [40 60 75 100]
+    b_prob = [.3 .4 .8]
+    r_ind = rand(N,1)
+    b_kWh = b_options[1]*ones(N,1)
+    b_kWh[r_ind.>b_prob[1]] .= b_options[2]
+    b_kWh[r_ind.>b_prob[2]] .= b_options[3]
+    b_kWh[r_ind.>b_prob[3]] .= b_options[4]
+
     #histogram(b_kWh,nbins=40)
 
     # t=.5*rand(Beta(2, 4),N*1000,1)+0.5*rand(Beta(4, 1.2),N*1000,1)
@@ -81,14 +93,15 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     imin = zeros(N,1)                      # A, q_min < 0 if V2G is allowed
     #imax = round.(((80-10)*rand(Beta(3, 6),N,1).+10)/1000,digits=6)  # kA, charging with 10-80 A
     b_nom = (b_kWh.-b_low)/(b_high-b_low)
-    i_nom = min.(max.((b_nom .+ rand(Beta(3,6),N,1)/5),0),1)
-    # i_nom = min.(max.((b_nom .+ rand(Normal(0,1),N*1000,1)/10),0),1)
-    imax =round.(((80-10)*i_nom.+10)/1000,digits=6)
-    # histogram(b_nom,nbins=40)
-    # histogram(i_nom,nbins=40)
+    shift=2
+    i_nom = min.(max.((b_nom .+ rand(Beta(6,3),N,1)/shift .- 1/(2*shift)),0),1)
+    #i_nom = min.(max.((b_nom .+ rand(Normal(0,.1),N,1)),0),1)
+    imax =round.(((80-12)*i_nom.+12)/1000,digits=6)  # kA, charging with 12-80 A
+    #histogram(b_nom,nbins=40)
+    #histogram(i_nom,nbins=40)
     #histogram(imax,nbins=40)
     #cor(b_kWh,imax)
-
+    #histogram(rand(Beta(6,3),N,1)/2 .- 0.25,nbins=40)
     #imax=10/1000*ones(N,1)
 
     # Initial conditions:
@@ -150,8 +163,6 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     # penalty matrix new (need to fix for k>Ki)
     # Ru   = 0.1*1000^2              # Stage and terminal penalty on local power flow (inputs u)
     # Qs  = 10;               # Stage and terminal penalty on charge difference with respect to 1 (states s)
-
-
     Qs=1;
     Ru=Qs*100;
     QT  = 0;                # PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
