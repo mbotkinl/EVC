@@ -9,8 +9,15 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     a   = rand(N,1)*.1 .+ 0.8               # efficiency of Li-ion batts is ~80-90%
     b_high=100 #kWh
     b_low = 20 #kWh
-    b_kWh=(b_high-b_low)*rand(Beta(2, 3),N,1).+b_low  # battery capacity (20-100 kWh)
-    # histogram(b_kWh,nbins=40)
+    b_kWh=(b_high-b_low)*rand(Beta(1.5, 1.8),N,1).+b_low  # battery capacity (20-100 kWh)
+    #histogram(b_kWh,nbins=40)
+
+    # t=.5*rand(Beta(2, 4),N*1000,1)+0.5*rand(Beta(4, 1.2),N*1000,1)
+    # t =.5*rand(Normal(38, 10),N*1000,1)+rand(Normal(80, 2),N*1000,1)
+    # # use mixture models?
+    # histogram(t,nbins=40)
+
+
     b=b_kWh*3.6e6 # battery capacity (MJ)
     # a   = 0.8 *ones(N,1)              # efficiency of Li-ion batts is 80%
     # b   = 12*3.6e6                    # battery capacity (12kWh = 43.3-)
@@ -56,14 +63,14 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
 
     # PWL Parameters:
     #S = 3;
-    S=15
+    S=10
     #ItotalMax = 20;        % CAUTION  ---> Imax gives upper limit on total current input on Transfomer and if picked too low will cause infeasible.
     ItotalMax =  (xfrmR/Vtf)*Ntf*1.5 #kA can overload by 1.5 p.u
     #ItotalMax = 4000  #A
     deltaI = ItotalMax/S
 
     ## MPC Paramters
-    T1=12
+    T1=10
     T2=14-T1
     K1 = round(Int,T1*3600/Ts);            # Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
     K2 = round(Int,T2*3600/Ts);             # Additional time instants past control horizon
@@ -72,18 +79,15 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     # Constraint parameters:
     #Tmax = 393                             # Short-term over-loading --> 120 C = 393 Kelvin
     imin = zeros(N,1)                      # A, q_min < 0 if V2G is allowed
-    imax = round.(((80-10)*rand(Beta(3, 6),N,1).+10)/1000,digits=6)  # kA, charging with 10-80 A
+    #imax = round.(((80-10)*rand(Beta(3, 6),N,1).+10)/1000,digits=6)  # kA, charging with 10-80 A
     b_nom = (b_kWh.-b_low)/(b_high-b_low)
-
-
-    i_nom = min.(max.((b_nom .+ rand(Beta(3,6),N,1)/10),0),1)
+    i_nom = min.(max.((b_nom .+ rand(Beta(3,6),N,1)/5),0),1)
     # i_nom = min.(max.((b_nom .+ rand(Normal(0,1),N*1000,1)/10),0),1)
     imax =round.(((80-10)*i_nom.+10)/1000,digits=6)
-
     # histogram(b_nom,nbins=40)
     # histogram(i_nom,nbins=40)
-    # histogram(imax,nbins=40)
-
+    #histogram(imax,nbins=40)
+    #cor(b_kWh,imax)
 
     #imax=10/1000*ones(N,1)
 
@@ -129,24 +133,29 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     iD_pred = round.(FullDload/Vac/1e3,digits=6)    #background demand current (kA)
     noisePerc= Dload_error/Dload_amplitude
     iD_actual = round.(iD_pred+2*noisePerc*iD_pred.*rand(length(iD_pred),1).-iD_pred*noisePerc,digits=6)
-    Tamb_raw  = round.(Tamb_amplitude*ones(K+1,1).-pdf.(d,range(-10,stop=10,length=K+1))*100,digits=6);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
+    Tamb_raw  = round.(Tamb_amplitude*ones(K+1,1).-pdf.(d,range(-10,stop=10,length=K+1))*20,digits=6);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
 
     Tamb = Tamb_raw.+alpha/beta
 
-    #plot(evS.iD_pred*240/num_homes)
-    #plot(Tamb.-alpha/beta)
+    # stT1=Time(20,0)
+    # endT1=Time(23,59)
+    # stT2=Time(0,0)
+    # endT2=Time(10,0)
+    # Xlabels=vcat(collect(stT1:Dates.Second(round(Ts)):endT1),collect(stT2:Dates.Second(round(Ts)):endT2))
+    # xticks=(1:40:K,Dates.format.(Xlabels[1:40:K],"HH:MM"))
+    # plot(iD_pred*240/num_homes,xticks=xticks)
+    # plot(Tamb_raw,xticks=xticks)
 
 
     # penalty matrix new (need to fix for k>Ki)
-    Ru   = 0.1*1000^2              # Stage and terminal penalty on local power flow (inputs u)
-    #Ru   = 0;              # Stage and terminal penalty on local power flow (inputs u)
-    #RKi   = 10;            # Stage and terminal penalty on local power flow (inputs q), for k >= Ki
-    Qs  = 10;               # Stage and terminal penalty on charge difference with respect to 1 (states s)
-    #Qs  = 100;               # Stage and terminal penalty on charge difference with respect to 1 (states s)
+    # Ru   = 0.1*1000^2              # Stage and terminal penalty on local power flow (inputs u)
+    # Qs  = 10;               # Stage and terminal penalty on charge difference with respect to 1 (states s)
+
+
+    Qs=1;
+    Ru=Qs*100;
     QT  = 0;                # PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
-    #QsKi  = 1;             # Stage and terminal penalty on charge difference with respect to 1 (states s), for k >= Ki
     Ri=round.(Ru*(5*rand(N,1).+.1),digits=6);
-    #Ri=Ru*(5*rand(N,1).+.001);
     Qi=round.(Qs*(10*rand(N,1).+.01),digits=6);
     Qsi=[Qi;QT];
 
@@ -155,7 +164,8 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
 
     #move this into struct???
     @assert all(ηP.*Kn.*imax+s0 .>= Snmin) "Some PEVs may not be able to meet SOC min level by desired time!"
-
+    # i=1
+    # ηP[i].*Kn[i].*imax[i]+s0[i] .>= Snmin[i]
 
     evS=scenarioStruct(N,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,
                        ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD_pred,iD_actual,Tamb,Tamb_raw,Qsi,Ri,β)

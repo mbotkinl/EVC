@@ -73,7 +73,7 @@ else #create scenario
 	println("Creating EV Scenario...")
 	#Tmax=500/1000
 	Tmax=100 # Celsius
-	num_homes=2000
+	num_homes=1800
 	Dload_error=0
 
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
