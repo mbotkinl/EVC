@@ -22,7 +22,7 @@ else
 	s0=evS.s0
 
 	#prevLam=cSolnl.lamCoupl[1:evS.K1+1]
-	prevLam=2e3*ones(evS.K1+1,1)
+	prevLam=2e1*ones(evS.K1+1,1)
     prevVt=evS.Tmax*ones(evS.K1+1,1)
     prevVi=evS.ItotalMax*ones(evS.K1+1,1)
     prevVu=.01*ones(evS.N*(evS.K1+1),1)

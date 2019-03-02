@@ -644,7 +644,7 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     horzLen=min(evS.K1,evS.K-stepI)
 
     tolU=1e-6
-    tolS=1e-8
+    tolS=1e-6
 
     #evV=zeros(horzLen+1,1)
     target=zeros((horzLen+1),1)
@@ -719,8 +719,8 @@ end
 function localXFRMALAD(p::Int,stepI::Int,σI::Float64,σT::Float64,evS::scenarioStruct,dLogaladnl::itLogNL,
     itLam,itVt,itVi,itρ,roundSigFigs)
 	#N+1 decoupled problem aka transformer current
-	tolT=1e-6
-    tolI=1e-6
+	tolT=1e-3
+    tolI=1e-4
 	horzLen=min(evS.K1,evS.K-stepI)
 
 	if relaxedMode==2
