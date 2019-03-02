@@ -230,8 +230,8 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
 
     @assert statusEVM==:Optimal "EV NLP optimization not solved to optimality"
 
-    dLog.Sn[collect(evInd:N:N*(horzLen+1)),p]=round.(getvalue(sn),digits=6) #solved state goes in next time slot
-    dLog.Un[collect(evInd:N:N*(horzLen+1)),p]=round.(getvalue(un),digits=8) #current go
+    dLog.Sn[collect(evInd:N:N*(horzLen+1)),p]=round.(getvalue(sn),sigdigits=roundSigFigs) #solved state goes in next time slot
+    dLog.Un[collect(evInd:N:N*(horzLen+1)),p]=round.(getvalue(un),sigdigits=roundSigFigs) #current go
     dLog.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
     return nothing
 end
@@ -268,8 +268,8 @@ function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,itLa
 
         @assert statusC==:Optimal "Dual Ascent XFRM optimization not solved to optimality"
 
-         dLog.Tpred[:,p]=round.(getvalue(t),digits=6)
-         dLog.Z[:,p]=round.(getvalue(z),digits=8)
+         dLog.Tpred[:,p]=round.(getvalue(t),sigdigits=roundSigFigs)
+         dLog.Z[:,p]=round.(getvalue(z),sigdigits=roundSigFigs)
 
         #grad of lagragian
         for k=1:horzLen+1
@@ -315,7 +315,7 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,silent)
         #alpha0 = 3e-3 #for A
         # alpha = 3e4 #for kA
         # alphaDivRate=4
-        alpha0 = 5e3 #for kA
+        alpha0 = 5 #for kA
         alphaDivRate=2
         minAlpha=1e-6
     end
@@ -326,7 +326,7 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,silent)
         end
     else
         for evInd=1:N
-            localEVDual(evInd,p,stepI,evS,dLog,itLam,slack,solverSilent)
+            localEVDual(evInd,p,stepI,evS,dLog,itLam,s0,slack,solverSilent)
         end
     end
 
@@ -338,7 +338,7 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,silent)
     #alphaP= alphaP*alphaRate
 
     #dLog.Lam[:,p]=max.(itLam[:,1]+alphaP*dLog.couplConst[:,p],0)
-    dLog.Lam[:,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,p],digits=8)
+    dLog.Lam[:,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,p],sigdigits=roundSigFigs)
 
     #calculate actual temperature from nonlinear model of XFRM
     for k=1:horzLen+1
@@ -404,11 +404,11 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,silent)
 end
 
 function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
+
     K=evS.K
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,K-stepI)
-
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
     dLog=itLogPWL(horzLen=horzLen,N=N,S=S)
@@ -442,17 +442,11 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
     # uSumPlotd=plot(dLog.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
     # plot!(uSumPlotd,sum(cSave.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
     #
-    # # uSumPlotd=plot(dLog.uSum[:,1:convIt],palette=:greens,line_z=(1:convIt)',legend=false,colorbar=:right,colorbar_title="Iteration",
-    # #      xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1))
-    # # plot!(uSumPlotd,1:horzLen+1,cSave.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
-    #
     # zSumPlotd=plot(dLog.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
-    # plot!(zSumPlotd,cSave.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+    # plot!(zSumPlotd,sum(cSave.Z[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # lamPlotd=plot(dLog.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
     # plot!(lamPlotd,cSave.Lam[:,:,ind],seriescolor=:black,linewidth=2,linealpha=0.8)
-    #
-    # #plot(dLog.Lam[:,1:convIt],color=:RdYlBu,line_z=(1:convIt)')
     #
     # constPlot2=plot(dLog.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
     #
@@ -750,8 +744,6 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,K-stepI)
-    #ogρ=ρADMMp #save to reset later
-
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+η*u[k+1]
     dLogadmm=itLogPWL(horzLen=horzLen,N=N,S=S)
     p=1
