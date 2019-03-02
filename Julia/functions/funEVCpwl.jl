@@ -6,6 +6,9 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
     K=evS.K
     N=evS.N
     S=evS.S
+    #deltaI=evS.deltaI
+    #S=8
+    deltaI=evS.ItotalMax/S
     horzLen=min(evS.K1,K-stepI)
 
     #initialize with current states
@@ -30,7 +33,7 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
     @variable(centralModel,sn[1:(N)*(horzLen+1)])
     @variable(centralModel,u[1:(N)*(horzLen+1)])
     @variable(centralModel,t[1:(horzLen+1)])
-    @variable(centralModel,z[1:evS.S*(horzLen+1)])
+    @variable(centralModel,z[1:S*(horzLen+1)])
     if slack
         @variable(centralModel,slackSn[1:N])
     end
@@ -48,8 +51,8 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
     if !silent println("constraints") end
     @constraint(centralModel,stateCon1,sn[1:N,1].==s0[1:N,1]+evS.ηP[:,1].*u[1:N,1])
     @constraint(centralModel,stateCon2[k=1:horzLen,n=1:N],sn[n+(k)*(N),1]==sn[n+(k-1)*(N),1]+evS.ηP[n,1]*u[n+(k)*(N),1])
-    @constraint(centralModel,tempCon1,t[1,1]==evS.τP*t0+evS.γP*evS.deltaI*sum((2*s-1)*z[s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI,1])
-    @constraint(centralModel,tempCon2[k=1:horzLen],t[k+1,1]==evS.τP*t[k,1]+evS.γP*evS.deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI+k,1])
+    @constraint(centralModel,tempCon1,t[1,1]==evS.τP*t0+evS.γP*deltaI*sum((2*s-1)*z[s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI,1])
+    @constraint(centralModel,tempCon2[k=1:horzLen],t[k+1,1]==evS.τP*t[k,1]+evS.γP*deltaI*sum((2*s-1)*z[k*S+s,1] for s=1:S)+evS.ρP*evS.Tamb[stepI+k,1])
     @constraint(centralModel,currCon[k=1:horzLen+1],0==-sum(u[(k-1)*(N)+n] for n=1:N)-evS.iD_pred[stepI+(k-1)]+sum(z[(k-1)*(S)+s] for s=1:S))
     @constraint(centralModel,sn.<=1)
     if slack
@@ -65,7 +68,7 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
     @constraint(centralModel,upperCCon,u.<=repeat(evS.imax,horzLen+1,1))
     @constraint(centralModel,u.>=repeat(evS.imin,horzLen+1,1))
     @constraint(centralModel,z.>=0)
-    @constraint(centralModel,z.<=evS.deltaI)
+    @constraint(centralModel,z.<=deltaI)
 
     if !silent println("solving....") end
 
@@ -161,10 +164,11 @@ function pwlEVcentral(evS::scenarioStruct,slack::Bool,silent::Bool)
     K=evS.K
     N=evS.N
     S=evS.S
+    #S=8
     cSol=solutionStruct(K=K,N=N,S=S)
     cSave=centralLogStruct(logLength=length(saveLogInd),horzLen=horzLen,N=N,S=S)
 
-    # stepI=1
+    stepI=1
     # using Profile
     # Profile.clear()
     # runEVCCentralStep(stepI,evS,cSol,silent)
@@ -801,6 +805,11 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
     #
     # lamPlotadmm=plot(dLogadmm.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
     # plot!(lamPlotadmm,cSave.Lam[:,:,ind],seriescolor=:black,linewidth=2,linealpha=0.8)
+    #
+    # fPlotalad=plot(dCM.objAbs[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # convPlotalad=plot(dCM.lam2Norm[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # convItPlotalad2=plot(dCM.lamIt2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Dual",xlims=(1,convIt),legend=false,yscale=:log10)
+    # constPlotalad1=plot(dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="1-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
 
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLogadmm.Tpred[1,convIt]
@@ -970,7 +979,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenario
     horzLen=min(evS.K1,evS.K-stepI)
 
     tolT=1e-3
-    tolZ=1e-6
+    tolZ=1e-3
 
     #N+1 decoupled problem aka transformer current
     tM = Model(solver = GurobiSolver(NumericFocus=3))
@@ -1042,6 +1051,8 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,
     # Ht=1e-6
     ρRate=1.1
     ρALADmax=1e6
+    #μALADp=μALADp*p^2
+
 
     #coupled QP
     cM = Model(solver = GurobiSolver(NumericFocus=3))
@@ -1112,7 +1123,6 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,
     @assert statusM==:Optimal "ALAD Central QP optimization not solved to optimality"
 
     #update step
-    # Lam[:,p+1]=-getdual(currCon)
     α1=1
     α2=1
     α3=1
@@ -1174,13 +1184,13 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
     # σS=ones(N,1)/10#for kA
 
     σZ=1.0/2.5
-    σT=1/80
-    σU=ones(N,1)/.1
+    σT=1/200
+    σU=ones(N,1)/.05
     σS=ones(N,1)
 
 
+    #μALADp=5e3
     μALADp=1e8
-    # μALAD=1e8
     # μRate=1
     # μALADmax=2e9
 
@@ -1343,7 +1353,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     # 	xPlot[:,ii]=dLogalad.Sn[collect(ii:N:length(dLogalad.Sn[:,convIt])),convIt]
     #     uPlot[:,ii]=dLogalad.Un[collect(ii:N:length(dLogalad.Un[:,convIt])),convIt]
     # end
-    #  
+    #
     # p1=plot(dLogalad.uSum[:,convIt],xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),label="ALADIN Open Loop")
     # plot!(p1,sum(cSave.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8,label="Central Open Loop")
     # plot(xPlot)
@@ -1405,7 +1415,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     # checkPlot=plot(convItPlotalad,constPlotalad,fPlotalad,convPlotalad,layout=(2,2))
     # pubPlot(checkPlot,thickscale=1,sizeWH=(600,400),dpi=60)
     # savefig(checkPlot,path*"checkPlot"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
-
+    # #
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLogalad.Tpred[1,convIt]
     dSol.Un[stepI,:]=dLogalad.Un[1:N,convIt]
@@ -1473,6 +1483,7 @@ function pwlEValad(maxIt::Int,evS::scenarioStruct,cSave::centralLogStruct,slack:
     S=evS.S
     dSol=solutionStruct(K=K,N=N,S=S)
     dCM=convMetricsStruct(maxIt=maxIt,logLength=length(saveLogInd))
+    stepI=1
 
     Juno.progress() do id
         for stepI=1:K
