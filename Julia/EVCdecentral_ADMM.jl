@@ -25,8 +25,8 @@ else
 	prevVu=.02*ones(evS.N*(evS.K1+1),1)
 	# prevVz=-0.01*ones(evS.S*(evS.K1+1),1)
 	# prevVu=.01*ones(evS.N*(evS.K1+1),1)
-	ρADMMp = 10
-	ρDivRate=1.1
+	ρADMMp = 20
+	ρDivRate=1.07
 
 	roundSigFigs=12
 
