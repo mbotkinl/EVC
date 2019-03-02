@@ -566,8 +566,8 @@ function localEVADMM(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::
     end
     @assert statusEVM==:Optimal "ADMM EV NLP optimization not solved to optimality"
 
-    dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=round.(getvalue(sn),digits=6)
-    dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=round.(getvalue(u),digits=8)
+    dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=round.(getvalue(sn),sigdigits=roundSigFigs)
+    dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=round.(getvalue(u),sigdigits=roundSigFigs)
     dLogadmm.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
     return nothing
 end
@@ -606,8 +606,8 @@ function localXFRMADMM(p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL,
 
     @assert statusC==:Optimal "ADMM XFRM NLP optimization not solved to optimality"
 
-    dLogadmm.Tpred[:,p]=round.(getvalue(t),digits=6)
-    dLogadmm.Z[:,p]=round.(getvalue(z),digits=8)
+    dLogadmm.Tpred[:,p]=round.(getvalue(t),sigdigits=roundSigFigs)
+    dLogadmm.Z[:,p]=round.(getvalue(z),sigdigits=roundSigFigs)
     return nothing
 end
 
@@ -626,7 +626,7 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,si
     # global prevVz
     # global ρADMMp
 
-    ρDivRate=1.02
+    #ρDivRate=1.1
     #ρRate=1.5
     maxRho=1e9
 
@@ -653,9 +653,8 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,si
         dLogadmm.uSum[k,p]=sum(dLogadmm.Un[(k-1)*N+n,p] for n=1:N)
         dLogadmm.zSum[k,p]=sum(dLogadmm.Z[(k-1)*(S)+s,p] for s=1:S)
         dLogadmm.couplConst[k,p]= dLogadmm.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLogadmm.zSum[k,p]
-        #dLogadmm.Lam[k,p]=max.(itLam[k,1]+itρ/(horzLen+1)*(dLogadmm.couplConst[k,p]),0)
-        # dLogadmm.Lam[k,p]=itLam[k,1]+itρ/(horzLen+1)*(dLogadmm.couplConst[k,p])
-        dLogadmm.Lam[k,p]=round.(itLam[k,1]+itρ/(max(horzLen+1,N))*(dLogadmm.couplConst[k,p]),digits=8)
+        dLogadmm.Lam[k,p]=round.(itLam[k,1]+itρ/(max(horzLen+1,N))*(dLogadmm.couplConst[k,p]),sigdigits=roundSigFigs)
+        #dLogadmm.Lam[k,p]=max.(round.(itLam[k,1]+itρ/(max(horzLen+1,N))*(dLogadmm.couplConst[k,p]),sigdigits=roundSigFigs),0)
     end
 
     #calculate actual temperature from nonlinear model of XFRM
@@ -669,8 +668,8 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,si
 
     #v upate eq 7.67
     for k=1:horzLen+1
-        dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=round.(dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(itLam[k,1]-dLogadmm.Lam[k,p])/(itρ/1),digits=8)
-        dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=round.(-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(itLam[k,1]-dLogadmm.Lam[k,p])/(itρ/1),digits=8)
+        dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=round.(dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(itLam[k,1]-dLogadmm.Lam[k,p])/(itρ/1),sigdigits=roundSigFigs)
+        dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=round.(-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(itLam[k,1]-dLogadmm.Lam[k,p])/(itρ/1),sigdigits=roundSigFigs)
 
         # dLogadmm.Vu[(k-1)*N.+collect(1:N),p]=min.(max.(dLogadmm.Un[(k-1)*N.+collect(1:N),p].+(itLam[k,1]-dLogadmm.Lam[k,p])/itρ,evS.imin),evS.imax)
         # dLogadmm.Vz[(k-1)*(S).+collect(1:S),p]=max.(min.(-dLogadmm.Z[(k-1)*(S).+collect(1:S),p].+(itLam[k,1]-dLogadmm.Lam[k,p])/itρ,0),-evS.deltaI)

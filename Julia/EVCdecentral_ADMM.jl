@@ -20,12 +20,16 @@ else
 	#initialize
     t0=evS.t0
     s0=evS.s0
-	prevLam=2e3*ones(evS.K1+1,1)
-	prevVz=-evS.deltaI*ones(evS.S*(evS.K1+1),1)
+	prevLam=10*ones(evS.K1+1,1)
+	prevVz=-evS.deltaI/2*ones(evS.S*(evS.K1+1),1)
 	prevVu=.02*ones(evS.N*(evS.K1+1),1)
-	# prevVz=10*ones(evS.S*(evS.K1+1),1)
-	# prevVu=.02*ones(evS.N*(evS.K1+1),1)
-	ρADMMp = 1e5
+	# prevVz=-0.01*ones(evS.S*(evS.K1+1),1)
+	# prevVu=.01*ones(evS.N*(evS.K1+1),1)
+	ρADMMp = 10
+	ρDivRate=1.1
+
+	roundSigFigs=12
+
 
 	println("Running ADMM Sim")
 	timeT=@elapsed dSoladmm,dCMadmm=pwlEVadmm(maxIt,evS,cSave,slack,silent)
