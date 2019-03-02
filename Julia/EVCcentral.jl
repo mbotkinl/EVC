@@ -24,8 +24,8 @@ end
 
 println("plotting....")
 
-p1=plot(cSol.Sn,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(1,evS.K))
-if drawFig savefig(p1,path*"J_central_SOC.png") end
+p1=plot(cSol.Sn,xlabel="Time",ylabel="PEV SoC",legend=false,xlims=(1,evS.K))
+if drawFig savefig(p1,path*"J_central_SoC.png") end
 
 p2=plot(cSol.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(1,evS.K))
 if drawFig savefig(p2,path*"J_central_Curr.png") end

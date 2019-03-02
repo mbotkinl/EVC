@@ -35,8 +35,8 @@ end
 
 println("plotting....")
 
-pd1admm=plot(dSoladmm.Sn,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,evS.K),ylims=(0,1))
-if drawFig savefig(pd1admm,path*"J_decentral_ADMM_SOC.png") end
+pd1admm=plot(dSoladmm.Sn,xlabel="Time",ylabel="PEV SoC",legend=false,xlims=(0,evS.K),ylims=(0,1))
+if drawFig savefig(pd1admm,path*"J_decentral_ADMM_SoC.png") end
 
 pd2admm=plot(dSoladmm.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,evS.K))
 if drawFig savefig(pd2admm,path*"J_decentral_ADMM_Curr.png") end

@@ -29,8 +29,8 @@ end
 
 println("plotting....")
 #solution plots
-pd1=plot(dSol.Sn,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,evS.K),ylims=(0,1))
-if drawFig savefig(p1d,path*"J_"*updateMethod*"_SOC.png") end
+pd1=plot(dSol.Sn,xlabel="Time",ylabel="PEV SoC",legend=false,xlims=(0,evS.K),ylims=(0,1))
+if drawFig savefig(p1d,path*"J_"*updateMethod*"_SoC.png") end
 
 pd2=plot(dSol.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,evS.K))
 if drawFig savefig(p2d,path*"J_"*updateMethod*"_Curr.png") end

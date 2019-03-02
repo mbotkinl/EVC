@@ -38,7 +38,7 @@ end
 
 println("plotting....")
 
-pd1aladNL=plot(dSolaladnl.Sn,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,evS.K),ylims=(0,1))
+pd1aladNL=plot(dSolaladnl.Sn,xlabel="Time",ylabel="PEV SoC",legend=false,xlims=(0,evS.K),ylims=(0,1))
 if drawFig==1 savefig(pd1aladNL,path*"J_decentralNL_ALADIN_SOC.png") end
 
 pd2aladNL=plot(dSolaladnl.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,evS.K))
