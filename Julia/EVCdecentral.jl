@@ -35,8 +35,8 @@ if drawFig savefig(p1d,path*"J_"*updateMethod*"_SoC.png") end
 pd2=plot(dSol.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,evS.K))
 if drawFig savefig(p2d,path*"J_"*updateMethod*"_Curr.png") end
 
-pd3=plot(dSol.Tactual[:,1]*1000,label="Actual Temp",xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
-plot!(pd3,1:evS.K,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
+pd3=plot(dSol.Tactual[:,1],label="Actual Temp",xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
+plot!(pd3,1:evS.K,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
 if updateMethod=="dualAscent" plot!(pd3,1:evS.K,dSol.Tpwl[:,1]*1000,label="PWL Temp") end
 if drawFig savefig(pd3,path*"J_"*updateMethod*"_Temp.png") end
 

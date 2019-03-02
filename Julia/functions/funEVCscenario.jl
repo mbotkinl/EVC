@@ -22,7 +22,6 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     b_kWh[r_ind.>b_prob[2]] .= b_options[3]
     b_kWh[r_ind.>b_prob[3]] .= b_options[4]
 
-    #histogram(b_kWh,nbins=40)
 
     # t=.5*rand(Beta(2, 4),N*1000,1)+0.5*rand(Beta(4, 1.2),N*1000,1)
     # t =.5*rand(Normal(38, 10),N*1000,1)+rand(Normal(80, 2),N*1000,1)
@@ -82,7 +81,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     deltaI = ItotalMax/S
 
     ## MPC Paramters
-    T1=6
+    T1=7
     T2=14-T1
     K1 = round(Int,T1*3600/Ts);            # Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
     K2 = round(Int,T2*3600/Ts);             # Additional time instants past control horizon
@@ -119,7 +118,6 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     #Snmin=ones(N,1)
     Kn = convert(Array{Int,2},round.(K*FullChargeTime_relative))
 
-    #histogram2d(evS.Kn*evS.Ts/(60*60).+(20-24),evS.Snmin,nbins=15,xlabel="AM Time",ylabel="Minimum Departure SoC")
 
     # Disturbances
     #Dload_amplitude = 2;  # base-demand factor
@@ -150,18 +148,6 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     Tamb_raw  = round.(Tamb_amplitude*ones(K+1,1).-pdf.(d,range(-10,stop=10,length=K+1))*20,digits=6);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
 
     Tamb = Tamb_raw.+alpha/beta
-
-    # stT1=Time(20,0)
-    # endT1=Time(23,59)
-    # stT2=Time(0,0)
-    # endT2=Time(10,0)
-    # Xlabels=vcat(collect(stT1:Dates.Second(round(Ts)):endT1),collect(stT2:Dates.Second(round(Ts)):endT2))
-    # xticks=(1:40:K,Dates.format.(Xlabels[1:40:K],"HH:MM"))
-    # plot(iD_pred*240/num_homes,xticks=xticks)
-    # mean(iD_pred*240/num_homes)
-    # maximum(iD_pred*240/num_homes)
-    # plot(Tamb_raw,xticks=xticks)
-
 
     # penalty matrix new (need to fix for k>Ki)
     # Ru   = 0.1*1000^2              # Stage and terminal penalty on local power flow (inputs u)

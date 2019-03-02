@@ -1,5 +1,5 @@
 
-
+using Plots.PlotMeasures
 #run comparison
 #path = clips()
 path=path*"ForVis\\"
@@ -12,6 +12,12 @@ lowRes=true
 #cRun,runs, noLim, evS=readRuns(path,true);
 #nl_pwlCompare(evS, runs,savefig,lowRes)
 
+stT1=Time(20,0)
+endT1=Time(23,59)
+stT2=Time(0,0)
+endT2=Time(10,0)
+Xlabels=vcat(collect(stT1:Dates.Second(round(evS.Ts)):endT1),collect(stT2:Dates.Second(round(evS.Ts)):endT2))
+xticks=(1:40:evS.K,Dates.format.(Xlabels[1:40:evS.K],"HH:MM"))
 
 
 # @time runALADit(1)
@@ -112,13 +118,6 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
 
-    stT1=Time(20,0)
-    endT1=Time(23,59)
-    stT2=Time(0,0)
-    endT2=Time(10,0)
-    Xlabels=vcat(collect(stT1:Dates.Second(round(evS.Ts)):endT1),collect(stT2:Dates.Second(round(evS.Ts)):endT2))
-    #Xlabels=vcat(collect(stT1:Dates.Minute(3):endT1),collect(stT2:Dates.Minute(3):endT2))
-    xticks=(1:40:Klen,Dates.format.(Xlabels[1:40:Klen],"HH:MM"))
 
     #Time plots
     tempPlot=plot(1:Klen,cSol.Tactual*1000,label="",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),
@@ -608,6 +607,50 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
     return resPlot
 end
 
+function scenarioPlots(evS)
+
+    #back calculate
+    b_options=[40 60 75 100]
+    ratio = evS.ηP/(evS.Ts*240*1000)*3.6e6
+    b_close=round.(0.85 ./ ratio)
+    ind=1
+    b_kWh=zeros(Int,N)
+    for i in 1:evS.N
+        #println(i)
+        b_kWh[i]=Int(b_options[abs.(b_close[i].-b_options).<=7][1])
+    end
+
+    # b_hist=histogram(b_kWh,nbins=20,legend=false,xlabel="EV Battery Size (kWh)",ylabel= "Number of EVs")
+    # imax_hist=histogram(evS.imax,nbins=12,legend=false,xlabel="EV Max Charging Power (kW)",ylabel= "")
+    # battParamsPlot=plot(b_hist,imax_hist,layout=(1,2))
+    battParamsPlot=histogram2d(b_kWh,evS.imax,nbins=20,xlabel="EV Battery Size (kWh)",ylabel="EV Max Charging Power (kW)",
+        colorbar_title="Number of EVs",thickness_scaling=1.6,dpi=100,size=(800,400),bar_edges=false)
+    savefig(battParamsPlot,path*"battParamsPlot.png")
+
+    s0Plot=histogram(evS.s0,nbins=40,legend=false,xlabel="EV Initial SoC (%)",ylabel= "Number of EVs",title="(a)")
+
+    departTime=evS.Kn*evS.Ts/(60*60).+(20-24)
+    stT=Time(6,30)
+    endT=Time(10,0)
+    XlabelsAM=vcat(collect(stT:Dates.Second(round(evS.Ts)):endT))
+    xticksAM=(6.5:0.5:10,Dates.format.(XlabelsAM[1:10:71],"HH:MM"))
+
+
+    minSoCPlot=histogram2d(departTime,evS.Snmin,nbins=12,xlabel="Time",ylabel="Minimum Departure SoC",
+        colorbar_title="Number of EVs",title="(b)",xticks=xticksAM)
+    evPlot=plot(s0Plot,minSoCPlot,layout=(1,2),thickness_scaling=1.5,dpi=100,size=(1000,400))
+    savefig(evPlot,path*"evParamsPlot.png")
+
+    num_homes =1000
+    idPlot=plot(evS.iD_actual*240/num_homes,xticks=xticks,widen=false,legend=false,ylabel="Demand (kW)",title="(a)")
+    #mean(iD_pred*240/num_homes)
+    #maximum(iD_pred*240/num_homes)
+    tambPlot=plot(evS.Tamb_raw,xticks=xticks,legend=false,xlabel="Time",ylabel="Temperature (C)",widen=false,title="(b)")
+    backgroundPlot=plot(idPlot,tambPlot,layout=(2,1))
+    pubPlot(backgroundPlot,thickscale=1.4,sizeWH=(800,400),dpi=100)
+    savefig(backgroundPlot,path*"backgroundParamsPlot.png")
+end
+
 function othergraphs()
     c1=plot(hcat(dCM.couplConst,dCMadmm.couplConst,dCMalad.couplConst),labels=["Dual Ascent" "ADMM" "ALADIN"],
         xlabel="",ylabel="2-Norm Coupling Gap",yscale=:log10,legend=false)
@@ -621,4 +664,11 @@ function othergraphs()
     end
 
     if saveF savefig(convPlot,path*"dCMPlot.png") end
+
+
+
+    dualComp=plot(hcat(cSol.lamCoupl,cSol.lamTemp),labels=["Coupling Constraint Dual" "Temperature Limit Dual"],
+    xlabel="Time",xticks=xticks,xlims=(0,evS.K))
+    pubPlot(dualComp,thickscale=1.5,sizeWH=(800,400),dpi=100)
+    savefig(dualComp,path*"dualCompPlot.png")
 end
