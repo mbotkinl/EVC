@@ -19,6 +19,9 @@ struct scenarioStruct
     Tmax::Float64
     imin::Array{Float64,2} #switch these to 1 dim array/vectors
     imax::Array{Float64,2}
+    a::Array{Float64,2}
+    b_kWh::Array{Int,2}
+
 
     #Discretization Paramters
     ηP::Array{Float64,2}

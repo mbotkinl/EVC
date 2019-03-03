@@ -17,7 +17,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     b_options = [40 60 75 100]
     b_prob = [.2 .5 .9]
     r_ind = rand(N,1)
-    b_kWh = b_options[1]*ones(N,1)
+    b_kWh = b_options[1]*ones(Int,N,1)
     b_kWh[r_ind.>b_prob[1]] .= b_options[2]
     b_kWh[r_ind.>b_prob[2]] .= b_options[3]
     b_kWh[r_ind.>b_prob[3]] .= b_options[4]
@@ -167,7 +167,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     # i=1
     # ηP[i].*Kn[i].*imax[i]+s0[i] .>= Snmin[i]
 
-    evS=scenarioStruct(N,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,
+    evS=scenarioStruct(N,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,imin,imax,a,b_kWh,
                        ηP,τP,ρP,γP,s0,t0,Snmin,Kn,iD_pred,iD_actual,Tamb,Tamb_raw,Qsi,Ri,β)
 
     if saveS==true
