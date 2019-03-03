@@ -152,11 +152,24 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     # penalty matrix new (need to fix for k>Ki)
     # Ru   = 0.1*1000^2              # Stage and terminal penalty on local power flow (inputs u)
     # Qs  = 10;               # Stage and terminal penalty on charge difference with respect to 1 (states s)
-    Qs=1;
-    Ru=Qs*100;
-    QT  = 0;                # PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
-    Ri=round.(Ru*(5*rand(N,1).+.1),digits=6);
-    Qi=round.(Qs*(10*rand(N,1).+.01),digits=6);
+
+    #Qs=1;
+    #Ru=Qs*100;
+    #QT  = 0;                # PENALTY ON TEMPERATURE DEVIATION (W.R.T 0)
+    #Ri=round.(Ru*(5*rand(N,1) .+ .1),digits=3);
+    #Qi=round.(Qs*(10*rand(N,1) .+ 1),digits=3);
+    #histogram(Qi[1:N]*100 ./Ri,nbins=100)
+
+    qrRatio=round.((2-0.1)*rand(Beta(1, 1),N,1) .+ 0.1,digits=2)
+    #qrRatio=round.((300-.1)*rand(N,1) .+ .1,digits=5)
+    #histogram(qrRatio,nbins=40)
+    Ri=1e8*ones(N,1)
+    Qi=qrRatio.*Ri/100
+
+    #histogram(Qi[1:N]*100 ./Ri,nbins=100)
+
+
+    QT=0
     Qsi=[Qi;QT];
 
     #for slack
