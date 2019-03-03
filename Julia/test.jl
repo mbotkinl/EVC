@@ -233,9 +233,9 @@ for ii= 1:N
 	uPlot[:,ii]=uRaw[collect(ii:N:length(uRaw))]
 end
 
-p1=plot(xPlot,xlabel="Time",ylabel="PEV SOC",xlims=(1,evS.K))
+p1=plot(xPlot,xlabel="Time",ylabel="PEV SOC",xlims=(1,horzLen+1))
 
-p2=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",xlims=(1,evS.K))
+p2=plot(uPlot,xlabel="Time",ylabel="PEV Current (kA)",xlims=(1,horzLen+1))
 
 p3=plot(hcat(tRaw,Tactual,evS.Tamb_raw[2:horzLen+2]),label=["Pred Temp" "Actual Temp" "Ambient Temp"],xlims=(1,horzLen+1),xlabel="Time",ylabel="Temp (K)")
 plot!(p3,1:horzLen+1,evS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))

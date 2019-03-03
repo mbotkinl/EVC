@@ -36,9 +36,9 @@ if drawFig==1 savefig(p1nl,path*"J_centralNL_SOC.png") end
 p2nl=plot(cSolnl.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(1,evS.K))
 if drawFig==1 savefig(p2nl,path*"J_centralNL_Curr.png") end
 
-p3nl=plot(cSolnl.Tactual*1000,label="XFRM Temp",xlims=(1,evS.K),xlabel="Time",ylabel="Temp (K)")
-plot!(p3nl,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
-plot!(p3nl,cSolnl.Tpred*1000,label="Predict Temp")
+p3nl=plot(cSolnl.Tactual,label="XFRM Temp",xlims=(1,evS.K),xlabel="Time",ylabel="Temp (K)")
+plot!(p3nl,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
+plot!(p3nl,cSolnl.Tpred,label="Predict Temp")
 if drawFig==1 savefig(p3nl,path*"J_centralNL_Temp.png") end
 
 p4nl=plot(cSolnl.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,evS.K),legend=false)

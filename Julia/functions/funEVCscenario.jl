@@ -81,7 +81,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     deltaI = ItotalMax/S
 
     ## MPC Paramters
-    T1=7
+    T1=8
     T2=14-T1
     K1 = round(Int,T1*3600/Ts);            # Initial Prediction and Fixed Horizon (assume K1 instants = 12 hrs)
     K2 = round(Int,T2*3600/Ts);             # Additional time instants past control horizon
@@ -163,7 +163,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     qrRatio=round.((2-0.1)*rand(Beta(1, 1),N,1) .+ 0.1,digits=2)
     #qrRatio=round.((300-.1)*rand(N,1) .+ .1,digits=5)
     #histogram(qrRatio,nbins=40)
-    Ri=1e8*ones(N,1)
+    Ri=1e6*ones(N,1)
     Qi=qrRatio.*Ri/100
 
     #histogram(Qi[1:N]*100 ./Ri,nbins=100)

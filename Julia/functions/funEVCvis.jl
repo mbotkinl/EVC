@@ -610,15 +610,16 @@ end
 function scenarioPlots(evS)
 
     #back calculate
-    b_options=[40 60 75 100]
-    ratio = evS.ηP/(evS.Ts*240*1000)*3.6e6
-    b_close=round.(0.85 ./ ratio)
-    ind=1
-    b_kWh=zeros(Int,N)
-    for i in 1:evS.N
-        #println(i)
-        b_kWh[i]=Int(b_options[abs.(b_close[i].-b_options).<=7][1])
-    end
+    # b_options=[40 60 75 100]
+    # ratio = evS.ηP/(evS.Ts*240*1000)*3.6e6
+    # b_close=round.(0.85 ./ ratio)
+    # ind=1
+    # b_kWh=zeros(Int,N)
+    # for i in 1:evS.N
+    #     #println(i)
+    #     b_kWh[i]=Int(b_options[abs.(b_close[i].-b_options).<=7][1])
+    # end
+    b_kWh=evS.b_kWh
 
     # b_hist=histogram(b_kWh,nbins=20,legend=false,xlabel="EV Battery Size (kWh)",ylabel= "Number of EVs")
     # imax_hist=histogram(evS.imax,nbins=12,legend=false,xlabel="EV Max Charging Power (kW)",ylabel= "")
