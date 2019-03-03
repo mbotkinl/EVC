@@ -525,7 +525,7 @@ end
 
 #ADMM
 function localEVADMM(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL,
-    evV,itLam,s0,itρ,slack,solverSilent)
+    evV,itLam,s0,itρ,slack,roundSigFigs,solverSilent)
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,evS.K-stepI)
@@ -570,7 +570,7 @@ function localEVADMM(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::
     return nothing
 end
 
-function localXFRMADMM(p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL,itLam,itVz,itρ,solverSilent)
+function localXFRMADMM(p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL,itLam,itVz,itρ,roundSigFigs,solverSilent)
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,evS.K-stepI)
@@ -609,7 +609,7 @@ function localXFRMADMM(p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL,
     return nothing
 end
 
-function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,silent)
+function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,roundSigFigs,silent)
     #@printf "a"
     K=evS.K
     N=evS.N
@@ -632,18 +632,18 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,si
     if runParallel
         @sync @distributed for evInd=1:N
             evV=itVu[collect(evInd:N:length(itVu)),1]
-            localEVADMM(evInd,p,stepI,evS,dLogadmm,evV,itLam,s0,itρ,slack,solverSilent)
+            localEVADMM(evInd,p,stepI,evS,dLogadmm,evV,itLam,s0,itρ,slack,roundSigFigs,solverSilent)
         end
     else
         for evInd=1:N
             evV=itVu[collect(evInd:N:length(itVu)),1]
-            localEVADMM(evInd,p,stepI,evS,dLogadmm,evV,itLam,s0,itρ,slack,solverSilent)
+            localEVADMM(evInd,p,stepI,evS,dLogadmm,evV,itLam,s0,itρ,slack,roundSigFigs,solverSilent)
         end
     end
     #@printf "b"
 
 
-    localXFRMADMM(p,stepI,evS,dLogadmm,itLam,itVz,itρ,solverSilent)
+    localXFRMADMM(p,stepI,evS,dLogadmm,itLam,itVz,itρ,roundSigFigs,solverSilent)
     #@printf "c"
 
     #lambda update eq 7.68
@@ -743,7 +743,7 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,si
     end
 end
 
-function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionStruct,dCM,cSave::centralLogStruct,silent::Bool)
+function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionStruct,dCM,cSave::centralLogStruct,roundSigFigs::Int,silent::Bool)
     K=evS.K
     N=evS.N
     S=evS.S
@@ -760,12 +760,12 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
             itVz=prevVz
             itρ=ρADMMp
         else
-            itLam=round.(dLogadmm.Lam[:,(p-1)],digits=8)
-            itVu=round.(dLogadmm.Vu[:,(p-1)],digits=8)
-            itVz=round.(dLogadmm.Vz[:,(p-1)],digits=8)
-            itρ=round.(dLogadmm.itUpdate[1,(p-1)],digits=2)
+            itLam=round.(dLogadmm.Lam[:,(p-1)],sigdigits=roundSigFigs)
+            itVu=round.(dLogadmm.Vu[:,(p-1)],sigdigits=roundSigFigs)
+            itVz=round.(dLogadmm.Vz[:,(p-1)],sigdigits=roundSigFigs)
+            itρ=round.(dLogadmm.itUpdate[1,(p-1)],sigdigits=roundSigFigs)
         end
-        cFlag=runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,silent)
+        cFlag=runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,roundSigFigs,silent)
         global convIt=p
         if cFlag
             break
@@ -782,7 +782,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
         # convPlotadmm=plot(1:convIt,dCM.lam2Norm[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
         # constPlotadmm=plot(1:convIt,dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
     end
-
+    #
     # xPlot=zeros(horzLen+1,N)
     # uPlotd=zeros(horzLen+1,N)
     # for ii= 1:N
@@ -857,7 +857,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
     return nothing
 end
 
-function pwlEVadmm(maxIt::Int,evS::scenarioStruct,cSave::centralLogStruct,slack::Bool,silent::Bool)
+function pwlEVadmm(maxIt::Int,evS::scenarioStruct,cSave::centralLogStruct,slack::Bool,roundSigFigs::Int, silent::Bool)
 
     horzLen=evS.K1
     K=evS.K
@@ -871,7 +871,7 @@ function pwlEVadmm(maxIt::Int,evS::scenarioStruct,cSave::centralLogStruct,slack:
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)" progress=stepI/K _id=id
             @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
             try
-                runEVADMMStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
+                runEVADMMStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
                 @printf "convIt: %g\n" dSol.convIt[stepI,1]
             catch e
                 @printf "error: %s" e

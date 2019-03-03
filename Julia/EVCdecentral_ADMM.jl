@@ -25,14 +25,25 @@ else
 	prevVu=.02*ones(evS.N*(evS.K1+1),1)
 	# prevVz=-0.01*ones(evS.S*(evS.K1+1),1)
 	# prevVu=.01*ones(evS.N*(evS.K1+1),1)
-	ρADMMp = 20
-	ρDivRate=1.07
+
+	# ρADMMp = 1
+	# ρDivRate=1.1
+	#
+	# ρADMMp = 10
+	# ρDivRate=1.05
+
+	ρADMMp = 100
+	ρDivRate=1.01
+	#149
+	#lastGap  4.437284e-02 after 149 iterations
+	#constGap 6.319717e-02 after 149 iterations
+
 
 	roundSigFigs=12
 
 
 	println("Running ADMM Sim")
-	timeT=@elapsed dSoladmm,dCMadmm=pwlEVadmm(maxIt,evS,cSave,slack,silent)
+	timeT=@elapsed dSoladmm,dCMadmm=pwlEVadmm(maxIt,evS,cSave,slack,roundSigFigs,silent)
 	if saveResults saveRun(path,fname,timeT,dSoladmm,convMetrics=dCMadmm) end
 end
 
@@ -45,8 +56,8 @@ if drawFig savefig(pd1admm,path*"J_decentral_ADMM_SoC.png") end
 pd2admm=plot(dSoladmm.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,evS.K))
 if drawFig savefig(pd2admm,path*"J_decentral_ADMM_Curr.png") end
 
-pd3admm=plot(hcat(dSoladmm.Tactual[:,1],dSoladmm.Tpwl[:,1])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
-plot!(pd3admm,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
+pd3admm=plot(hcat(dSoladmm.Tactual[:,1],dSoladmm.Tpred[:,1]),label=["Actual Temp" "PWL Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
+plot!(pd3admm,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(pd3admm,path*"J_decentral_ADMM_Temp.png") end
 
 pd4admm=plot(hcat(cSol.lamCoupl,dSoladmm.lamCoupl),xlabel="Time",ylabel=raw"Lambda ($/kA)",

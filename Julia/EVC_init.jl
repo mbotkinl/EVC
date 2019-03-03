@@ -3,7 +3,7 @@
 # C:\Users\micah\AppData\Local\Julia-1.0.1\bin\julia
 # C:\Users\micah\AppData\Local\Julia-1.0.2\bin\julia
 println("Loading Packages...")
-runParallel=false
+runParallel=true
 
 using Distributed
 
@@ -32,16 +32,16 @@ using Plots;pyplot()
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
 N=100
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_old\\"
-datafile="n" #"mat" #"jld" #"n"
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\PWL\\"
+datafile="jld2" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
 
 updateMethod="dualAscent" #dualAscent #fastAscent
-maxIt=30 #500 for Dual Ascent
-# dualChk = 5e-3 #lamIt=0
-# primChk = 5e-4 # Ax-B=0
-dualChk = 5e-12 #lamIt=0
-primChk = 5e-12 # Ax-B=0
+maxIt=500 #500 for Dual Ascent
+dualChk = 5e-3 #lamIt=0
+primChk = 5e-4 # Ax-B=0
+# dualChk = 5e-12 #lamIt=0
+# primChk = 5e-12 # Ax-B=0
 saveLogInd=[1,2,71,141,210]
 noTlimit=false
 forecastError=false
@@ -52,12 +52,11 @@ tempAugment=false
 ψ=-0
 
 drawFig=false
-saveResults=false
-saveS=false
+saveResults=true
+saveS=true
 loadResults=false
 silent=true
 solverSilent=true
-
 
 if datafile=="jld2"
 	using FileIO
@@ -81,26 +80,3 @@ else #create scenario
 	using Distributions
 	evS=setupScenario(N;Tmax=Tmax,num_homes=num_homes,Dload_error=Dload_error,saveS=saveS,path=path)
 end
-
-
-#run comparison
-#path = clips()
-# path=path*"PWL\\"
-#cRun,runs, noLim, evS=readRuns(path);
-# lowRes=true
-# resPlot=compareRunsGraph(runs, cRun, noLim, saveResults,lowRes)
-# cTable=compareRunsTable(runs,evS)
-
-# @time runALADit(1)
-#@time testALAD(1)
-
-# Profile.clear()
-# runALADit(1)
-# @profile runALADit(1)
-# Juno.profiler()
-
-
-# Profile.clear()
-# testDual(1)
-# @profile testDual(1)
-# Juno.profiler()
