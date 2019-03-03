@@ -5,9 +5,9 @@ using Gurobi
 N=evS.N
 S=evS.S
 
-packLen=3 #number of time steps
+packLen=2 #number of time steps
 mttr=evS.Ts*packLen #300
-setSOC=0.5
+setSOC=0.25
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpem.jl")
 
@@ -23,7 +23,6 @@ else
 	timeT=@elapsed pemSol=pemEVC(evS,slack,silent)
 	if saveResults saveRun(path,fname,timeT,pemSol) end
 end
-
 println("plotting....")
 
 p1pem=plot(pemSol.Sn,xlabel="Time",ylabel="PEV SoC",legend=false,xlims=(0,evS.K),ylims=(0,1))
