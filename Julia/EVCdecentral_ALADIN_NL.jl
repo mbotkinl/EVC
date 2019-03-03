@@ -22,14 +22,17 @@ else
 	s0=evS.s0
 
 	#prevLam=cSolnl.lamCoupl[1:evS.K1+1]
-	prevLam=2e1*ones(evS.K1+1,1)
+	prevLam=1e7*ones(evS.K1+1,1)
     prevVt=evS.Tmax*ones(evS.K1+1,1)
     prevVi=evS.ItotalMax*ones(evS.K1+1,1)
     prevVu=.01*ones(evS.N*(evS.K1+1),1)
     prevVs=.5*ones(evS.N*(evS.K1+1),1)
 	ρALADp = 1
+	ρRate=1.1
 
-	roundSigFigs=12
+	roundSigFigs=30
+	reg_weight=1
+	reg=false
 
 	println("Running NL AlAD Sim")
 	timeT=@elapsed dSolaladnl,dCMaladnl=nlEValad(maxIt,evS,cSavenl,slack,eqForm,roundSigFigs,silent)
