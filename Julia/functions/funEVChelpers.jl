@@ -7,6 +7,27 @@ using LaTeXStrings
 # using Cairo #for png output
 # using Fontconfig
 
+function rebuildEVS(evS)
+
+    a=zeros(N,1)
+    b_kWh=zeros(N,1)
+    Tamb_raw=evS.Tamb
+    newS=scenarioStruct(evS.N,evS.Ts,evS.K1,evS.K2,evS.K,evS.S,evS.ItotalMax,evS.deltaI,evS.Tmax,evS.imin,evS.imax,
+                        a,b_kWh,evS.ηP,evS.τP,evS.ρP,evS.γP,evS.s0,evS.t0,evS.Snmin,evS.Kn,evS.iD_pred,evS.iD_actual,
+                        evS.Tamb,Tamb_raw,evS.Qsi,evS.Ri,evS.β)
+    #
+    # newS=scenarioStruct(N=evS.N,Ts=evS.Ts,K1=evS.K1,K2=evS.K2,K=evS.K,S=evS.S,ItotalMax=evS.ItotalMax,deltaI=evS.deltaI,
+    #                     Tmax=evS.Tmax,imin=evS.imin,imax=evS.imax,a=evS.a,b_kWh=evS.b_kWh,ηP=evS.ηP,τP=evS.τP,ρP=evS.ρP,
+    #                     γP=evS.γP,s0=evS.s0,t0=evS.t0,Snmin=evS.Snmin,Kn=evS.Kn,iD_pred=evS.iD_pred,iD_actual=evS.iD_actual,
+    #                     Tamb=evS.Tamb,Tamb_raw=evS.Tamb_raw,Qsi=evS.Qsi,Ri=evS.Ri,β=evS.β)
+
+    if newS==true
+        save(path*"EVCscenarioN$(N).jld2","evScenario",newS)
+    end
+
+    return newS
+end
+
 function saveRun(path::String, filename::String, time::Float64, solution; cSave=centralLogStruct(logLength=1,horzLen=1,N=1,S=1),
     convMetrics=convMetricsStruct(maxIt=1,logLength=1))
 
