@@ -32,16 +32,17 @@ using Plots;pyplot()
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
 N=100
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\PWL\\"
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_largeQ\\"
+#path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\PWL\\"
+#path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_K\\"
+
 datafile="jld2" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
 
 updateMethod="dualAscent" #dualAscent #fastAscent
-maxIt=500 #500 for Dual Ascent
-dualChk = 5e-3 #lamIt=0
+maxIt=200 #500 for Dual Ascent
+dualChk = 5e-4 #lamIt=0
 primChk = 5e-4 # Ax-B=0
-# dualChk = 5e-12 #lamIt=0
-# primChk = 5e-12 # Ax-B=0
 saveLogInd=[1,2,71,141,210]
 noTlimit=false
 forecastError=false

@@ -15,31 +15,31 @@ if loadResults
 	loadF=load(path*fname*".jld2")
 	dSoladmm=loadF["solution"]
 	dCMadmm=loadF["convMetrics"]
-	convIt=loadF["convIt"]
 else
 	#initialize
     t0=evS.t0
     s0=evS.s0
-	prevLam=10*ones(evS.K1+1,1)
+	prevLam=1e4*ones(evS.K1+1,1)
+	#prevLam=0*ones(evS.K1+1,1)
 	prevVz=-evS.deltaI/2*ones(evS.S*(evS.K1+1),1)
 	prevVu=.02*ones(evS.N*(evS.K1+1),1)
-	# prevVz=-0.01*ones(evS.S*(evS.K1+1),1)
-	# prevVu=.01*ones(evS.N*(evS.K1+1),1)
+	#prevVz=-0.01*ones(evS.S*(evS.K1+1),1)
+	#prevVu=0*ones(evS.N*(evS.K1+1),1)
 
-	# ρADMMp = 1
-	# ρDivRate=1.1
-	#
-	# ρADMMp = 10
-	# ρDivRate=1.05
+	# prevLam=cSave.Lam[:,:,1]
+	# prevLam=max.(cSave.Lam[:,:,1],0)
+	# prevVu=cSave.Un[:,:,1]'[:]
+	# prevVz=-cSave.Z[:,:,1]'[:]
 
-	ρADMMp = 100
-	ρDivRate=1.01
-	#149
-	#lastGap  4.437284e-02 after 149 iterations
-	#constGap 6.319717e-02 after 149 iterations
+	#100_K
+	# ρADMMp = 1e5
+	# ρDivRate=1.02
 
+	#100_largeQ best so far?
+	ρADMMp = 2e5
+	ρDivRate=1.02
 
-	roundSigFigs=12
+	roundSigFigs=30
 
 
 	println("Running ADMM Sim")

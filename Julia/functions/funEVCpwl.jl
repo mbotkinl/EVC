@@ -524,7 +524,7 @@ function pwlEVdual(maxIt::Int,updateMethod::String,evS::scenarioStruct,cSave::ce
 end
 
 #ADMM
-function localEVADMM(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL,
+function localEVADMM(evInd::Int,p::Int,stepI::Int,evS,dLogadmm::itLogPWL,
     evV,itLam,s0,itρ,slack,roundSigFigs,solverSilent)
     N=evS.N
     S=evS.S
@@ -533,7 +533,7 @@ function localEVADMM(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::
     #evV=prevVu[collect(evInd:N:length(prevVu)),1]
     target=zeros((horzLen+1),1)
     target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
-    evM = Model(solver = GurobiSolver())
+    evM = Model(solver = GurobiSolver(NumericFocus=3))
     @variable(evM,sn[1:(horzLen+1)])
     @variable(evM,u[1:(horzLen+1)])
     if slack @variable(evM,slackSn) end
@@ -570,13 +570,13 @@ function localEVADMM(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::
     return nothing
 end
 
-function localXFRMADMM(p::Int,stepI::Int,evS::scenarioStruct,dLogadmm::itLogPWL,itLam,itVz,itρ,roundSigFigs,solverSilent)
+function localXFRMADMM(p::Int,stepI::Int,evS,dLogadmm::itLogPWL,itLam,itVz,itρ,roundSigFigs,solverSilent)
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,evS.K-stepI)
 
     #N+1 decoupled problem aka transformer current
-    tM = Model(solver = GurobiSolver())
+    tM = Model(solver = GurobiSolver(NumericFocus=3))
     @variable(tM,z[1:(S)*(horzLen+1)])
     @variable(tM,t[1:(horzLen+1)])
     # constFun1(u,v)=sum(Lam[k,p]*sum(u[(k-1)*(S)+s,1]-v[(k-1)*(S)+s,1] for s=1:S)  for k=1:(horzLen+1))
@@ -626,7 +626,7 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,ro
 
     #ρDivRate=1.1
     #ρRate=1.5
-    maxRho=1e9
+    maxRho=1e100
 
     #x minimization eq 7.66 in Bertsekas
     if runParallel
@@ -743,7 +743,7 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,ro
     end
 end
 
-function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionStruct,dCM,cSave::centralLogStruct,roundSigFigs::Int,silent::Bool)
+function runEVADMMStep(stepI::Int,maxIt::Int,evS,dSol::solutionStruct,dCM,cSave::centralLogStruct,roundSigFigs::Int,silent::Bool)
     K=evS.K
     N=evS.N
     S=evS.S
@@ -753,6 +753,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
     p=1
     timeStart=now()
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
+    #while (p<=maxIt)
         #global p
         if p==1
             itLam=prevLam
@@ -772,23 +773,11 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
         end
         p+=1
     end
-
     if stepI in saveLogInd
         ind=findall(x->x==stepI,saveLogInd)[1]
         dCM.convIt[1,1,ind]=convIt
-
-        # fPlotadmm=plot(1:convIt,dCM.objAbs[1:convIt,ind],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
-        # convItPlotadmm=plot(1:convIt,dCM.lamIt2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
-        # convPlotadmm=plot(1:convIt,dCM.lam2Norm[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
-        # constPlotadmm=plot(1:convIt,dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
     end
     #
-    # xPlot=zeros(horzLen+1,N)
-    # uPlotd=zeros(horzLen+1,N)
-    # for ii= 1:N
-    # 	xPlot[:,ii]=dLogadmm.Sn[collect(ii:N:length(dLogadmm.Sn[:,convIt])),convIt]
-    # 	uPlotd[:,ii]=dLogadmm.Un[collect(ii:N:length(dLogadmm.Un[:,convIt])),convIt]
-    # end
     # #convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
@@ -857,7 +846,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS::scenarioStruct,dSol::solutionS
     return nothing
 end
 
-function pwlEVadmm(maxIt::Int,evS::scenarioStruct,cSave::centralLogStruct,slack::Bool,roundSigFigs::Int, silent::Bool)
+function pwlEVadmm(maxIt::Int,evS,cSave::centralLogStruct,slack::Bool,roundSigFigs::Int, silent::Bool)
 
     horzLen=evS.K1
     K=evS.K
