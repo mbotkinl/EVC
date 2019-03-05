@@ -81,3 +81,24 @@ else #create scenario
 	using Distributions
 	evS=setupScenario(N;Tmax=Tmax,num_homes=num_homes,Dload_error=Dload_error,saveS=saveS,path=path)
 end
+
+if forecastError
+	using Distributions
+	L=Int(round(evS.K/2))
+	noise = pdf.(Normal(0,1),range(-5,5,length=L))
+	noise_norm = (noise.-minimum(noise))/(maximum(noise)-minimum(noise))
+	noisePerc=5
+	iD_error=zeros(length(evS.iD_pred),1)
+	iD_error[1:L]=round.(noise_norm*noisePerc,digits=3)
+	iD_error[iD_error.<0.1].=0
+	iD_actual=evS.iD_pred .+iD_error
+else
+	iD_actual=evS.iD_pred
+end
+
+stT1=Time(20,0)
+endT1=Time(23,59)
+stT2=Time(0,0)
+endT2=Time(10,0)
+Xlabels=vcat(collect(stT1:Dates.Second(round(evS.Ts)):endT1),collect(stT2:Dates.Second(round(evS.Ts)):endT2))
+xticks=(1:40:evS.K,Dates.format.(Xlabels[1:40:evS.K],"HH:MM"))

@@ -95,7 +95,7 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
     Tactual=zeros(horzLen+1,1)
     itotal=zeros(horzLen+1,1)
     for k=1:horzLen+1
-        itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + evS.iD_actual[stepI+(k-1),1]
+        itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + iD_actual[stepI+(k-1),1]
     end
     Tactual[1,1]=evS.τP*t0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
     for k=1:horzLen

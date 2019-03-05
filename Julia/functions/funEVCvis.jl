@@ -5,7 +5,7 @@ using Plots.PlotMeasures
 path=path*"ForVis\\"
 cRun,runs, noLim, evS1=readRuns(path);
 lowRes=true
-savefig=true
+savefig=false
 
 #resPlot=compareRunsGraph(runs, cRun, noLim, saveResults,lowRes)
 #cTable=compareRunsTable(runs,evS)
@@ -13,14 +13,6 @@ savefig=true
 # for NL/PWL compare
 cRun,runs, noLim, evS1=readRuns(path,true);
 nl_pwlCompare(evS, runs,savefig,lowRes)
-
-stT1=Time(20,0)
-endT1=Time(23,59)
-stT2=Time(0,0)
-endT2=Time(10,0)
-Xlabels=vcat(collect(stT1:Dates.Second(round(evS.Ts)):endT1),collect(stT2:Dates.Second(round(evS.Ts)):endT2))
-xticks=(1:40:evS.K,Dates.format.(Xlabels[1:40:evS.K],"HH:MM"))
-
 
 # @time runALADit(1)
 #@time testALAD(1)
@@ -35,7 +27,6 @@ xticks=(1:40:evS.K,Dates.format.(Xlabels[1:40:evS.K],"HH:MM"))
 # testDual(1)
 # @profile testDual(1)
 # Juno.profiler()
-
 
 
 function readRuns(path,multiCentral=false)
@@ -581,9 +572,6 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
 
     plotLabels=copy(permutedims(runNames))
 
-    for i=1:length(plotLabels)
-        plotLabels[i]=renameLabel(plotLabels[i])
-    end
 
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
@@ -615,12 +603,26 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
     if lowRes
         pubPlot(resPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
     else
-        pubPlot(resPlot,thickscale=1.4,sizeWH=(800,600),dpi=100)
+        pubPlot(resPlot,thickscale=1.4,sizeWH=(1000,600),dpi=100)
     end
 
     if saveF savefig(resPlot,path*"nl_pwl.png") end
 
     return resPlot
+end
+
+function forecastError()
+
+    #plotLabels
+    plotLabels=["Perfect Forecast" "Forecast Error"]
+    iD=uSum
+    iD[:,1]=iD[:,1] .+ evS.iD_pred
+    iD[:,2]=iD[:,2] .+ iD_actual
+
+    loadPlot=plot(1:Klen,iD,xlabel="",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
+                  seriescolor=plotColors,xticks=xticks)
+    plot!(loadPlot,1:Klen,hcat(evS.iD_pred,iD_actual),label=["Predicted Background Demand" "Actual Background Demand"],line=(:dash))
+    savefig(resPlot,path*"iDError.png")
 end
 
 function scenarioPlots(evS)
