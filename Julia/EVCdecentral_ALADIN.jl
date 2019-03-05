@@ -13,7 +13,7 @@ fname = "dALADIN_N$(N)"*eqString
 if loadResults
 	println("Reading in ALAD Sim")
 	loadF=load(path*fname*".jld2")
-	dLogalad=loadF["solution"]
+	dSolalad=loadF["solution"]
 	dCMalad=loadF["convMetrics"]
 else
 	t0=evS.t0
@@ -50,8 +50,8 @@ if drawFig savefig(pd1alad,path*"J_decentral_ALADIN_SOC.png") end
 pd2alad=plot(dSolalad.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,evS.K))
 if drawFig savefig(pd2alad,path*"J_decentral_ALADIN_Curr.png") end
 
-pd3alad=plot(hcat(dSolalad.Tactual[:,1],dSolalad.Tpred[:,1])*1000,label=["Actual Temp" "Pred Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
-plot!(pd3alad,1:evS.K,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
+pd3alad=plot(hcat(dSolalad.Tactual[:,1],dSolalad.Tpred[:,1]),label=["Actual Temp" "Pred Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
+plot!(pd3alad,1:evS.K,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(pd3alad,path*"J_decentral_ALADIN_Temp.png") end
 
 pd4alad=plot(hcat(cSol.lamCoupl,dSolalad.lamCoupl),xlabel="Time",ylabel=raw"Lambda ($/kA)",
