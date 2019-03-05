@@ -1,44 +1,46 @@
 #test discretization
-T1=12*3600
+T1=evS.K1*3600
 Ts=evS.Ts
 T0=evS.t0
 t0=0
-#Tamb=evS.Tamb
-Tamb=370
-# iD=evS.iD
-iD=0
+Tamb=evS.Tamb
+#Tamb=370
+iD=evS.iD_actual
+#iD=0
 # u=cSolnl.Un
 horzLen=evS.K1
 
 
-
-m   = 2000                             # transformer mass in kg
-C   = 450*m                            # heat cap. thermal mass J/K ----- spec. heat cap. of C = {carbon steel, iron, veg. oil} = {490, 450, 1670} J/(kg*K)
-Rh   = 1070e-4/(35*5*(m/7870)^(2/3))   # heat outflow resistance K/W : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
-Rw  = 1
-Vac = 240                              # PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
-Vtf = 8320                             # distr-level transformer rms voltage --- V [used in inelastic kW -> kA conv]
-Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
-
-beta=1/(C*Rh)
+#
+# m   = 2000                             # transformer mass in kg
+# C   = 450*m                            # heat cap. thermal mass J/K ----- spec. heat cap. of C = {carbon steel, iron, veg. oil} = {490, 450, 1670} J/(kg*K)
+# Rh   = 1070e-4/(35*5*(m/7870)^(2/3))   # heat outflow resistance K/W : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
+# Rw  = 1
+# Vac = 240                              # PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
+# Vtf = 8320                             # distr-level transformer rms voltage --- V [used in inelastic kW -> kA conv]
+# Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
+#
+# beta=1/(C*Rh)
 
 #t=range(t0,stop=T1,step=1)
 timeSteps=1:horzLen+1
 
 
-
-using DifferentialEquations
-ff(u,p,t) = 1/C*((Rw/Ntf)*(1)^2-1/Rh*(u-370))
-#ff(u,p,t) =-1/Rh*(u-370)
-
-u0=370.0
-tspan = (1,(horzLen+1)*Ts)
-prob = ODEProblem(ff,u0,tspan)
-sol = DifferentialEquations.solve(prob,Tsit5(),reltol=1e-12,abstol=1e-12,saveat=Ts)
-actualT=sol.u
-
-plot(actualT)
+# using DifferentialEquations
+# ff(u,p,t) = 1/C*((Rw/Ntf)*(1)^2-1/Rh*(u-370))
+# #ff(u,p,t) =-1/Rh*(u-370)
 #
+# u0=370.0
+# tspan = (1,(horzLen+1)*Ts)
+# prob = ODEProblem(ff,u0,tspan)
+# sol = DifferentialEquations.solve(prob,Tsit5(),reltol=1e-12,abstol=1e-12,saveat=Ts)
+# actualT=sol.u
+#
+# plot(actualT)
+#
+
+
+
 #continous time
 using QuadGK
 intR=zeros(length(timeSteps),1)
@@ -46,8 +48,6 @@ for i=1:length(timeSteps)
     ind=timeSteps[i]
     t=ind*Ts
     f=x -> exp(-beta*(t-x))*(Rw/(C*Ntf)*(1000)^2+beta*370)
-    #f=x -> exp(-beta*(t-x))*(beta*370)
-
     rr,tol=quadgk(f, t0, t, rtol=1e-8)
     intR[i]=rr
 end

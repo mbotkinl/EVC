@@ -80,61 +80,69 @@ status=solve(m)
 
 
 
+
+
+
+xfrmR=10e3/3
+L=0
+t0=0
+Ta=40
+T0=40
+abase=0.000939
+
 #checking Pauls XFRM equation continous
 using QuadGK
 using Plots; pyplot()
-b=0.0149
-t0=0
-L=25e3/3
-Ta=40
-T0=40
-alpha = 0.178
-a=0.000939e-6;
-# t=1:100
-t_range=1:13*60
-T=zeros(length(t_range))
+alpha = 0.178*5
+#a=0.000939e-6*1.5
+a=abase/(1e3/3/2.5)^2*1.5
+b=0.0149*2
+t_range=1:3:4*60
+T_Ct=zeros(length(t_range))
 for i=1:length(t_range)
     t=t_range[i]
     f(tau) = exp(-b*(t-tau))*(a*L^2+b*Ta+alpha)
     # f(tau) = exp(-b*(t-tau))*(0.000939*L^2+b*Ta+0.178)
     (T_1,E)=quadgk(f,0,t, rtol=1e-9)
-    T[i]=exp(-b*t)*T0+T_1
+    T_Ct[i]=exp(-b*t)*T0+T_1
 end
-plot(t_range,T)
-
-
+plot(t_range,T_Ct)
 
 
 #testing new model in Celsius disctete
-using Plots;pyplot()
-xfrmR  = 10e3/3                          # single phase transformer rating VA
-Vac = 240                              # PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
+#Vac = 240                              # PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
 Vtf = 8320                             # distr-level transformer rms voltage --- V [used in inelastic kW -> kA conv]
-Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
-Tamb=60
-T0=Tamb
-power_weight = 0.000939/(1e3/3/2.5)^2/60
-beta = 0.0149/60
-alpha = 0.178/60
+#Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
+#power_weight = 0.000939/(1e3/3/2.5)^2*1.5/60
+power_weight = a/60
+
+b_dt = b/60
+alpha_dt = alpha/60
 # Ts=3 #minutes
 # K=round(Int,13*60/Ts)
 Ts=3*60 #minutes
-K=round(Int,13*60*60/Ts)
-τP = exp(- Ts*beta)
+K=round(Int,4*60*60/Ts)
+τP = exp(- Ts*b_dt)
 ρP = (1 - τP)
-curr_weight = power_weight*Vac^2
-γP = 1/beta*ρP*curr_weight
-ItotalMax =  (xfrmR/Vtf)*Ntf#kA
+curr_weight = power_weight*Vtf^2
+γP = 1/b_dt*ρP*curr_weight
+ItotalMax =  (L/Vtf)#kA
+#ItotalMax =  (xfrmR/Vtf)*Ntf#kA
 T=zeros(K,1)
 u=ItotalMax*ones(K,1)
 #p=xfrmR*ones(K,1)
-T[1]=T0
+T_Dt=zeros(K+1)
+T_Dt=zeros(K)
+T_Dt[1]=T0
 for k=1:K-1
-    T[k+1,1]=τP*T[k,1]+γP*u[k]^2+ρP*(Tamb+alpha/beta)
+    T_Dt[k+1,1]=τP*T_Dt[k,1]+γP*u[k]^2+ρP*(Ta+alpha_dt/b_dt)
     #T[k+1,1]=τP*T[k,1]+γP*p[k]^2+ρP*(Tamb+1/beta*alpha)  #works
 end
-plot(collect(Ts*(1:K-1)),T)
-#plot(T)
+#plot(collect(Ts*(1:K-1)),T_Dt)
+discPlot=plot(hcat(T_Ct,T_Dt),labels=["CT" "DT"],xlabel="Time (m)",ylabel="Temperature (C)",xlims=(0,80))
+#discPlot=plot(hcat(T_Ct,T_Dt[2:K+1]),labels=["CT" "DT"],xlabel="Time (m)",ylabel="Temperature (C)",xlims=(0,80))
+pubPlot(discPlot,thickscale=1.4,sizeWH=(800,400),dpi=100)
+savefig(discPlot,path*"discPlot.png")
 
 
 
