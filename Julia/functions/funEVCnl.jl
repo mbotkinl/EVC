@@ -667,6 +667,9 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     if slack
         append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
     end
+	# if reg
+	# 	append!(objExp,reg_weight*sum(sn[k,1]^2+u[k,1]^2 for k=1:horzLen+1))
+	# end
     @objective(evM,Min,objExp)
     @constraint(evM,sn[1,1]==s0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
     @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
@@ -710,9 +713,13 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     dLogaladnl.Sn[ind,p]=round.(snVal,sigdigits=roundSigFigs)
     dLogaladnl.Un[ind,p]=round.(uVal,sigdigits=roundSigFigs)
 
-    dLogaladnl.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,sigdigits=roundSigFigs)
-    dLogaladnl.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],sigdigits=roundSigFigs)
-
+	# if reg
+    #     dLogaladnl.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal+2*reg_weight*uVal,sigdigits=roundSigFigs)
+    #     dLogaladnl.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]+2*reg_weight*snVal,sigdigits=roundSigFigs)
+    # else
+        dLogaladnl.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,sigdigits=roundSigFigs)
+        dLogaladnl.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],sigdigits=roundSigFigs)
+    #end
     return nothing
 end
 
@@ -759,9 +766,13 @@ function localXFRMALAD(p::Int,stepI::Int,σI::Float64,σT::Float64,evS::scenario
 		append!(objExpCon,[t1-1])
 		@constraint(tM,objCon,norm(objExpCon)<=t1+1)
 	else
-		@objective(tM,Min, sum(-itLam[k,1]*itotal[k]+
+		objExp=sum(-itLam[k,1]*itotal[k]+
 				  itρ/2*σI*(itotal[k]-itVi[k,1])^2+
-				  itρ/2*σT*(t[k]-itVt[k,1])^2  for k=1:(horzLen+1)))
+				  itρ/2*σT*(t[k]-itVt[k,1])^2  for k=1:(horzLen+1))
+		# if reg
+		# 	append!(objExp,reg_weight*sum(itotal[k,1]^2+t[k,1]^2 for k=1:horzLen+1))
+		# end
+		@objective(tM,Min, objExp)
 		@NLconstraint(tM,tempCon1,t[1]-evS.τP*t0-evS.γP*(itotal[1])^2-evS.ρP*evS.Tamb[stepI,1]==0)
 		@NLconstraint(tM,tempCon2[k=1:horzLen],t[k+1]-evS.τP*t[k]-evS.γP*(itotal[k+1])^2-evS.ρP*evS.Tamb[stepI+k,1]==0)
 	end
@@ -806,6 +817,14 @@ function localXFRMALAD(p::Int,stepI::Int,σI::Float64,σT::Float64,evS::scenario
 	dLogaladnl.Ipred[:,p]=round.(iVal,sigdigits=roundSigFigs)
 	dLogaladnl.Gi[:,p].=0
 	dLogaladnl.Gt[:,p].=0
+
+	# if reg
+	# 	dLogaladnl.Gi[:,p]=round.(2*reg_weight*iVal,sigdigits=roundSigFigs)
+	# 	dLogaladnl.Gt[:,p]=round.(2*reg_weight*tVal,sigdigits=roundSigFigs)
+	# else
+		dLogaladnl.Gi[:,p].=0
+		dLogaladnl.Gt[:,p].=0
+	#end
 	return lambdaTemp
 end
 
@@ -814,13 +833,21 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,
 
 	horzLen=min(evS.K1,evS.K-stepI)
 
-	Hu=2*evS.Ri#*(1+rand())
-	Hs=2*evS.Qsi#*(1+rand())
-	Hi=0
-	Ht=0
-	ρALAD=1e3
-	ρRate=1.1
-	ρALADmax=1e6
+	# if reg
+    #     Hu=2*evS.Ri.+2*reg_weight
+    #     Hs=2*evS.Qsi.+2*reg_weight
+    #     Hi=2*reg_weight
+    #     Ht=2*reg_weight
+    # else
+		Hu=2*evS.Ri#*(1+rand())
+		Hs=2*evS.Qsi#*(1+rand())
+		Hi=0
+		Ht=0
+	#end
+
+
+	#ρALAD=1e3
+	ρALADmax=1e9
 	#μALADp=μALADp*p^2
 	# μALAD=1e3
 	# μRate=1.1
@@ -1052,7 +1079,7 @@ function runNLALADStep(stepI,maxIt,evS,dSolnl,dCMnl,cSave,eqForm,roundSigFigs,si
     p=1
     timeStart=now()
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
-    #while (p<=maxIt)
+	#while (p<=maxIt)
         #global p
         #@printf "%git" p
         if p==1
@@ -1081,22 +1108,20 @@ function runNLALADStep(stepI,maxIt,evS,dSolnl,dCMnl,cSave,eqForm,roundSigFigs,si
         ind=findall(x->x==stepI,saveLogInd)[1]
         dCMnl.convIt[1,1,ind]=convIt
     end
-	# print(round(now()-timeStart,Second))
+	print(round(now()-timeStart,Second))
 	#
 	# indCheck=2
-	# plot(hcat(dLogaladnl.uSum[:,indCheck],dLogalad.uSum[:,indCheck]),label=["NL" "PWL"])
-	# plot(hcat(dLogaladnl.Tactual[:,indCheck],dLogalad.Tactual[:,indCheck]),label=["NL" "PWL"])
-	# plot(hcat(dLogaladnl.Lam[:,indCheck],dLogalad.Lam[:,indCheck]),label=["NL" "PWL"])
-	# plot(hcat(dLogaladnl.Ipred[:,indCheck],dLogalad.Itotal[:,indCheck]),label=["NL" "PWL"])
-	# plot(hcat(dLogaladnl.couplConst[:,indCheck],dLogalad.couplConst[:,indCheck]),label=["NL" "PWL"])
-	# plot(hcat(dLogaladnl.Gu[:,indCheck],dLogalad.Gu[:,indCheck]),label=["NL" "PWL"])
-	# plot(hcat(dLogaladnl.Gs[:,indCheck],dLogalad.Gs[:,indCheck]),label=["NL" "PWL"])
-	# plot(hcat(dLogaladnl.Ctu[:,indCheck],dLogalad.Ctu[:,indCheck]),label=["NL" "PWL"])
-	# plot(hcat(dLogaladnl.Vt[:,indCheck],dLogalad.Vt[:,indCheck]),label=["NL" "PWL"])
-	# plot(hcat(dLogaladnl.Vu[:,indCheck],dLogalad.Vu[:,indCheck]),label=["NL" "PWL"])
-	# plot(hcat(dLogaladnl.Vs[:,indCheck],dLogalad.Vs[:,indCheck]),label=["NL" "PWL"])
-	#
-	#
+	# plot(hcat(dLogaladnl.uSum[:,indCheck],dLogaladnl.uSum[:,indCheck]),label=["NL" "PWL"])
+	# plot(hcat(dLogaladnl.Tactual[:,indCheck],dLogaladnl.Tactual[:,indCheck]),label=["NL" "PWL"])
+	# plot(hcat(dLogaladnl.Lam[:,indCheck],dLogaladnl.Lam[:,indCheck]),label=["NL" "PWL"])
+	# plot(hcat(dLogaladnl.Ipred[:,indCheck],dLogaladnl.Itotal[:,indCheck]),label=["NL" "PWL"])
+	# plot(hcat(dLogaladnl.couplConst[:,indCheck],dLogaladnl.couplConst[:,indCheck]),label=["NL" "PWL"])
+	# plot(hcat(dLogaladnl.Gu[:,indCheck],dLogaladnl.Gu[:,indCheck]),label=["NL" "PWL"])
+	# plot(hcat(dLogaladnl.Gs[:,indCheck],dLogaladnl.Gs[:,indCheck]),label=["NL" "PWL"])
+	# plot(hcat(dLogaladnl.Ctu[:,indCheck],dLogaladnl.Ctu[:,indCheck]),label=["NL" "PWL"])
+	# plot(hcat(dLogaladnl.Vt[:,indCheck],dLogaladnl.Vt[:,indCheck]),label=["NL" "PWL"])
+	# plot(hcat(dLogaladnl.Vu[:,indCheck],dLogaladnl.Vu[:,indCheck]),label=["NL" "PWL"])
+	# plot(hcat(dLogaladnl.Vs[:,indCheck],dLogaladnl.Vs[:,indCheck]),label=["NL" "PWL"])
 	#
     # xPlotnl=zeros(horzLen+1,N)
     # uPlotnl=zeros(horzLen+1,N)
@@ -1108,8 +1133,8 @@ function runNLALADStep(stepI,maxIt,evS,dSolnl,dCMnl,cSave,eqForm,roundSigFigs,si
 	# plot!(p1,sum(cSavenl.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8,label="Central Open Loop")
 	#
     # plot(xPlotnl)
-    # pd3alad=plot(hcat(dLogaladnl.Tactual[:,convIt],dLogaladnl.Tpred[:,convIt])*1000,label=["Actual Temp" "pred Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
-    # plot!(pd3alad,1:horzLen+1,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
+    # pd3alad=plot(hcat(dLogaladnl.Tactual[:,convIt],dLogaladnl.Tpred[:,convIt]),label=["Actual Temp" "pred Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
+    # plot!(pd3alad,1:horzLen+1,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
 	#
     # #convergence plots
     # halfCI=Int(floor(convIt/2))
@@ -1123,6 +1148,8 @@ function runNLALADStep(stepI,maxIt,evS,dSolnl,dCMnl,cSave,eqForm,roundSigFigs,si
     # plot!(uSumPlotalad,sum(cSavenl.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
 	#
     # constPlotalad2=plot(dLogaladnl.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+	#
+	# itotalPlotalad=plot(dLogaladnl.Ipred[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
 	#
     # lamPlotalad=plot(dLogaladnl.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",legend=false)
     # plot!(lamPlotalad,cSavenl.Lam[:,:,ind],seriescolor=:black,linewidth=2,linealpha=0.8)

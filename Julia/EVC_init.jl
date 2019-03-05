@@ -40,7 +40,7 @@ datafile="jld2" #"mat" #"jld" #"n"
 file="EVCscenarioN$(N)."*datafile
 
 updateMethod="dualAscent" #dualAscent #fastAscent
-maxIt=200 #500 for Dual Ascent
+maxIt=500 #500 for Dual Ascent
 dualChk = 5e-4 #lamIt=0
 primChk = 5e-4 # Ax-B=0
 saveLogInd=[1,2,71,141,210]
@@ -48,7 +48,7 @@ noTlimit=false
 forecastError=false
 relaxedMode=0
 slack=false
-eqForm=false
+eqForm=true
 tempAugment=false
 ψ=-0
 
