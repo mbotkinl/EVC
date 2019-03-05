@@ -16,6 +16,9 @@ else
     t0=evS.t0
     s0=evS.s0
 
+	roundSigFigs=12
+
+
 	println("Running Central Sim")
 	timeT=@elapsed cSol, cSave=pwlEVcentral(evS,slack,silent)
 	if saveResults saveRun(path,fname,timeT,cSol,cSave=cSave) end

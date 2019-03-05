@@ -3,14 +3,16 @@ using Plots.PlotMeasures
 #run comparison
 #path = clips()
 path=path*"ForVis\\"
-cRun,runs, noLim, evS=readRuns(path);
+cRun,runs, noLim, evS1=readRuns(path);
 lowRes=true
+savefig=true
+
 #resPlot=compareRunsGraph(runs, cRun, noLim, saveResults,lowRes)
 #cTable=compareRunsTable(runs,evS)
 
 # for NL/PWL compare
-#cRun,runs, noLim, evS=readRuns(path,true);
-#nl_pwlCompare(evS, runs,savefig,lowRes)
+cRun,runs, noLim, evS1=readRuns(path,true);
+nl_pwlCompare(evS, runs,savefig,lowRes)
 
 stT1=Time(20,0)
 endT1=Time(23,59)
@@ -172,7 +174,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     convItPlot=plot(convIt,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),xticks=xticks,labels=plotLabels)
 
 
-    lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),labels="Central",
+    lamPlot=plot(1:Klen,cSol.lamCoupl/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",xlims=(0,Klen),labels="Central",
                    seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
     plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors)
     if noLim !=nothing
@@ -492,34 +494,49 @@ function pwlSegPlot()
     solX=sum(Z,dims=2)
     solY=zeros(K,1)
     for i=1:S
-        #global solY[:,1]=solY[:,1].+deltaI*(2*i-1)*Z[:,i]
+        global solY[:,1]=solY[:,1].+deltaI*(2*i-1)*Z[:,i]
     end
     tightT=abs.(Tpred.-evS.Tmax).<1e-2
     indT=findlast(tightT.==true)[1]
-    segP=scatter(solX[1:indT],solY[1:indT],label="Before Overload",markersize=5,markerstrokewidth=0,
-                seriescolor="red",xlims=(minimum(solX)-deltaI,maximum(solX)+deltaI))
-    scatter!(segP,solX[indT+1:K],solY[indT+1:K],label="After Overload",markersize=2,markerstrokewidth=0,seriescolor="green")
 
     dX=100
     x=range(0+I/(S*dX),I,length=S*dX)
     #segP=plot(x,x.^2,label=L"i^2")
-    plot!(segP,x,x.^2,label=L"i^2")
     segs=zeros(length(x))
     prevY=0
     for i=1:S
         tempY=(i-1)*dX+1:i*dX
         alpha=(2*i-1)*deltaI
         segs[tempY]=x[1:dX]*alpha.+prevY
-        #global prevY=segs[i*dX]
+        global prevY=segs[i*dX]
     end
+
+
+    segP=plot(x,x.^2,label=L"i^2",legend=:topleft)
     plot!(segP,x,segs,label="PWL Approx",xlabel="Current (kA)")
-    #ylims!(segP,(380,550))
-    xlims!(segP,(0,25))
+    scatter!(segP,solX[1:indT],solY[1:indT],label="Before Overload",markersize=10,markerstrokewidth=0,
+                seriescolor="red",xlims=(minimum(solX)-deltaI,maximum(solX)+deltaI))
+    scatter!(segP,solX[indT+1:K],solY[indT+1:K],label="After Overload",markersize=5,markerstrokewidth=0,seriescolor="green")
     ylabel!("e[k]")
-    pubPlot(segP,thickscale=1,sizeWH=(600,400),dpi=60)
+    xlims!(segP,(0,25))
+
+
+    segP2=plot(x,x.^2,label=L"i^2",linewidth=2,widen=true,legend=:topleft)
+    plot!(segP2,x,segs,label="PWL Approx",xlabel="Current (kA)",linewidth=2)
+    scatter!(segP2,solX[1:indT],solY[1:indT],label="Before Overload",markersize=15,markerstrokewidth=0,
+                seriescolor="red",xlims=(minimum(solX)-deltaI,maximum(solX)+deltaI))
+    ylims!(segP2,(380,500))
+    xlims!(segP2,(19.5,22))
+
+
+    segPlots=plot(segP,segP2,layout=(1,2))
+    pubPlot(segPlots,thickscale=1.5,sizeWH=(1200,400),dpi=100)
+    savefig(segPlots,path*"pwlSegPlot.png")
+
+
 
     #check one spot
-    i=40
+    i=3
     pwlI=sum(Z[i,:])
     nlI=uSum[i]+evS.iD_actual[i]
     nlI2=(nlI)^2
@@ -529,8 +546,6 @@ function pwlSegPlot()
     pwlSeg=prevY+deltaI*(2*(full_segs+1)-1)*(pwlI-full_segs*deltaI)
 
     nlI2<pwlSeg<pwlI2
-
-    savefig(segP,path*"pwlSegPlot.png")
 end
 
 function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
@@ -592,7 +607,7 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
     plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash))
 
 
-    lamPlot=plot(1:Klen,Lam,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),labels=plotLabels,
+    lamPlot=plot(1:Klen,Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",xlims=(0,Klen),labels=plotLabels,
                    seriescolor=plotColors,xticks=xticks)
 
     #resPlot=plot(tempPlot,loadPlot,snSumPlot,lamPlot,layout=(4,1))
@@ -603,7 +618,7 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
         pubPlot(resPlot,thickscale=1.4,sizeWH=(800,600),dpi=100)
     end
 
-    if saveF savefig(resPlot,path*"resPlot.png") end
+    if saveF savefig(resPlot,path*"nl_pwl.png") end
 
     return resPlot
 end
@@ -625,8 +640,8 @@ function scenarioPlots(evS)
     # b_hist=histogram(b_kWh,nbins=20,legend=false,xlabel="EV Battery Size (kWh)",ylabel= "Number of EVs")
     # imax_hist=histogram(evS.imax,nbins=12,legend=false,xlabel="EV Max Charging Power (kW)",ylabel= "")
     # battParamsPlot=plot(b_hist,imax_hist,layout=(1,2))
-    battParamsPlot=histogram2d(b_kWh,evS.imax,nbins=20,xlabel="EV Battery Size (kWh)",ylabel="EV Max Charging Power (kW)",
-        colorbar_title="Number of EVs",thickness_scaling=1.6,dpi=100,size=(800,400),bar_edges=false)
+    battParamsPlot=histogram2d(b_kWh,evS.imax*1000,nbins=20,xlabel="EV Battery Size (kWh)",ylabel="EV Max Charging Power (A)",
+        colorbar_title="Number of EVs",thickness_scaling=1.8,dpi=100,size=(1000,500),bar_edges=false)
     savefig(battParamsPlot,path*"Scenario\\battParamsPlot.png")
 
     s0Plot=histogram(evS.s0,nbins=40,legend=false,xlabel="EV Initial SoC (%)",ylabel= "Number of EVs",title="(a)")
@@ -664,13 +679,12 @@ function othergraphs()
     else
         pubPlot(convPlot,thickscale=0.8,sizeWH=(800,600),dpi=100)
     end
-
     if saveF savefig(convPlot,path*"dCMPlot.png") end
 
 
-
-    dualComp=plot(hcat(cSol.lamCoupl,cSol.lamTemp),labels=["Coupling Constraint Dual" "Temperature Limit Dual"],
-    xlabel="Time",xticks=xticks,xlims=(0,evS.K))
+    #comparing dual variables
+    dualComp=plot(hcat(cSol.lamCoupl/1000,cSol.lamTemp/1000),labels=["Coupling Constraint Dual" "Temperature Limit Dual"],
+                    xlabel="Time",xticks=xticks,xlims=(0,evS.K))
     pubPlot(dualComp,thickscale=1.5,sizeWH=(800,400),dpi=100)
     savefig(dualComp,path*"dualCompPlot.png")
 end
