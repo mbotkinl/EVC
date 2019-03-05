@@ -228,7 +228,7 @@ function compareConvGraph_New(evS;ind=1)
         for i=1:length(runNames)
             cIt=Int(runs[runNames[i]]["convMetrics"].convIt[ind])
             temp=getfield(runs[runNames[i]]["convMetrics"],Symbol(convNames[ii]))
-            convDict[convNames[ii]][:,i]=temp[:,ind]
+            convDict[convNames[ii]][1:cIt,i]=temp[1:cIt,ind]
             # fill in NaN for greater than convIt
             convDict[convNames[ii]][cIt:numIt,i].=NaN
         end
@@ -242,6 +242,7 @@ function compareConvGraph_New(evS;ind=1)
     #internal metrics
     couplPlot=plot(convDict["coupl1Norm"],legend=false,yscale=:log10,ylabel= L"||i_d[k+1]+\sum_{n=1}^N i_n[k+1]-\sum_{m=1}^M i_m^{PW}[k+1]||_1")
     dualPlot=plot(convDict["lamIt2Norm"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"||\lambda^{(p)}-\lambda^{(p-1)}||_2")
+    intConvPlot=plot(couplPlot,dualPlot,layout=(2,1))
 
     #external
     un1Plot=plot(convDict["un1Norm"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"||u_n^{(p)}-u_n^{*}||_1")
@@ -626,7 +627,7 @@ function scenarioPlots(evS)
     # battParamsPlot=plot(b_hist,imax_hist,layout=(1,2))
     battParamsPlot=histogram2d(b_kWh,evS.imax,nbins=20,xlabel="EV Battery Size (kWh)",ylabel="EV Max Charging Power (kW)",
         colorbar_title="Number of EVs",thickness_scaling=1.6,dpi=100,size=(800,400),bar_edges=false)
-    savefig(battParamsPlot,path*"battParamsPlot.png")
+    savefig(battParamsPlot,path*"Scenario\\battParamsPlot.png")
 
     s0Plot=histogram(evS.s0,nbins=40,legend=false,xlabel="EV Initial SoC (%)",ylabel= "Number of EVs",title="(a)")
 
@@ -640,7 +641,7 @@ function scenarioPlots(evS)
     minSoCPlot=histogram2d(departTime,evS.Snmin,nbins=12,xlabel="Time",ylabel="Minimum Departure SoC",
         colorbar_title="Number of EVs",title="(b)",xticks=xticksAM)
     evPlot=plot(s0Plot,minSoCPlot,layout=(1,2),thickness_scaling=1.5,dpi=100,size=(1000,400))
-    savefig(evPlot,path*"evParamsPlot.png")
+    savefig(evPlot,path*"Scenario\\evParamsPlot.png")
 
     num_homes =1000
     idPlot=plot(evS.iD_actual*240/num_homes,xticks=xticks,widen=false,legend=false,ylabel="Demand (kW)",title="(a)")
@@ -649,7 +650,7 @@ function scenarioPlots(evS)
     tambPlot=plot(evS.Tamb_raw,xticks=xticks,legend=false,xlabel="Time",ylabel="Temperature (C)",widen=false,title="(b)")
     backgroundPlot=plot(idPlot,tambPlot,layout=(2,1))
     pubPlot(backgroundPlot,thickscale=1.4,sizeWH=(800,400),dpi=100)
-    savefig(backgroundPlot,path*"backgroundParamsPlot.png")
+    savefig(backgroundPlot,path*"Scenario\\backgroundParamsPlot.png")
 end
 
 function othergraphs()

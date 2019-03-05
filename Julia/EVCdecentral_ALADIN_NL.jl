@@ -31,7 +31,6 @@ else
 	if eqForm
 		ρALADp = 1e-3
 		ρRate=1.15
-
 	else
 		ρALADp = 1
 		ρRate=1.1

@@ -153,8 +153,8 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
     end
 
     # new states
-    t0=round.(cSol.Tactual[stepI,1],digits=6)
-    s0=round.(cSol.Sn[stepI,:],digits=6)
+    t0=round.(cSol.Tactual[stepI,1],sigdigits=roundSigFigs)
+    s0=round.(cSol.Sn[stepI,:],sigdigits=roundSigFigs)
     return nothing
 end
 
@@ -838,9 +838,9 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS,dSol::solutionStruct,dCM,cSave:
             newVz=vcat(dLogadmm.Vz[(S+1):(S*(horzLen+1)),convIt-1],dLogadmm.Vz[((S*horzLen)+1):(S*(horzLen+1)),convIt-1])
         end
     end
-    global prevLam=round.(newLam,digits=8)
-    global prevVu=round.(newVu,digits=8)
-    global prevVz=round.(newVz,digits=8)
+    global prevLam=round.(newLam,,sigdigits=roundSigFigs)
+    global prevVu=round.(newVu,,sigdigits=roundSigFigs)
+    global prevVz=round.(newVz,,sigdigits=roundSigFigs)
     #global ρADMMp=round.(ogρ,digits=2)
 
     return nothing

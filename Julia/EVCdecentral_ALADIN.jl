@@ -18,12 +18,25 @@ if loadResults
 else
 	t0=evS.t0
 	s0=evS.s0
-	prevLam=2e1*ones(evS.K1+1,1)
+	prevLam=1e5*ones(evS.K1+1,1)
     prevVt=evS.Tmax*ones(evS.K1+1,1)
     prevVz=.01*ones(evS.S*(evS.K1+1),1)
     prevVu=.01*ones(evS.N*(evS.K1+1),1)
     prevVs=.5*ones(evS.N*(evS.K1+1),1)
-	ρALADp = 0.05
+
+	if eqForm
+		ρALADp = 1e6
+		ρRate=1.15
+	else
+		ρALADp = 1
+		ρRate=1.1
+	end
+
+
+	roundSigFigs=30
+
+	reg_weight=1e-3
+	reg=false
 
 	println("Running ALAD Sim")
 	timeT=@elapsed dSolalad,dCMalad=pwlEValad(maxIt,evS,cSave,slack,eqForm,roundSigFigs,silent)
