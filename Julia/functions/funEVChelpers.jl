@@ -28,6 +28,10 @@ function rebuildEVS(evS)
     return newS
 end
 
+function mapLin(oldVal,oldMin,oldMax,newMin,newMax)
+    return (((oldVal .- oldMin) * (newMax .- newMin)) ./ (oldMax .- oldMin)) .+ newMin
+end
+
 function saveRun(path::String, filename::String, time::Float64, solution; cSave=centralLogStruct(logLength=1,horzLen=1,N=1,S=1),
     convMetrics=convMetricsStruct(maxIt=1,logLength=1))
 
