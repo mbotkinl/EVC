@@ -7,7 +7,7 @@ S=evS.S
 
 packLen=2 #number of time steps
 mttr=evS.Ts*packLen #300
-setSOC=0.25
+setSOC=0.1
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpem.jl")
 
@@ -20,7 +20,7 @@ if loadResults
 	pemSol=loadF["solution"]
 else
 	println("Running PEM Sim")
-	timeT=@elapsed pemSol=pemEVC(evS,slack,silent)
+	timeT=@elapsed pemSol,Req=pemEVC(evS,slack,silent)
 	if saveResults saveRun(path,fname,timeT,pemSol) end
 end
 println("plotting....")
@@ -35,6 +35,8 @@ p3pem=plot(hcat(cSol.Tactual,pemSol.Tactual),label=["Central" "PEM"],xlims=(0,ev
 plot!(p3pem,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(p3pem,path*"J_PEM_Temp.png") end
 
+requests = [count(Req[k,:].>0) for k=1:evS.K]
+reqPlot=plot(requests,xlims=(0,evS.K),xlabel="Time",ylabel="Number of Requests")
 
 aggUpem=plot(hcat(cSol.uSum,pemSol.uSum),label=["Central" "PEM"],
 			xlims=(0,evS.K),xlabel="Time",ylabel="PEV Current (kA)")
