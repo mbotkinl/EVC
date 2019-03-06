@@ -32,7 +32,7 @@ using Plots;pyplot()
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
 N=100
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_largeQ\\PWL\\"
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_largeQ\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\PWL\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_K\\"
 
@@ -56,7 +56,7 @@ drawFig=false
 saveResults=true
 saveS=false
 loadResults=false
-silent=false
+silent=true
 solverSilent=true
 
 if datafile=="jld2"

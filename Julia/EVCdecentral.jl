@@ -16,9 +16,11 @@ else
 	#initialize
     t0=evS.t0
     s0=evS.s0
-	prevLam=1e1*ones(evS.K1+1,1)
+	prevLam=1e5*ones(evS.K1+1,1)
+
+	alpha0 = 1e4 #for kA
 	#prevLam=round.(cSol.lamCoupl[1:evS.K1+1],digits=4)
-	roundSigFigs=12
+	roundSigFigs=30
 
 	println("Running Dual Decomp Sim")
 	timeT=@elapsed dSol,dCM=pwlEVdual(maxIt,updateMethod,evS,cSave,slack,silent)

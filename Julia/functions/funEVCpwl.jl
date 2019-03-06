@@ -312,14 +312,14 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,silent)
 
     if updateMethod=="fastAscent"
         #alpha0 = 0.1  #for A
-        alpha0 = 5e4 #for kA
+        #alpha0 = 5e4 #for kA
         alphaDivRate=2
         minAlpha=1e-6
     else
         #alpha0 = 3e-3 #for A
         # alpha = 3e4 #for kA
         # alphaDivRate=4
-        alpha0 = 5 #for kA
+        #alpha0 = 2e6 #for kA
         alphaDivRate=2
         minAlpha=1e-6
     end
@@ -408,22 +408,21 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,silent)
 end
 
 function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
-
     K=evS.K
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,K-stepI)
-
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
     dLog=itLogPWL(horzLen=horzLen,N=N,S=S)
     p=1
     timeStart=now()
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
+    #while (p<maxIt)
         #global p
         if p==1
             itLam=prevLam
         else
-            itLam=round.(dLog.Lam[:,(p-1)],digits=8)
+            itLam=round.(dLog.Lam[:,(p-1)],sigdigits=roundSigFigs)
         end
         cFlag=runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,silent)
         global convIt=p
@@ -437,8 +436,8 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
         ind=findall(x->x==stepI,saveLogInd)[1]
         dCM.convIt[1,1,ind]=convIt
     end
-
-    # # convergence plots
+    #
+    # # # convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
     #                range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
@@ -472,8 +471,8 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
     dSol.convIt[stepI,1]=convIt
 
     # new states
-    global t0=round.(dSol.Tactual[stepI,1],digits=6)
-    global s0=round.(dSol.Sn[stepI,:],digits=6)
+    global t0=round.(dSol.Tactual[stepI,1],sigdigits=roundSigFigs)
+    global s0=round.(dSol.Sn[stepI,:],sigdigits=roundSigFigs)
 
     if convIt==1
         dSol.lamCoupl[stepI,1]=prevLam[1,1]
@@ -490,7 +489,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
             newLam=vcat(dLog.Lam[2:horzLen+1,convIt-1],dLog.Lam[horzLen+1,convIt-1])
         end
     end
-    global prevLam=round.(newLam,digits=8)
+    global prevLam=round.(newLam,sigdigits=roundSigFigs)
     return nothing
 end
 
