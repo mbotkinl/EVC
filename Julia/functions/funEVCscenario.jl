@@ -193,28 +193,38 @@ end
 function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd())
     #model parameters
     a   = rand(1,H)*.1 .+ 0.8               # efficiency of Li-ion batts is ~80-90%
-    b   = (6*rand(Nh,H).+12)*3.6e6           # battery capacity (12-18 kWh = 43.3-64.8 MJ)
-    imax = (10 .+ 16*rand(Nh,H))/1000             # kA, charging with 10-24 A
+    b_high=100 #kWh
+    b_low = 40 #kWh
+    b_options = [100 200 600]
+    b_prob = [.4 .8]
+    r_ind = rand(N,1)
+    b_kWh = b_options[1]*ones(Int,Nh,H)
+    b_kWh[r_ind.>b_prob[1],:] .= b_options[2]
+    b_kWh[r_ind.>b_prob[2],:] .= b_options[3]
+    b=b_kWh*3.6e6 # battery capacity (MJ)
+    imax = round.(((.7-.2)*rand(Beta(3, 2),Nh,H).+.2),digits=4) # kA, charging with 20-70 A
 
-    m   = 2000                             # transformer mass in kg
-    C   = 450*m                            # heat cap. thermal mass J/K ----- spec. heat cap. of C = {carbon steel, iron, veg. oil} = {490, 450, 1670} J/(kg*K)
-    Rh   = 1070e-4/(35*5*(m/7870)^(2/3))   # heat outflow resistance K/W : R = 0.1073 (K*m^2/W)/(A_s), rule of thumb calculation
-    Rw  = 1                                # coil winding resistance --- ohms:
-    Vac = 240                              # PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
-    Vtf = 8320                             # distr-level transformer rms voltage --- V [used in inelastic kW -> kA conv]
+    xfrmR  = 100e3/3                          # single phase transformer rating kVA
+    Vac = 480                              # PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
+    Vtf = 13.2e3                            # distr-level transformer rms voltage --- V [used in inelastic kW -> kA conv]
     Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
 
     # Discretization parameters:
-    #Ts = Rh*C/9              # s, sampling time in seconds
     Ts=180.0
-    #ηP=a*(Ts/3600)*Vac #Vh
-    ηP=a*(Ts/3600)*Vac/1e3 #kVh
-    τP = exp(- Ts/(Rh*C))
-    ρP = 1 - τP            # no units, ambient-to-temp param: 1/RC
-    γP = Rh*Rw/(Ntf)*ρP*1000^2/1000    # kK/kW, ohmic losses-to-temp parameter
+    power_weight = 0.000939/(1e3/3*4)^2*1.5/60
+    curr_weight = power_weight*Vac^2
+    beta = 0.0149*2/60
+    alpha = 0.178*5/60
+
+    Ts=3*60 #seconds
+    τP = exp(- Ts*beta)
+    ρP = 1 - τP
+    γP = 1/beta*ρP*curr_weight
+    #ηP = round.(Ts*Vac*a./b*1000,digits=4)  # 1/kA, normalized battery sizes (0-1)
+    ηP=a*(Ts/3600)*Vac/1e3
 
     ## MPC Paramters
-    T1=12 #hours
+    T1=8 #hours
     T2=14-T1
     # T1=6 #hours
     # T2=14-T1
@@ -223,19 +233,33 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     K  = K1+K2;                        # Total horizon (8 PM to 10 AM)
 
     # PWL Parameters:
-    S=15
-    ItotalMax = 4  #kA
+    S=6
+    ItotalMax =  (xfrmR/Vtf)*Ntf*1.8 #kA can overload by 1.8 p.u
     deltaI = ItotalMax/S
 
     #system information
-    t0=.370
-    Tamb=.37*ones(K,1)
-    iD_pred=0*ones(K,1)
-    iD_actual=iD_pred
+    t0=Tmax-65
+    Tamb_amplitude = 30 #C
+    # Disturbance scenario:
+    num_homes=1
+    peak_demand_house = 30e6 #W
+    min_demand_house = 25e6 #W
+    Dload_amplitude=num_homes*peak_demand_house #W
+    Dload_minimum = num_homes*min_demand_house
+    dist = [range(-1,stop=10,length=Int(round(K/2)));range(-10,stop=-1,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
+    d = Normal(0,3)
+    inelasticDemand = pdf.(d,dist)
+    FullinelasticDemand = (inelasticDemand.-minimum(inelasticDemand))/(maximum(inelasticDemand)-minimum(inelasticDemand))
+    FullDload=reshape(Dload_amplitude*FullinelasticDemand.+Dload_minimum,(K,1));    # total non-EV demand (in W)
+    iD_pred = round.(FullDload/Vac/1e3,digits=6)    #background demand current (kA)
+    noisePerc= Dload_error/Dload_amplitude
+    iD_actual = round.(iD_pred+2*noisePerc*iD_pred.*rand(length(iD_pred),1).-iD_pred*noisePerc,digits=6)
+    Tamb_raw  = round.(Tamb_amplitude*ones(K+1,1).-pdf.(d,range(-10,stop=10,length=K+1))*20,digits=6);
+    Tamb = Tamb_raw.+alpha/beta
 
-    Qmag=1
-    Rmag=1
-    Omag=100
+    Rmag=1e6
+    Qmag=Rmag/100
+    Omag=Rmag*100
     Rh=(Rmag*rand(1,H).+Rmag/1e3)
     Qh=(Qmag*rand(1,H).+Qmag/1e3)
     Oh=(Omag*rand(1,H).+Omag/1e3)
