@@ -231,14 +231,20 @@ function compareConvGraph_New(evS;ind=1)
 
 
     plotLabels=["NL" "PWL"]
+    plotLabels=["Equality ALADIN" "Inequlity ALADIN"]
+
     for i=1:length(plotLabels)
         plotLabels[i]=renameLabel(plotLabels[i])
     end
 
-    #maxIt=50
+    maxIt=20
     #internal metrics
-    couplPlot=plot(convDict["coupl1Norm"],legend=false,xlims=(0,maxIt),yscale=:log10,ylabel= L"||i_d[k+1]+\sum_{n=1}^N i_n[k+1]-\sum_{m=1}^M i_m^{PW}[k+1]||_1")
-    dualPlot=plot(convDict["lamIt2Norm"],labels=plotLabels,xlims=(0,maxIt),yscale=:log10,xlabel="Iteration",ylabel=L"||\lambda^{(p)}-\lambda^{(p-1)}||_2")
+    couplLabel= L"||i_d[k+1]+\sum_{n=1}^N i_n[k+1]-\sum_{m=1}^M i_m^{PW}[k+1]||_1"
+    couplLabel="1-Norm Coupling Gap"
+    couplPlot=plot(convDict["coupl1Norm"],legend=false,xlims=(0,maxIt),yscale=:log10,ylabel=couplLabel)
+    dualLabel=L"||\lambda^{(p)}-\lambda^{(p-1)}||_2"
+    dualLabel="2-Norm Lambda It Gap"
+    dualPlot=plot(convDict["lamIt2Norm"],labels=plotLabels,xlims=(0,maxIt),yscale=:log10,xlabel="Iteration",ylabel=dualLabel)
     intConvPlot=plot(couplPlot,dualPlot,layout=(2,1))
     pubPlot(intConvPlot,thickscale=1.4,sizeWH=(1000,600),dpi=100)
     pname="nl_pwl_i$(ind).png"
