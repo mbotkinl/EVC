@@ -71,7 +71,7 @@ end
 function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     runNames=collect(keys(runs))
     cSol=cRun["solution"]
-    numIt=size(runs[runNames[1]]["convMetrics"].lam)[1]
+    numIt=size(runs[runNames[1]]["convMetrics"].coupl1Norm)[1]
     Klen=size(cSol.Tactual)[1]
     P=length(runNames)
     N=evS.N
@@ -113,10 +113,10 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 
 
     #Time plots
-    tempPlot=plot(1:Klen,cSol.Tactual*1000,label="",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),
-                    xlabel="",ylabel="Temp (K)",xticks=xticks)
-    plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen)*1000,label="XFRM Limit",line=(:dash,:red))
-    plot!(tempPlot,T*1000,labels="",seriescolor=plotColors)
+    tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),
+                    xlabel="",ylabel="Temp (C)",xticks=xticks)
+    plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
+    plot!(tempPlot,T,labels="",seriescolor=plotColors)
     if noLim !=nothing
         plot!(tempPlot,1:Klen,noLim["solution"].Tactual*1000,label="",seriescolor=allColors[P+1])
     end
@@ -223,19 +223,27 @@ function compareConvGraph_New(evS;ind=1)
             temp=getfield(runs[runNames[i]]["convMetrics"],Symbol(convNames[ii]))
             convDict[convNames[ii]][1:cIt,i]=temp[1:cIt,ind]
             # fill in NaN for greater than convIt
-            convDict[convNames[ii]][cIt:numIt,i].=NaN
+            convDict[convNames[ii]][cIt+1:numIt,i].=NaN
         end
     end
 
     plotLabels=copy(permutedims(runNames))
+
+
+    plotLabels=["NL" "PWL"]
     for i=1:length(plotLabels)
         plotLabels[i]=renameLabel(plotLabels[i])
     end
 
+    #maxIt=50
     #internal metrics
-    couplPlot=plot(convDict["coupl1Norm"],legend=false,yscale=:log10,ylabel= L"||i_d[k+1]+\sum_{n=1}^N i_n[k+1]-\sum_{m=1}^M i_m^{PW}[k+1]||_1")
-    dualPlot=plot(convDict["lamIt2Norm"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"||\lambda^{(p)}-\lambda^{(p-1)}||_2")
+    couplPlot=plot(convDict["coupl1Norm"],legend=false,xlims=(0,maxIt),yscale=:log10,ylabel= L"||i_d[k+1]+\sum_{n=1}^N i_n[k+1]-\sum_{m=1}^M i_m^{PW}[k+1]||_1")
+    dualPlot=plot(convDict["lamIt2Norm"],labels=plotLabels,xlims=(0,maxIt),yscale=:log10,xlabel="Iteration",ylabel=L"||\lambda^{(p)}-\lambda^{(p-1)}||_2")
     intConvPlot=plot(couplPlot,dualPlot,layout=(2,1))
+    pubPlot(intConvPlot,thickscale=1.4,sizeWH=(1000,600),dpi=100)
+    pname="nl_pwl_i$(ind).png"
+    pname="eq_ineq_i$(ind).png"
+    if saveF savefig(intConvPlot,path*pname) end
 
     #external
     un1Plot=plot(convDict["un1Norm"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"||u_n^{(p)}-u_n^{*}||_1")
