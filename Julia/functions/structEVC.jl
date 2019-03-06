@@ -81,6 +81,7 @@ struct scenarioHubStruct
     iD_pred::Array{Float64,2}
     iD_actual::Array{Float64,2}
     Tamb::Array{Float64,2}
+    Tamb_raw::Array{Float64,2}
 
     #User def penalty matrix
     Qh::Array{Float64,2}

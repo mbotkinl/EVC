@@ -192,15 +192,13 @@ end
 
 function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd())
     #model parameters
-    a   = rand(1,H)*.1 .+ 0.8               # efficiency of Li-ion batts is ~80-90%
-    b_high=100 #kWh
-    b_low = 40 #kWh
+    a   = rand(1,H)*.1 .+ 0.8               # efficiency of collect hubs
     b_options = [100 200 600]
     b_prob = [.4 .8]
-    r_ind = rand(N,1)
+    r_ind = rand(Nh,1)
     b_kWh = b_options[1]*ones(Int,Nh,H)
-    b_kWh[r_ind.>b_prob[1],:] .= b_options[2]
-    b_kWh[r_ind.>b_prob[2],:] .= b_options[3]
+    b_kWh[(r_ind.>b_prob[1])[:],:] .= b_options[2]
+    b_kWh[(r_ind.>b_prob[2])[:],:] .= b_options[3]
     b=b_kWh*3.6e6 # battery capacity (MJ)
     imax = round.(((.7-.2)*rand(Beta(3, 2),Nh,H).+.2),digits=4) # kA, charging with 20-70 A
 
@@ -233,17 +231,18 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     K  = K1+K2;                        # Total horizon (8 PM to 10 AM)
 
     # PWL Parameters:
-    S=6
+    S=15
     ItotalMax =  (xfrmR/Vtf)*Ntf*1.8 #kA can overload by 1.8 p.u
     deltaI = ItotalMax/S
 
     #system information
-    t0=Tmax-65
+    t0=65
     Tamb_amplitude = 30 #C
     # Disturbance scenario:
+    Dload_error=0
     num_homes=1
-    peak_demand_house = 30e6 #W
-    min_demand_house = 25e6 #W
+    peak_demand_house = 25e6 #W
+    min_demand_house = 20e6 #W
     Dload_amplitude=num_homes*peak_demand_house #W
     Dload_minimum = num_homes*min_demand_house
     dist = [range(-1,stop=10,length=Int(round(K/2)));range(-10,stop=-1,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
@@ -257,9 +256,12 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     Tamb_raw  = round.(Tamb_amplitude*ones(K+1,1).-pdf.(d,range(-10,stop=10,length=K+1))*20,digits=6);
     Tamb = Tamb_raw.+alpha/beta
 
-    Rmag=1e6
-    Qmag=Rmag/100
-    Omag=Rmag*100
+    # Rmag=1e6
+    # Qmag=Rmag/100
+    # Omag=Rmag*100
+    Qmag=1
+    Rmag=1
+    Omag=100
     Rh=(Rmag*rand(1,H).+Rmag/1e3)
     Qh=(Qmag*rand(1,H).+Qmag/1e3)
     Oh=(Omag*rand(1,H).+Omag/1e3)
@@ -318,7 +320,7 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
         end
     end
 
-    hubS=scenarioHubStruct(Nh,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,ηP,τP,ρP,γP,e0,t0,iD_pred,iD_actual,Tamb,Qh,Rh,Oh,
+    hubS=scenarioHubStruct(Nh,H,Ts,K1,K2,K,S,ItotalMax,deltaI,Tmax,ηP,τP,ρP,γP,e0,t0,iD_pred,iD_actual,Tamb,Tamb_raw,Qh,Rh,Oh,
                             Sn_depart_min,Sn_arrive_actual,Sn_arrive_pred,K_arrive_pred,K_depart_pred,K_arrive_actual,
                             K_depart_actual,EVcap,eMax,uMax,eDepart_min,eArrive_pred,eArrive_actual,slackMax)
 

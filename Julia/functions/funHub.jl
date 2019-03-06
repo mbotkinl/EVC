@@ -17,10 +17,9 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     eArrive_actual=hubS.eArrive_actual[stepI:(stepI+horzLen),:]
     slackMax=hubS.slackMax[stepI:(stepI+horzLen),:]
 
-
-    #cModel = Model(solver = IpoptSolver(print_level=!silent))
+    #cModel = Model(solver = IpoptSolver())
     #cModel = Model(solver = GurobiSolver(OutputFlag=0,QCPDual=1))
-    cModel = Model(solver = GurobiSolver())
+    cModel = Model(solver = GurobiSolver(NumericFocus=3))
 
     @variable(cModel,u[1:(horzLen+1),1:H])
     @variable(cModel,t[1:(horzLen+1)])
@@ -71,7 +70,6 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     @constraint(cModel,eΔ.<=slackMax)
     @constraint(cModel,eΔ.>=0)
 
-
     if solverSilent
         @suppress_out begin
 			status = solve(cModel)
@@ -87,10 +85,10 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     tRaw=getvalue(t)
     lambdaCurr=-getdual(currCon)
     extraE=getvalue(eΔ)
+	cSol.Tpred[stepI,1]=tRaw[1,1]
     if mode=="PWL"
 		zRaw=getvalue(z)
         cSol.zSum[stepI,1]=sum(zRaw[1,:])
-		cSol.Tpwl[stepI,1]=tRaw[1,1]
     end
 
     # p1nl=plot(eRaw,xlabel="Time",ylabel="Energy",xlims=(1,horzLen+1),label="hub energy")
