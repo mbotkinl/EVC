@@ -196,7 +196,7 @@ function pwlEVcentral(evS::scenarioStruct,slack::Bool,silent::Bool)
 end
 
 #dual
-function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,itLam,s0,slack,solverSilent)
+function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,itLam,s0,slack,roundSigFigs,solverSilent)
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,evS.K-stepI)
@@ -240,7 +240,7 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
     return nothing
 end
 
-function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,itLam)
+function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,itLam,roundSigFigs)
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,evS.K-stepI)
@@ -299,7 +299,7 @@ function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,itLa
     return nothing
 end
 
-function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,silent)
+function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
     K=evS.K
     N=evS.N
     S=evS.S
@@ -326,15 +326,15 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,silent)
     #solve subproblem for each EV
     if runParallel
         @sync @distributed for evInd=1:N
-            localEVDual(evInd,p,stepI,evS,dLog,itLam,s0,slack,solverSilent)
+            localEVDual(evInd,p,stepI,evS,dLog,itLam,s0,slack,roundSigFigs,solverSilent)
         end
     else
         for evInd=1:N
-            localEVDual(evInd,p,stepI,evS,dLog,itLam,s0,slack,solverSilent)
+            localEVDual(evInd,p,stepI,evS,dLog,itLam,s0,slack,roundSigFigs,solverSilent)
         end
     end
 
-    localXFRMDual(p,stepI,evS,dLog,itLam)
+    localXFRMDual(p,stepI,evS,dLog,itLam,roundSigFigs)
 
     #update lambda
     alphaP= max(alpha0/ceil(p/alphaDivRate),minAlpha)
@@ -407,7 +407,7 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,silent)
     end
 end
 
-function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
+function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
     K=evS.K
     N=evS.N
     S=evS.S
@@ -424,14 +424,13 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
         else
             itLam=round.(dLog.Lam[:,(p-1)],sigdigits=roundSigFigs)
         end
-        cFlag=runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,silent)
+        cFlag=runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
         global convIt=p
         if cFlag
             break
         end
         p+=1
     end
-
     if stepI in saveLogInd
         ind=findall(x->x==stepI,saveLogInd)[1]
         dCM.convIt[1,1,ind]=convIt
@@ -493,7 +492,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
     return nothing
 end
 
-function pwlEVdual(maxIt::Int,updateMethod::String,evS::scenarioStruct,cSave::centralLogStruct,slack::Bool,silent::Bool)
+function pwlEVdual(maxIt::Int,updateMethod::String,evS::scenarioStruct,cSave::centralLogStruct,slack::Bool,roundSigFigs::Int,silent::Bool)
 
     horzLen=evS.K1
     K=evS.K
@@ -507,7 +506,7 @@ function pwlEVdual(maxIt::Int,updateMethod::String,evS::scenarioStruct,cSave::ce
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)" progress=stepI/K _id=id
             @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
             try
-                runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,silent)
+                runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
                 @printf "convIt: %g\n" dSol.convIt[stepI,1]
             catch e
                 @printf "error: %s" e
@@ -837,9 +836,9 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS,dSol::solutionStruct,dCM,cSave:
             newVz=vcat(dLogadmm.Vz[(S+1):(S*(horzLen+1)),convIt-1],dLogadmm.Vz[((S*horzLen)+1):(S*(horzLen+1)),convIt-1])
         end
     end
-    global prevLam=round.(newLam,,sigdigits=roundSigFigs)
-    global prevVu=round.(newVu,,sigdigits=roundSigFigs)
-    global prevVz=round.(newVz,,sigdigits=roundSigFigs)
+    global prevLam=round.(newLam,sigdigits=roundSigFigs)
+    global prevVu=round.(newVu,sigdigits=roundSigFigs)
+    global prevVz=round.(newVz,sigdigits=roundSigFigs)
     #global ρADMMp=round.(ogρ,digits=2)
 
     return nothing
@@ -875,15 +874,14 @@ function pwlEVadmm(maxIt::Int,evS,cSave::centralLogStruct,slack::Bool,roundSigFi
 end
 
 #ALADIN
-function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Array{Float64,2},evS::scenarioStruct,dLogalad::itLogPWL,
+function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Array{Float64,2},evS,dLogalad::itLogPWL,
     ind,evVu,evVs,itLam,s0,itρ,slack,solverSilent,roundSigFigs,silent)
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,evS.K-stepI)
 
     tolU=1e-6
-    tolS=1e-8
-
+    tolS=1e-6
 
     #evV=zeros(horzLen+1,1)
     target=zeros((horzLen+1),1)
@@ -899,6 +897,9 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     if slack
         append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
     end
+    # if reg
+    #     append!(objExp,reg_weight*sum(sn[k,1]^2+u[k,1]^2 for k=1:horzLen+1))
+    # end
     @objective(evM,Min,objExp)
     @constraint(evM,sn[1,1]==s0[evInd,1]+evS.ηP[evInd,1]*u[1,1])
     @constraint(evM,[k=1:horzLen],sn[k+1,1]==sn[k,1]+evS.ηP[evInd,1]*u[k+1,1])
@@ -950,16 +951,21 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     # dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
     # dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
 
-    dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,sigdigits=roundSigFigs)
-    dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],sigdigits=roundSigFigs)
 
+    # if reg
+    #     dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal+2*reg_weight*uVal,sigdigits=roundSigFigs)
+    #     dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]+2*reg_weight*snVal,sigdigits=roundSigFigs)
+    # else
+        dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,sigdigits=roundSigFigs)
+        dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],sigdigits=roundSigFigs)
+    #end
     #use convex ALADIN approach
     #dLogalad.Gu[ind,p]=σU[evInd,1]*(evVu-uVal)-prevLam[:,1]
     #dLogalad.Gs[ind,p]=σS[evInd,1]*(evVs-snVal)#-prevLam[:,1]
     return nothing
 end
 
-function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenarioStruct,dLogalad::itLogPWL,
+function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS,dLogalad::itLogPWL,
     itLam,itVz,itVt,itρ,roundSigFigs)
     N=evS.N
     S=evS.S
@@ -967,7 +973,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenario
     horzLen=min(evS.K1,evS.K-stepI)
 
     tolT=1e-3
-    tolZ=1e-3
+    tolZ=1e-4
 
     #N+1 decoupled problem aka transformer current
     tM = Model(solver = GurobiSolver(NumericFocus=3))
@@ -976,6 +982,9 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenario
     objExp=sum(-itLam[k,1]*sum(z[(k-1)*(S)+s] for s=1:S)+
               itρ/2*σZ*(sum(z[(k-1)*(S)+s] for s=1:S)-sum(itVz[(k-1)*(S)+s,1] for s=1:S))^2+
               itρ/2*σT*(t[k]-itVt[k,1])^2  for k=1:(horzLen+1))
+      # if reg
+      #     append!(objExp,reg_weight*sum(sum(z[k,1]^2 for s=1:S)+t[k,1]^2 for k=1:horzLen+1))
+      # end
     @objective(tM,Min, objExp)
     @constraint(tM,tempCon1,t[1]-evS.τP*t0-evS.γP*deltaI*sum((2*s-1)*z[s] for s=1:S)-evS.ρP*evS.Tamb[stepI,1]==0)
     @constraint(tM,tempCon2[k=1:horzLen],t[k+1]-evS.τP*t[k]-evS.γP*deltaI*sum((2*s-1)*z[(k)*(S)+s] for s=1:S)-evS.ρP*evS.Tamb[stepI+k,1]==0)
@@ -1014,30 +1023,43 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS::scenario
 
     dLogalad.Tpred[:,p]=round.(tVal,sigdigits=roundSigFigs)
     dLogalad.Z[:,p]=round.(zVal,sigdigits=roundSigFigs)
-    dLogalad.Gz[:,p].=0
-    dLogalad.Gt[:,p].=0
+
+    # if reg
+    #     dLogalad.Gz[:,p]=round.(2*reg_weight*zVal,sigdigits=roundSigFigs)
+    #     dLogalad.Gt[:,p]=round.(2*reg_weight*tVal,sigdigits=roundSigFigs)
+    # else
+        dLogalad.Gz[:,p].=0
+        dLogalad.Gt[:,p].=0
+    #end
 
     #dLogalad.Gz[:,p]=σZ*(prevVz-zVal)-repeat(-prevLam[:,1],inner=S)
     #dLogalad.Gt[:,p]=σT*(prevVt-xtVal)
     return nothing
 end
 
-function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS::scenarioStruct,itLam,itVu,itVs,itVz,itVt,itρ,
+function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,itVt,itρ,
     dLogalad::itLogPWL,roundSigFigs)
     N=evS.N
     S=evS.S
     deltaI=evS.deltaI
     horzLen=min(evS.K1,evS.K-stepI)
 
-    Hu=2*evS.Ri
-    Hs=2*evS.Qsi
-    # Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
-    # Hs=2*evS.Qsi *((1.5-2.5)*rand()+2.5)
-    Hz=0
-    Ht=0
-    # Hz=1e-6
-    # Ht=1e-6
-    ρRate=1.1
+    # if reg
+    #     Hu=2*evS.Ri.+2*reg_weight
+    #     Hs=2*evS.Qsi.+2*reg_weight
+    #     Hz=2*reg_weight
+    #     Ht=2*reg_weight
+    # else
+        Hu=2*evS.Ri
+        Hs=2*evS.Qsi
+        # Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
+        # Hs=2*evS.Qsi *((1.5-2.5)*rand()+2.5)
+        Hz=0
+        Ht=0
+        # Hz=1e-6
+        # Ht=1e-6
+    #end
+
     ρALADmax=1e6
     #μALADp=μALADp*p^2
 
@@ -1273,7 +1295,8 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
     #convCheck[p,1]=cc
     # if  constGap<=epsilon && cc<=epsilon
     if  constGap<=primChk && itGap<=dualChk
-        if !silent @printf "Converged after %g iterations\n" p end
+        #if !silent @printf "Converged after %g iterations\n" p end
+        @printf "Converged after %g iterations" p
         convIt=p
         #break
         return true
@@ -1297,9 +1320,6 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,K-stepI)
-    #ogρ=ρALADp #save to reset later
-    #convCheck=zeros(maxIt+1,1)
-    #ΔY=zeros(1,maxIt+1)
     dLogalad=itLogPWL(horzLen=horzLen,N=N,S=S)
     p=1
     timeStart=now()
@@ -1345,8 +1365,8 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     # p1=plot(dLogalad.uSum[:,convIt],xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),label="ALADIN Open Loop")
     # plot!(p1,sum(cSave.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8,label="Central Open Loop")
     # plot(xPlot)
-    # pd3alad=plot(hcat(dLogalad.Tactual[:,convIt],dLogalad.Tpred[:,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
-    # plot!(pd3alad,1:horzLen+1,evS.Tmax*ones(evS.K)*1000,label="XFRM Limit",line=(:dash,:red))
+    # pd3alad=plot(hcat(dLogalad.Tactual[:,convIt],dLogalad.Tpred[:,convIt]),label=["Actual Temp" "PWL Temp"],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)")
+    # plot!(pd3alad,1:horzLen+1,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
     #
     # #convergence plots
     # halfCI=Int(floor(convIt/2))
@@ -1403,7 +1423,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     # checkPlot=plot(convItPlotalad,constPlotalad,fPlotalad,convPlotalad,layout=(2,2))
     # pubPlot(checkPlot,thickscale=1,sizeWH=(600,400),dpi=60)
     # savefig(checkPlot,path*"checkPlot"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
-    # #
+
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLogalad.Tpred[1,convIt]
     dSol.Un[stepI,:]=dLogalad.Un[1:N,convIt]
@@ -1463,7 +1483,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     return nothing
 end
 
-function pwlEValad(maxIt::Int,evS::scenarioStruct,cSave::centralLogStruct,slack::Bool,eqForm::Bool,roundSigFigs::Int,silent::Bool)
+function pwlEValad(maxIt::Int,evS,cSave::centralLogStruct,slack::Bool,eqForm::Bool,roundSigFigs::Int,silent::Bool)
 
     horzLen=evS.K1
     K=evS.K

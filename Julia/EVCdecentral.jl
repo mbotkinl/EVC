@@ -23,7 +23,7 @@ else
 	roundSigFigs=30
 
 	println("Running Dual Decomp Sim")
-	timeT=@elapsed dSol,dCM=pwlEVdual(maxIt,updateMethod,evS,cSave,slack,silent)
+	timeT=@elapsed dSol,dCM=pwlEVdual(maxIt,updateMethod,evS,cSave,slack,roundSigFigs,silent)
 	# s=Symbol(@sprintf("dCM_%s",updateMethod))
 	# v=Symbol(@sprintf("dCM"))
 	# @eval(($s)=($v))
