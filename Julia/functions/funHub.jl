@@ -477,9 +477,9 @@ function localEVADMM(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLoga
     eVal=getvalue(e)
     eΔVal=getvalue(eΔ)
 
-    dLogadmm.E[:,hubInd,p]=round.(eVal,digits=8)
-    dLogadmm.U[:,hubInd,p]=round.(uVal,digits=8)
-	dLogadmm.D[:,hubInd,p]=round.(eΔVal,digits=8)
+    dLogadmm.E[:,hubInd,p]=round.(eVal,sigdigits=roundSigFigs)
+    dLogadmm.U[:,hubInd,p]=round.(uVal,sigdigits=roundSigFigs)
+	dLogadmm.D[:,hubInd,p]=round.(eΔVal,sigdigits=roundSigFigs)
     return nothing
 end
 
@@ -532,8 +532,8 @@ function localXFRMADMM(p::Int,stepI::Int,hubS::scenarioHubStruct,dLogadmm::hubIt
     zVal=getvalue(z)
     tVal=getvalue(t)
 
-    dLogadmm.Tpred[:,:,p]=round.(tVal,digits=6)
-    dLogadmm.Z[:,:,p]=round.(zVal,digits=8)
+    dLogadmm.Tpred[:,:,p]=round.(tVal,sigdigits=roundSigFigs)
+    dLogadmm.Z[:,:,p]=round.(zVal,sigdigits=roundSigFigs)
     return nothing
 end
 
@@ -632,13 +632,15 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
 			itVu=prevVu
 			itVz=prevVz
 			#itρ=ρADMMp
-			itρ=min(maximum(prevLam),1e6)
+			itρ=max(min(maximum(prevLam),1e6),1e-3)
 		else
-			itLam=round.(dLogadmm.Lam[:,1,(p-1)],digits=8)
-			itVu=round.(dLogadmm.Vu[:,:,(p-1)],digits=8)
-			itVz=round.(dLogadmm.Vz[:,:,(p-1)],digits=8)
-			itρ=round.(dLogadmm.itUpdate[1,1,(p-1)],digits=2)
+			itLam=round.(dLogadmm.Lam[:,1,(p-1)],sigdigits=roundSigFigs)
+			itVu=round.(dLogadmm.Vu[:,:,(p-1)],sigdigits=roundSigFigs)
+			itVz=round.(dLogadmm.Vz[:,:,(p-1)],sigdigits=roundSigFigs)
+			itρ=round.(dLogadmm.itUpdate[1,1,(p-1)],sigdigits=roundSigFigs)
 		end
+		@printf "itρ: %f\n" itρ
+
         cFlag=runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,eqForm,silent)
         global convIt=p
         if cFlag
@@ -694,8 +696,8 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     dSol.convIt[stepI,1]=convIt
 
     # new states
-    global t0=round.(dSol.Tactual[stepI,1],digits=6)
-    global e0=round.(dSol.E[stepI,:],digits=8)
+    global t0=round.(dSol.Tactual[stepI,1],sigdigits=roundSigFigs)
+    global e0=round.(dSol.E[stepI,:],sigdigits=roundSigFigs)
 
     #function getAttr()
     #clean this up
@@ -723,9 +725,9 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
         end
     end
 
-    global prevLam=round.(newLam,digits=8)
-    global prevVu=round.(newVu,digits=8)
-    global prevVz=round.(newVz,digits=8)
+    global prevLam=round.(newLam,sigdigits=roundSigFigs)
+    global prevVu=round.(newVu,sigdigits=roundSigFigs)
+    global prevVz=round.(newVz,sigdigits=roundSigFigs)
     #global ρALADp=ogρ
 
     return nothing
