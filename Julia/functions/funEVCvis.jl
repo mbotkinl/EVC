@@ -3,7 +3,7 @@ using Plots.PlotMeasures
 #run comparison
 #path = clips()
 path=path*"ForVis\\"
-cRun,runs, noLim, evS1=readRuns(path);
+cRun,runs, noLim=readRuns(path);
 lowRes=true
 savefig=false
 
@@ -11,7 +11,7 @@ savefig=false
 #cTable=compareRunsTable(runs,evS)
 
 # for NL/PWL compare
-cRun,runs, noLim, evS1=readRuns(path,true);
+cRun,runs, noLim=readRuns(path,true);
 nl_pwlCompare(evS, runs,savefig,lowRes)
 
 # @time runALADit(1)
@@ -31,7 +31,7 @@ nl_pwlCompare(evS, runs,savefig,lowRes)
 
 function readRuns(path,multiCentral=false)
     files = filter(x->occursin(".jld2",x), readdir(path))
-    evFile = filter(x->occursin("scenario",x), files)
+    #evFile = filter(x->occursin("scenario",x), files)
     files = filter(x->occursin("_",x), files) # avoid evScenario
     noLimFile = filter(x->occursin("noLim",x), files)
     if multiCentral
@@ -42,7 +42,7 @@ function readRuns(path,multiCentral=false)
         dFiles= setdiff(files,cFile)
     end
 
-    if length(cFile)==1
+    if length(cFile)>0
         cFile=setdiff(cFile,noLimFile)
         cRun=load(path*cFile[1])
     else
@@ -55,17 +55,17 @@ function readRuns(path,multiCentral=false)
         noLim=Nothing
     end
 
-    if length(evFile)>0
-        evS=load(path*evFile[1])["evScenario"]
-    else
-        evS=Nothing
-    end
+    # if length(evFile)>0
+    #     evS=load(path*evFile[1])["evScenario"]
+    # else
+    #     evS=Nothing
+    # end
 
     runs=Dict{String,Any}()
     for ii=1:length(dFiles)
         runs[dFiles[ii]]=load(path*dFiles[ii])
     end
-    return cRun, runs, noLim, evS
+    return cRun, runs, noLim#, evS
 end
 
 function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
@@ -349,7 +349,6 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     cSol=cRun["solution"]
     Klen=size(cSol.Tactual)[1]
     P=length(runNames)
-    hubS=cRun["scenario"]
     H=hubS.H
 
     Lam = zeros(Klen,P)
@@ -365,7 +364,8 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
         convIt[:,i]=runI["solution"].convIt
         Lam[:,i]=runI["solution"].Lam
         T[:,i]=runI["solution"].Tactual[:,1]
-        uSum[:,i]=runI["solution"].uSum[:,1]
+        uSum[:,i]=sum(runI["solution"].U,dims=2)
+        # uSum[:,i]=runI["solution"].uSum[:,1]
         eSum[:,i]=[sum(runI["solution"].E[k,:]) for k in 1:Klen]# sum up across N
         eAvg[:,i]=[mean(runI["solution"].E[k,:]) for k in 1:Klen]# mean across N
     end
@@ -374,31 +374,16 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
 
-    stT1=Time(20,0)
-    endT1=Time(23,59)
-    stT2=Time(0,0)
-    endT2=Time(10,0)
-    Xlabels=vcat(collect(stT1:Dates.Second(round(evS.Ts)):endT1),collect(stT2:Dates.Second(round(evS.Ts)):endT2))
-    #Xlabels=vcat(collect(stT1:Dates.Minute(3):endT1),collect(stT2:Dates.Minute(3):endT2))
-    xticks=(1:40:Klen,Dates.format.(Xlabels[1:40:Klen],"HH:MM"))
-
     #Time plots
-    tempPlot=plot(1:Klen,cSol.Tactual*1000,label="",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),
-                    xlabel="",ylabel="Temp (K)",xticks=xticks)
-    plot!(tempPlot,1:Klen,hubS.Tmax*ones(Klen)*1000,label="XFRM Limit",line=(:dash,:red))
-    plot!(tempPlot,T*1000,labels="",seriescolor=plotColors)
+    tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),
+                    xlabel="",ylabel="Temp (C)",xticks=xticks)
+    plot!(tempPlot,1:Klen,hubS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
+    plot!(tempPlot,T,labels="",seriescolor=plotColors)
     if noLim !=nothing
-        plot!(tempPlot,1:Klen,noLim["solution"].Tactual*1000,label="",seriescolor=allColors[P+1])
+        plot!(tempPlot,1:Klen,noLim["solution"].Tactual,label="",seriescolor=allColors[P+1])
     end
 
-    uSumPlot=plot(1:Klen,cSol.uSum,xlabel="",ylabel="Current Sum (kA)",xlims=(0,Klen),labels="Central",
-                  seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
-    plot!(uSumPlot,uSum,labels=plotLabels,seriescolor=plotColors,legend=false)
-    if noLim !=nothing
-        plot!(uSumPlot,1:Klen,noLim["solution"].uSum,label="Uncoordinated",seriescolor=allColors[P+1])
-    end
-
-    iD=evS.iD_actual[1:Klen].+10
+    iD=hubS.iD_actual[1:Klen]
     loadPlot=plot(1:Klen,cSol.uSum+iD,xlabel="",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
                   seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
     plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash))
@@ -410,9 +395,9 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     convItPlot=plot(convIt,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),xticks=xticks,labels=plotLabels)
 
 
-    lamPlot=plot(1:Klen,cSol.Lam,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),labels="Central",
+    lamPlot=plot(1:Klen,cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",xlims=(0,Klen),labels="Central",
                    seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
-    plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors)
+    plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors)
     if noLim !=nothing
         plot!(lamPlot,1:Klen,noLim["solution"].Lam,label="Uncoordinated",seriescolor=allColors[P+1])
     end
