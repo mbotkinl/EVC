@@ -18,7 +18,7 @@ else
 
 	ρADMMp = 1e2
 	ρDivRate=1.02
-	#ρDivRate=1.02
+	roundSigFigs=16
 
 
 	println("Running ADMM Hub Sim")
@@ -26,13 +26,6 @@ else
 	if saveResults saveRun(path,fname,timeT, dSoladmm) end
 end
 
-
-stT1=Time(20,0)
-endT1=Time(23,59)
-stT2=Time(0,0)
-endT2=Time(10,0)
-Xlabels=vcat(collect(stT1:Dates.Second(round(hubS.Ts)):endT1),collect(stT2:Dates.Second(round(hubS.Ts)):endT2))
-xticks=(1:40:hubS.K,Dates.format.(Xlabels[1:40:hubS.K],"HH:MM"))
 hubLabels=permutedims(["Hub $(h)" for h=1:hubS.H])
 
 pd1admm=plot(dSoladmm.E,xlabel="",ylabel="Energy (MWh)",seriestype=:line,labels=hubLabels,xticks=xticks, xlims=(0,hubS.K))
@@ -40,12 +33,12 @@ plot!(pd1admm,hubS.eMax,label="Hub Max",line=(:dash))
 
 pd2admm=plot(dSoladmm.U,xlabel="",ylabel="Hub Current (kA)",legend=false,xticks=xticks, xlims=(0,hubS.K))
 
-pd3admm=plot(dSoladmm.Tactual*1000,label="ADMM",xlabel="",ylabel="Temp (K)", xlims=(0,hubS.K))
-plot!(pd3admm,cSol.Tactual*1000,label="Central")
-plot!(pd3admm,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red),xticks=xticks)
+pd3admm=plot(dSoladmm.Tactual,label="ADMM",xlabel="",ylabel="Temp (K)", xlims=(0,hubS.K))
+plot!(pd3admm,cSol.Tactual,label="Central")
+plot!(pd3admm,hubS.Tmax*ones(hubS.K),label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 
-pd4admm=plot(dSoladmm.Lam,xlabel="Time",ylabel=raw"Lambda ($/kA)",label="ADMM",xticks=xticks, xlims=(0,hubS.K))
-plot!(pd4admm,cSol.Lam,label="Central")
+pd4admm=plot(dSoladmm.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",label="ADMM",xticks=xticks, xlims=(0,hubS.K))
+plot!(pd4admm,cSol.Lam/1000,label="Central")
 
 aggU=plot(hcat(cSol.uSum,dSoladmm.uSum),label=["Central" "ADMM"],
 			xlims=(0,hubS.K),xlabel="",ylabel="PEV Current (kA)")

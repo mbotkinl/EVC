@@ -11,6 +11,8 @@ else
 	t0=hubS.t0
 	e0=hubS.e0
 	prevLam=ones(hubS.K1+1,1)
+	alpha0 = 1 #for kA
+	roundSigFigs=16
 
 	println("Running Dual Hub Sim")
 	timeT=@elapsed dSol=hubDual(maxIt,hubS,cSol,mode,silent)

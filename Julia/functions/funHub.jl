@@ -195,9 +195,9 @@ function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog:
 
     @assert statusM==:Optimal "Hub optimization not solved to optimality"
 
-    dLog.U[:,hubInd,p]=round.(getvalue(u),digits=6)
-    dLog.E[:,hubInd,p]=round.(getvalue(e),digits=6)
-	dLog.D[:,hubInd,p]=round.(getvalue(eΔ),digits=6)
+    dLog.U[:,hubInd,p]=round.(getvalue(u),sigdigits=roundSigFigs)
+    dLog.E[:,hubInd,p]=round.(getvalue(e),sigdigits=roundSigFigs)
+	dLog.D[:,hubInd,p]=round.(getvalue(eΔ),sigdigits=roundSigFigs)
 
     return nothing
 end
@@ -243,8 +243,8 @@ function localXFRMDual(p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogP
 
     @assert statusC==:Optimal "Dual Ascent XFRM optimization not solved to optimality"
 
-     dLog.Tpred[:,1,p]=round.(getvalue(t),digits=6)
-     dLog.Z[:,:,p]=round.(getvalue(z),digits=6)
+     dLog.Tpred[:,1,p]=round.(getvalue(t),sigdigits=roundSigFigs)
+     dLog.Z[:,:,p]=round.(getvalue(z),sigdigits=roundSigFigs)
 
     return nothing
 end
@@ -260,10 +260,8 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
     S=hubS.S
     horzLen=min(hubS.K1,K-stepI)
 
-    alpha0 = 1 #for kA
     alphaDivRate=2
     minAlpha=1e-6
-    convChk = 1e-4
 
     #solve subproblem for each EV
 	if runParallel
@@ -275,7 +273,6 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
 			localEVDual(hubInd,p,stepI,hubS,dLog,itLam,e0,solverSilent)
 		end
 	end
-
 
     localXFRMDual(p,stepI,hubS,dLog,mode,itLam,t0,solverSilent)
 
@@ -293,7 +290,7 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
     #alphaP= alphaP*alphaRate
 
     #dLog.Lam[:,p]=max.(itLam[:,1]+alphaP*dLog.couplConst[:,p],0)
-    dLog.Lam[:,1,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],digits=6)
+    dLog.Lam[:,1,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],sigdigits=roundSigFigs)
 
     #calculate actual temperature from nonlinear model of XFRM
     for k=1:horzLen+1
@@ -305,27 +302,16 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
     end
 
     #check convergence
-    # objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*hubS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
-    #                 sum(sum((u[(k-1)*N+n,1])^2*hubS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
-    # dLog.objVal[1,p]=objFun(dLog.Sn[:,p],dLog.Un[:,p])
-    #fGap=abs(dLog.objVal[1,p] -cSol.objVal[1,1])
-    #snGap=norm((dLog.Sn[:,p]-cSol.Sn),2)
-    #unGap=norm((dLog.Un[:,p]-cSol.Un),2)
-    itGap = norm(dLog.Lam[:,1,p]-itLam[:,1],2)
-    convGap = norm(dLog.Lam[:,1,p]-cSol.Lam[stepI:(horzLen+stepI)],2)
-    #dCM.obj[p,1]=fGap
-    #dCM.sn[p,1]=snGap
-    #dCM.un[p,1]=unGap
-    #dCM.lamIt[p,1]=itGap
-    #dCM.lam[p,1]=convGap
-    if(itGap <= convChk )
+	constGap=norm(dLog.couplConst[:,1,p],1)
+	itGap = norm(dLog.Lam[:,1,p]-itLam[:,1],2)
+    if((constGap<=primChk) && (itGap <= dualChk))
         if !silent @printf "Converged after %g iterations\n" p end
         convIt=p
         return true
     else
         if !silent
-            @printf "lastGap %e after %g iterations\n" itGap p
-            @printf "convGap %e after %g iterations\n\n" convGap p
+            @printf "itGap %e after %g iterations\n" itGap p
+            @printf "constGap %e after %g iterations\n\n" constGap p
             #@printf "snGap   %e after %g iterations\n" snGap p
             #@printf "unGap   %e after %g iterations\n" unGap p
             #@printf("fGap    %e after %g iterations\n\n",fGap,p)
@@ -340,7 +326,10 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     S=hubS.S
     horzLen=min(hubS.K1,K-stepI)
     dLog=hubItLogPWL(horzLen=horzLen,H=hubS.H,S=hubS.S)
-    for p=1:maxIt
+	p=1
+    timeStart=now()
+    while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*hubS.Ts))
+		#global p
 		if p==1
 			itLam=prevLam
 		else
@@ -351,45 +340,38 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
         if cFlag
             break
         end
+		p+=1
     end
-
-    #
+	#
     # plot(dLog.U[:,:,convIt])
     # plot(dLog.E[:,:,convIt])
     # pd3alad=plot(hcat(dLog.Tactual[:,1,convIt],dLog.Tpred[:,1,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")
     # plot!(pd3alad,1:horzLen+1,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red))
-    #
+	#
     # # convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
     #                range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
-    #
+	#
     # uSumPlotd=plot(dLog.uSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
-    # plot!(uSumPlotd,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
-    #
-    # # uSumPlotd=plot(dLog.uSum[:,1:convIt],palette=:greens,line_z=(1:convIt)',legend=false,colorbar=:right,colorbar_title="Iteration",
-    # #      xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1))
-    # # plot!(uSumPlotd,1:horzLen+1,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
-    #
-    #
-    # #tPlotd=plot(dLog.Tactual[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
-    #
+    # plot!(uSumPlotd,sum(uRaw,dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
+	#
     # zSumPlotd=plot(dLog.zSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
-    # plot!(zSumPlotd,1:horzLen+1,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
-    #
+	# plot!(zSumPlotd,sum(zRaw,dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
+	#
     # lamPlotd=plot(dLog.Lam[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
-    # plot!(lamPlotd,cSol.Lam,seriescolor=:black,linewidth=2,linealpha=0.8)
-    #
+    # plot!(lamPlotd,lambdaCurr,seriescolor=:black,linewidth=2,linealpha=0.8)
+	#
     # #plot(dLog.Lam[:,1:convIt],color=:RdYlBu,line_z=(1:convIt)')
-    #
+	#
     # constPlot2=plot(dLog.couplConst[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
-    #
+	#
     # #convergence metric plots
     # fPlot=plot(1:convIt,dCM.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convItPlot=plot(1:convIt,dCM.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convPlot=plot(1:convIt,dCM.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(2,convIt),legend=false,yscale=:log10)
     # constPlot=plot(1:convIt,dCM.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(2,convIt),legend=false,yscale=:log10)
-
+	#
 
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLog.Tpred[1,1,convIt]
