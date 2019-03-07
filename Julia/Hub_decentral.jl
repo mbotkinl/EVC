@@ -14,7 +14,7 @@ else
 
 	println("Running Dual Hub Sim")
 	timeT=@elapsed dSol=hubDual(maxIt,hubS,cSol,mode,silent)
-	if saveResults saveRun(path,fname,timeT, evS, dSol) end
+	if saveResults saveRun(path,fname,timeT, dSol) end
 end
 #
 # println("plotting....")

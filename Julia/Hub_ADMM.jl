@@ -14,11 +14,16 @@ else
 	prevVz=-hubS.deltaI*ones((hubS.K1+1),hubS.S)
 	#prevVu=repeat(maximum(hubS.uMax,dims=1),outer=[(hubS.K1+1),1])
 	prevVu=.01*ones((hubS.K1+1),hubS.H)
+	#ρADMMp = 1e2
+
 	ρADMMp = 1e2
+	ρDivRate=1.02
+	#ρDivRate=1.02
+
 
 	println("Running ADMM Hub Sim")
 	timeT=@elapsed dSoladmm=hubADMM(maxIt,hubS,cSol,mode,silent)
-	if saveResults saveRun(path,fname,timeT, hubS, dSoladmm) end
+	if saveResults saveRun(path,fname,timeT, dSoladmm) end
 end
 
 
