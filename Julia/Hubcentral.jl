@@ -5,7 +5,6 @@ fname = "central_H$(H)"
 if loadResults
 	println("Reading in Central Sim")
 	loadF=load(path*fname*".jld2")
-	hubS=loadF["scenario"]
 	cSol=loadF["solution"]
 else
 	#initialize
@@ -13,17 +12,10 @@ else
 	e0=hubS.e0
 
 	timeT=@elapsed cSol=hubCentral(hubS,mode,silent)
-	if saveResults saveRun(path,fname,timeT, hubS,cSol) end
+	if saveResults saveRun(path,fname,timeT,cSol) end
 end
 
-stT1=Time(20,0)
-endT1=Time(23,59)
-stT2=Time(0,0)
-endT2=Time(10,0)
-Xlabels=vcat(collect(stT1:Dates.Second(round(hubS.Ts)):endT1),collect(stT2:Dates.Second(round(hubS.Ts)):endT2))
-xticks=(1:40:hubS.K,Dates.format.(Xlabels[1:40:hubS.K],"HH:MM"))
 hubLabels=permutedims(["Hub $(h)" for h=1:hubS.H])
-
 allColors=get_color_palette(:auto, plot_color(:white), H)
 plotColors=allColors'
 
@@ -37,10 +29,10 @@ plot!(twinx(),sum(cSol.U,dims=2),label="Hub Current",seriestype=:line,seriescolo
 
 p2=plot(cSol.U,xlabel="",ylabel="Current (kA)",legend=false,xticks=xticks, xlims=(0,hubS.K))
 
-p3=plot(hcat(cSol.Tactual*1000,cSol.Tpwl*1000),label=["Actual Temp" "PWL Temp"],xlabel="",ylabel="Temp (K)", xlims=(0,hubS.K))
-plot!(p3,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red),xticks=xticks)
+p3=plot(hcat(cSol.Tactual,cSol.Tpred),label=["Actual Temp" "PWL Temp"],xlabel="",ylabel="Temp (K)", xlims=(0,hubS.K))
+plot!(p3,hubS.Tmax*ones(hubS.K),label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 
-p4=plot(cSol.Lam,xlabel="Time",ylabel=raw"Lambda ($/kA)",legend=false,xticks=xticks, xlims=(0,hubS.K))
+p4=plot(cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",legend=false,xticks=xticks, xlims=(0,hubS.K))
 
 
 # epsilon=.01

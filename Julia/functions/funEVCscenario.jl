@@ -222,7 +222,7 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     ηP=a*(Ts/3600)*Vac/1e3
 
     ## MPC Paramters
-    T1=8 #hours
+    T1=12 #hours
     T2=14-T1
     # T1=6 #hours
     # T2=14-T1
@@ -241,8 +241,8 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     # Disturbance scenario:
     Dload_error=0
     num_homes=1
-    peak_demand_house = 25e6 #W
-    min_demand_house = 20e6 #W
+    peak_demand_house = 26e6 #W
+    min_demand_house = 23e6 #W
     Dload_amplitude=num_homes*peak_demand_house #W
     Dload_minimum = num_homes*min_demand_house
     dist = [range(-1,stop=10,length=Int(round(K/2)));range(-10,stop=-1,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
@@ -256,16 +256,21 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     Tamb_raw  = round.(Tamb_amplitude*ones(K+1,1).-pdf.(d,range(-10,stop=10,length=K+1))*20,digits=6);
     Tamb = Tamb_raw.+alpha/beta
 
-    # Rmag=1e6
-    # Qmag=Rmag/100
-    # Omag=Rmag*100
-    Qmag=1
-    Rmag=1
-    Omag=100
-    Rh=(Rmag*rand(1,H).+Rmag/1e3)
-    Qh=(Qmag*rand(1,H).+Qmag/1e3)
-    Oh=(Omag*rand(1,H).+Omag/1e3)
+    # Qmag=1
+    # Rmag=1
+    # Omag=100
+    # Rh=(Rmag*rand(1,H).+Rmag/1e3)
+    # Qh=(Qmag*rand(1,H).+Qmag/1e3)
+    # Oh=(Omag*rand(1,H).+Omag/1e3)
 
+
+    qrRatio=round.((2-0.1)*rand(Beta(1, 1),1,H) .+ 0.1,digits=2)
+    orRatio=1000
+    #histogram(qrRatio,nbins=40)
+    Rh=1e3*ones(1,H)
+    #Rh=1e6*ones(1,H)
+    Qh=qrRatio.*Rh/100
+    Oh=orRatio.*Rh
     #action happens immediately afte interval before ends
     #hub information
     arriveLast=round(Int,2*3600/Ts) #last arrival at 10PM
