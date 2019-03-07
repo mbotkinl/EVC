@@ -10,8 +10,10 @@ if loadResults
 else
 	t0=hubS.t0
 	e0=hubS.e0
-	prevLam=ones(hubS.K1+1,1)
-	alpha0 = 1 #for kA
+	#prevLam=ones(hubS.K1+1,1)
+	prevLam=zeros(hubS.K1+1,1)
+
+	alpha0 =1e3 #for kA
 	roundSigFigs=16
 
 	println("Running Dual Hub Sim")
