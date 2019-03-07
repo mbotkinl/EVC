@@ -365,7 +365,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     # #plot(dLog.Lam[:,1:convIt],color=:RdYlBu,line_z=(1:convIt)')
 	#
     # constPlot2=plot(dLog.couplConst[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
-	# 
+	#
     # #convergence metric plots
     # fPlot=plot(1:convIt,dCM.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convItPlot=plot(1:convIt,dCM.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
@@ -631,7 +631,8 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
 			itLam=prevLam
 			itVu=prevVu
 			itVz=prevVz
-			itρ=ρADMMp
+			#itρ=ρADMMp
+			itρ=min(maximum(prevLam),1e6)
 		else
 			itLam=round.(dLogadmm.Lam[:,1,(p-1)],digits=8)
 			itVu=round.(dLogadmm.Vu[:,:,(p-1)],digits=8)
