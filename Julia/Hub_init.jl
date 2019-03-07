@@ -19,7 +19,7 @@ dualChk = 5e-12 #lamIt=0
 primChk = 5e-12 # Ax-B=0s
 datafile="jld2"
 mode="PWL"
-silent=false
+silent=true
 solverSilent=true
 saveS=false
 saveF=false

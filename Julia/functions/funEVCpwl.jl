@@ -956,8 +956,8 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     #     dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal+2*reg_weight*uVal,sigdigits=roundSigFigs)
     #     dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]+2*reg_weight*snVal,sigdigits=roundSigFigs)
     # else
-        dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,sigdigits=roundSigFigs)
-        dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],sigdigits=roundSigFigs)
+    dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,sigdigits=roundSigFigs)
+    dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],sigdigits=roundSigFigs)
     #end
     #use convex ALADIN approach
     #dLogalad.Gu[ind,p]=σU[evInd,1]*(evVu-uVal)-prevLam[:,1]

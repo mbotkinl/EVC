@@ -11,18 +11,19 @@ if loadResults
 else
 	t0=hubS.t0
 	e0=hubS.e0
-	prevLam=ones(hubS.K1+1,1)
+	prevLam=1e3*ones(hubS.K1+1,1)
     prevVt=hubS.Tmax*ones(hubS.K1+1,1)
     prevVz=hubS.deltaI*ones((hubS.K1+1),hubS.S)
     prevVu=repeat(maximum(hubS.uMax,dims=1),outer=[(hubS.K1+1),1])
     prevVe=repeat(maximum(hubS.eMax,dims=1),outer=[(hubS.K1+1),1])
 	prevVd=repeat(maximum(hubS.slackMax,dims=1),outer=[(hubS.K1+1),1])
-	ρALADp = 1e-2
-
+	# ρALADp = 1e-2
+	ρALADp = 1
+	roundSigFigs=16
 
 	println("Running ALAD Sim")
 	timeT=@elapsed dSolalad=hubALAD(maxIt,hubS,cSol,mode,eqForm,silent)
-	if saveResults saveRun(path,fname,timeT, hubS, dSolalad) end
+	if saveResults saveRun(path,fname,timeT, dSolalad) end
 end
 
 stT1=Time(20,0)
