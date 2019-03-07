@@ -5,7 +5,6 @@ fname = "dADMM_H$(H)"
 if loadResults
 	println("Reading in ADMM Hub Sim")
 	loadF=load(path*fname*".jld2")
-	hubS=loadF["scenario"]
 	dSoladmm=loadF["solution"]
 else
 	t0=hubS.t0
@@ -14,9 +13,8 @@ else
 	prevVz=-hubS.deltaI*ones((hubS.K1+1),hubS.S)
 	#prevVu=repeat(maximum(hubS.uMax,dims=1),outer=[(hubS.K1+1),1])
 	prevVu=.01*ones((hubS.K1+1),hubS.H)
-	#ρADMMp = 1e2
 
-	ρADMMp = 1e2
+	ρADMMp = 1
 	ρDivRate=1.02
 	roundSigFigs=16
 
