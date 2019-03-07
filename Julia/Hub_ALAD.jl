@@ -26,12 +26,6 @@ else
 	if saveResults saveRun(path,fname,timeT, dSolalad) end
 end
 
-stT1=Time(20,0)
-endT1=Time(23,59)
-stT2=Time(0,0)
-endT2=Time(10,0)
-Xlabels=vcat(collect(stT1:Dates.Second(round(hubS.Ts)):endT1),collect(stT2:Dates.Second(round(hubS.Ts)):endT2))
-xticks=(1:40:hubS.K,Dates.format.(Xlabels[1:40:hubS.K],"HH:MM"))
 hubLabels=permutedims(["Hub $(h)" for h=1:hubS.H])
 
 pd1alad=plot(dSolalad.E,xlabel="",ylabel="Energy (MWh)",seriestype=:line,labels=hubLabels,xticks=xticks, xlims=(0,hubS.K))
@@ -39,12 +33,12 @@ plot!(pd1alad,hubS.eMax,label="Hub Max",line=(:dash))
 
 pd2alad=plot(dSolalad.U,xlabel="",ylabel="Hub Current (kA)",legend=false,xticks=xticks, xlims=(0,hubS.K))
 
-pd3alad=plot(dSolalad.Tactual*1000,label="ALAD",xlabel="",ylabel="Temp (K)", xlims=(0,hubS.K))
-plot!(pd3alad,cSol.Tactual*1000,label="Central")
-plot!(pd3alad,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red),xticks=xticks)
+pd3alad=plot(dSolalad.Tactual,label="ALAD",xlabel="",ylabel="Temp (K)", xlims=(0,hubS.K))
+plot!(pd3alad,cSol.Tactual,label="Central")
+plot!(pd3alad,hubS.Tmax*ones(hubS.K),label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 
-pd4alad=plot(dSolalad.Lam,xlabel="Time",ylabel=raw"Lambda ($/kA)",label="ALAD",xticks=xticks, xlims=(0,hubS.K))
-plot!(pd4alad,cSol.Lam,label="Central")
+pd4alad=plot(dSolalad.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",label="ALAD",xticks=xticks, xlims=(0,hubS.K))
+plot!(pd4alad,cSol.Lam/1000,label="Central")
 
 aggU=plot(hcat(cSol.uSum,dSolalad.uSum),label=["Central" "ALAD"],
 			xlims=(0,hubS.K),xlabel="",ylabel="Current (kA)")

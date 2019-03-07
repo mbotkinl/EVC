@@ -1103,12 +1103,11 @@ function runEVALADIt(p,stepI,hubS,itLam,itVu,itVz,itVe,itVd,itVt,itρ,dLogalad,d
 
 	coordALAD(p,stepI,μALADp,hubS,dLogalad,itLam,itVu,itVe,itVd,itVz,itVt,itρ)
 
-
     #check for convergence
     constGap=norm(dLogalad.couplConst[:,1,p],1)
 	itGap = norm(dLogalad.Lam[:,1,p]-itLam[:,1],2)
-	dCM.coupl1Norm[p,1]=constGap
-	dCM.lamIt2Norm[p,1]=itGap
+	#dCM.coupl1Norm[p,1]=constGap
+	#dCM.lamIt2Norm[p,1]=itGap
     # cc=norm(hcat(σU[1]*(itVu[:,:]-dLogalad.U[:,:,p]),σZ*(itVz[:,:]-dLogalad.Z[:,:,p]),
     #              σT*(itVt[:,:]-dLogalad.Tpred[:,:,p]),σE[1]*(itVe[:,:]-dLogalad.E[:,:,p])),1)
     #cc=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
@@ -1137,7 +1136,6 @@ function runEVALADIt(p,stepI,hubS,itLam,itVu,itVz,itVe,itVd,itVt,itρ,dLogalad,d
         end
     end
 
-
     return false
 end
 
@@ -1150,7 +1148,7 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
 	timeStart=now()
 	p=1
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*hubS.Ts))
-		global p
+		#global p
         #@printf "%git" p
 		if p==1
 			itLam=prevLam
@@ -1176,7 +1174,7 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
         end
         p+=1
     end
-
+	#
     # plot(dLogalad.U[:,:,convIt])
     # plot(dLogalad.E[:,:,convIt])
     # pd3alad=plot(hcat(dLogalad.Tactual[:,1,convIt],dLogalad.Tpred[:,1,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")

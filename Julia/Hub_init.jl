@@ -15,11 +15,11 @@ using Suppressor
 #especially stepI +k for iD and Tamb
 H=4
 maxIt=100
-dualChk = 5e-12 #lamIt=0
-primChk = 5e-12 # Ax-B=0s
+dualChk = 1e-2 #lamIt=0
+primChk = 1e-2 # Ax-B=0s
 datafile="jld2"
 mode="PWL"
-silent=true
+silent=false
 solverSilent=true
 saveS=false
 saveF=false

@@ -241,8 +241,8 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     # Disturbance scenario:
     Dload_error=0
     num_homes=1
-    peak_demand_house = 26e6 #W
-    min_demand_house = 23e6 #W
+    peak_demand_house = 0 #W
+    min_demand_house = 40e6 #W
     Dload_amplitude=num_homes*peak_demand_house #W
     Dload_minimum = num_homes*min_demand_house
     dist = [range(-1,stop=10,length=Int(round(K/2)));range(-10,stop=-1,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
@@ -251,8 +251,12 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     FullinelasticDemand = (inelasticDemand.-minimum(inelasticDemand))/(maximum(inelasticDemand)-minimum(inelasticDemand))
     FullDload=reshape(Dload_amplitude*FullinelasticDemand.+Dload_minimum,(K,1));    # total non-EV demand (in W)
     iD_pred = round.(FullDload/Vac/1e3,digits=6)    #background demand current (kA)
-    noisePerc= Dload_error/Dload_amplitude
-    iD_actual = round.(iD_pred+2*noisePerc*iD_pred.*rand(length(iD_pred),1).-iD_pred*noisePerc,digits=6)
+    if Dload_error>0
+        noisePerc= Dload_error/Dload_amplitude
+        iD_actual = round.(iD_pred+2*noisePerc*iD_pred.*rand(length(iD_pred),1).-iD_pred*noisePerc,digits=6)
+    else
+        iD_actual=iD_pred
+    end
     Tamb_raw  = round.(Tamb_amplitude*ones(K+1,1).-pdf.(d,range(-10,stop=10,length=K+1))*20,digits=6);
     Tamb = Tamb_raw.+alpha/beta
 

@@ -41,7 +41,7 @@ p4=plot(cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",legend=false,xticks
 # compDept=cSol.E_depart.-(hubS.eDepart_min.+hubS.slackMax)
 # testDept=abs.(compDept).<=epsilon
 # all(testDept)
-# findfirst(testDept.==false)
+# t=findfirst(testDept.==false)
 
 
 #nolim plots
