@@ -641,7 +641,6 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     #ogρ=ρALADp #save to reset later
     dLogadmm=hubItLogPWL(horzLen=horzLen,H=hubS.H,S=hubS.S)
 	timeStart=now()
-
 	p=1
 	while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*hubS.Ts))
 		#global p
@@ -665,39 +664,39 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
 		p+=1
     end
 
-    plot(dLogadmm.U[:,:,convIt])
-    plot(dLogadmm.E[:,:,convIt])
-    pd3alad=plot(hcat(dLogadmm.Tactual[:,1,convIt],dLogadmm.Tpred[:,1,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")
-    plot!(pd3alad,1:horzLen+1,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red))
-	pd4admm=plot(dLogadmm.Lam[:,1,convIt],xlabel="Time",ylabel=raw"Lambda ($/kA)",label="ADMM", xlims=(0,hubS.K))
-	plot!(pd4admm,cSol.Lam,label="Central")
-
-    #convergence plots
-    halfCI=Int(floor(convIt/2))
-    if halfCI>0
-        CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
-                       range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
-    else
-        CList=colorant"red";
-    end
-    uSumPlotalad=plot(dLogadmm.uSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
-    #plot!(uSumPlotalad,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
-	plot!(uSumPlotalad,sum(uRaw,dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
-
-    zSumPlotalad=plot(dLogadmm.zSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
-    #plot!(zSumPlotalad,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
-	plot!(zSumPlotalad,sum(zRaw,dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
-
-    constPlotalad2=plot(dLogadmm.couplConst[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
-
-    lamPlotalad=plot(dLogadmm.Lam[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
-    plot!(lamPlotalad,cSol.Lam,seriescolor=:black,linewidth=2,linealpha=0.8)
-	plot!(lamPlotalad,lambdaCurr,seriescolor=:black,linewidth=2,linealpha=0.8)
-
-    fPlotalad=plot(dCMalad.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
-    convItPlotalad=plot(dCMalad.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false) #,yscale=:log10
-    convPlotalad=plot(dCMalad.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
-    constPlotalad=plot(dCMalad.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # plot(dLogadmm.U[:,:,convIt])
+    # plot(dLogadmm.E[:,:,convIt])
+    # pd3alad=plot(hcat(dLogadmm.Tactual[:,1,convIt],dLogadmm.Tpred[:,1,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")
+    # plot!(pd3alad,1:horzLen+1,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red))
+	# pd4admm=plot(dLogadmm.Lam[:,1,convIt],xlabel="Time",ylabel=raw"Lambda ($/kA)",label="ADMM", xlims=(0,hubS.K))
+	# plot!(pd4admm,cSol.Lam,label="Central")
+	#
+    # #convergence plots
+    # halfCI=Int(floor(convIt/2))
+    # if halfCI>0
+    #     CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
+    #                    range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
+    # else
+    #     CList=colorant"red";
+    # end
+    # uSumPlotalad=plot(dLogadmm.uSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
+    # #plot!(uSumPlotalad,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+	# plot!(uSumPlotalad,sum(uRaw,dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
+	#
+    # zSumPlotalad=plot(dLogadmm.zSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
+    # #plot!(zSumPlotalad,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+	# plot!(zSumPlotalad,sum(zRaw,dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
+	#
+    # constPlotalad2=plot(dLogadmm.couplConst[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+	#
+    # lamPlotalad=plot(dLogadmm.Lam[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
+    # plot!(lamPlotalad,cSol.Lam,seriescolor=:black,linewidth=2,linealpha=0.8)
+	# plot!(lamPlotalad,lambdaCurr,seriescolor=:black,linewidth=2,linealpha=0.8)
+	#
+    # fPlotalad=plot(dCMalad.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # convItPlotalad=plot(dCMalad.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false) #,yscale=:log10
+    # convPlotalad=plot(dCMalad.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # constPlotalad=plot(dCMalad.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(1,convIt),legend=false,yscale=:log10)
 
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLogadmm.Tpred[1,1,convIt]

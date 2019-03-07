@@ -14,7 +14,7 @@ using Suppressor
 # check all indexing????
 #especially stepI +k for iD and Tamb
 H=4
-maxIt=300
+maxIt=1000
 dualChk = 1e-2 #lamIt=0
 primChk = 1e-2 # Ax-B=0s
 datafile="jld2"
