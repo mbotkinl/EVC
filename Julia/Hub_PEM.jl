@@ -29,9 +29,9 @@ hubLabels=permutedims(["Hub $(h)" for h=1:hubS.H])
 # allColors=get_color_palette(:auto, plot_color(:white), H)
 # plotColors=allColors'
 
-#Plots.scalefontsizes(1.2)
+Plots.scalefontsizes(1.2)
 
-p1pem=plot(pemSol.E,xlabel="",ylabel="Hub Energy (MWh)",labels=hubLabels,xlims=(0,hubS.K),xticks=xticks)
+p1pem=plot(pemSol.E,xlabel="",ylabel="Hub Energy (MWh)",labels=hubLabels,xlims=(0,hubS.K),xticks=xticks,linewidth=2)
 if drawFig savefig(p1pem,path*"J_PEM_SoC.png") end
 
 p2pem=plot(pemSol.U,xlabel="Time",ylabel="HUb Current (kA)",legend=false,xlims=(0,hubS.K))
@@ -55,6 +55,6 @@ plot!(aggU,1:hubS.K,hubS.ItotalMax*ones(hubS.K),label="XFRM Limit",line=(:dash,:
 
 
 pemPlot=plot(p1pem,p3pem,aggU,reqPlot,layout=(2,2))
-pubPlot(pemPlot,thickscale=1,sizeWH=(1000,800),dpi=100)
+pubPlot(pemPlot,thickscale=1,sizeWH=(1600,800),dpi=100)
 pname="hubPEMPlot.png"
 if saveF savefig(pemPlot,path*pname) end

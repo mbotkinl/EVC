@@ -33,6 +33,9 @@ function readRuns(path,multiCentral=false)
     files = filter(x->occursin(".jld2",x), readdir(path))
     #evFile = filter(x->occursin("scenario",x), files)
     files = filter(x->occursin("_",x), files) # avoid evScenario
+
+    # pemRun = filter(x->occursin("PEM",x), files)
+    # files=setdiff(files,pemRun)
     noLimFile = filter(x->occursin("noLim",x), files)
     if multiCentral
         cFile=[]
@@ -384,6 +387,9 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     end
 
     plotLabels=permutedims(runNames)
+    for i=1:length(plotLabels)
+        plotLabels[i]=renameLabel(plotLabels[i])
+    end
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
 
