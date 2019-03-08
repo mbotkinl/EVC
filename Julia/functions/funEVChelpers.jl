@@ -63,7 +63,7 @@ function renameLabel(label)
     elseif occursin("ALADIN",label)
         new="ALADIN"
     elseif occursin("dual",label)
-        new="dual"
+        new="Dual Decomp"
     elseif occursin("central_NL",label)
         new="NL"
     elseif occursin("central",label)

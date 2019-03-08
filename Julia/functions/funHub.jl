@@ -639,7 +639,7 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
 			itVz=round.(dLogadmm.Vz[:,:,(p-1)],sigdigits=roundSigFigs)
 			itρ=round.(dLogadmm.itUpdate[1,1,(p-1)],sigdigits=roundSigFigs)
 		end
-		@printf "itρ: %f\n" itρ
+		#@printf "itρ: %f\n" itρ
 
         cFlag=runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,eqForm,silent)
         global convIt=p

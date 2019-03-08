@@ -111,30 +111,32 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
 
+    # Plots.scalefontsizes(1.2)
 
     #Time plots
-    tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),
-                    xlabel="",ylabel="Temp (C)",xticks=xticks)
-    plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
-    plot!(tempPlot,T,labels="",seriescolor=plotColors)
+    tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linealpha=0.4,xlims=(0,Klen),
+                    xlabel="",ylabel="Temp (C)",xticks=xticks,linewidth=8)
+    plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red),linewidth=4)
+    plot!(tempPlot,T,labels="",seriescolor=plotColors,linewidth=2)
     if noLim !=nothing
-        plot!(tempPlot,1:Klen,noLim["solution"].Tactual*1000,label="",seriescolor=allColors[P+1])
+        plot!(tempPlot,1:Klen,noLim["solution"].Tactual,label="",seriescolor=allColors[P+1],linewidth=2)
     end
 
     uSumPlot=plot(1:Klen,cSol.uSum,xlabel="",ylabel="Current Sum (kA)",xlims=(0,Klen),labels="Central",
-                  seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
-    plot!(uSumPlot,uSum,labels=plotLabels,seriescolor=plotColors,legend=false)
+                  seriescolor=:black,linewidth=6,linealpha=0.4,xticks=xticks)
+    plot!(uSumPlot,uSum,labels=plotLabels,seriescolor=plotColors,legend=false,linewidth=2)
     if noLim !=nothing
-        plot!(uSumPlot,1:Klen,noLim["solution"].uSum,label="Uncoordinated",seriescolor=allColors[P+1])
+        plot!(uSumPlot,1:Klen,noLim["solution"].uSum,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=2)
     end
 
     iD=evS.iD_actual[1:Klen]
     loadPlot=plot(1:Klen,cSol.uSum+iD,xlabel="",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
-                  seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
-    plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash))
-    plot!(loadPlot,uSum.+iD,labels="",seriescolor=plotColors)
+                  seriescolor=:black,linewidth=6,linealpha=0.4,xticks=xticks)
+    plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash),linewidth=3)
+    plot!(loadPlot,1:Klen,evS.ItotalMax*ones(Klen),label="Current Limit",line=(:dash,:red),linewidth=3)
+    plot!(loadPlot,uSum.+iD,labels="",seriescolor=plotColors,linewidth=2)
     if noLim !=nothing
-        plot!(loadPlot,1:Klen,noLim["solution"].uSum+iD,label="",seriescolor=allColors[P+1])
+        plot!(loadPlot,1:Klen,noLim["solution"].uSum+iD,label="",seriescolor=allColors[P+1],linewidth=2)
     end
 
     target=zeros(Klen)
@@ -162,15 +164,13 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     #     plot!(snAvgPlot,1:Klen,snAvgNoLim,label="Uncoordinated",seriescolor=allColors[P+1])
     # end
 
-    convItPlot=plot(convIt,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),xticks=xticks,labels=plotLabels)
-
-
     lamPlot=plot(1:Klen,cSol.lamCoupl/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",xlims=(0,Klen),labels="Central",
-                   seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
-    plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors)
+                   seriescolor=:black,linewidth=6,linealpha=0.4,xticks=xticks)
+    plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors,linewidth=2)
     if noLim !=nothing
-        plot!(lamPlot,1:Klen,noLim["solution"].lamCoupl,label="Uncoordinated",seriescolor=allColors[P+1])
+        plot!(lamPlot,1:Klen,noLim["solution"].lamCoupl/1000,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=2)
     end
+
     # R plot***
     Rmax=zeros(Klen,P)
     Ravg=zeros(Klen,P)
@@ -191,10 +191,14 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     if lowRes
         pubPlot(resPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
     else
-        pubPlot(resPlot,thickscale=0.8,sizeWH=(800,600),dpi=100)
+        pubPlot(resPlot,thickscale=1,sizeWH=(1000,600),dpi=100)
     end
 
     if saveF savefig(resPlot,path*"resPlot.png") end
+
+
+    convItPlot=plot(convIt,xlabel="Time",ylabel="Number of Iterations",xlims=(0,Klen),xticks=xticks,labels=plotLabels,linewidth=2)
+    savefig(convItPlot,path*"itPlot.png")
 
     return resPlot
 end
@@ -229,24 +233,28 @@ function compareConvGraph_New(evS;ind=1)
 
     plotLabels=copy(permutedims(runNames))
 
-
-    plotLabels=["NL" "PWL"]
-    plotLabels=["Equality ALADIN" "Inequlity ALADIN"]
+    #
+    # plotLabels=["NL" "PWL"]
+    # plotLabels=["Equality ALADIN" "Inequlity ALADIN"]
 
     for i=1:length(plotLabels)
         plotLabels[i]=renameLabel(plotLabels[i])
     end
 
-    maxIt=20
+
+    #Plots.scalefontsizes(1.2)
+
+    maxIt=150
     #internal metrics
     couplLabel= L"||i_d[k+1]+\sum_{n=1}^N i_n[k+1]-\sum_{m=1}^M i_m^{PW}[k+1]||_1"
     couplLabel="1-Norm Coupling Gap"
-    couplPlot=plot(convDict["coupl1Norm"],legend=false,xlims=(0,maxIt),yscale=:log10,ylabel=couplLabel)
+    couplPlot=plot(convDict["coupl1Norm"],legend=false,xlims=(0,maxIt),yscale=:log10,ylabel=couplLabel,linewidth=2)
     dualLabel=L"||\lambda^{(p)}-\lambda^{(p-1)}||_2"
     dualLabel="2-Norm Lambda It Gap"
-    dualPlot=plot(convDict["lamIt2Norm"],labels=plotLabels,xlims=(0,maxIt),yscale=:log10,xlabel="Iteration",ylabel=dualLabel)
+    dualPlot=plot(convDict["lamIt2Norm"],labels=plotLabels,xlims=(0,maxIt),yscale=:log10,xlabel="Iteration",ylabel=dualLabel,linewidth=2)
     intConvPlot=plot(couplPlot,dualPlot,layout=(2,1))
-    pubPlot(intConvPlot,thickscale=1.4,sizeWH=(1000,600),dpi=100)
+    pubPlot(intConvPlot,thickscale=1,sizeWH=(1000,800),dpi=100)
+    pname="convPlot.png"
     pname="nl_pwl_i$(ind).png"
     pname="eq_ineq_i$(ind).png"
     if saveF savefig(intConvPlot,path*pname) end
@@ -337,9 +345,14 @@ function compareRunsTable(runs,evS)
         avgTime=timeT/max(sum(convIt),Klen)
         avgConv=max(sum(convIt),Klen)/Klen
         maxConv=maximum(convIt)
-        stats = [keyI timeT avgTimeTs avgTime avgConv maxConv]
+        stats = [renameLabel(keyI) timeT avgTimeTs avgTime avgConv maxConv]
         push!(compareTable,stats)
     end
+
+    #add central
+    avgTimeTs=cRun["runTime"]/Klen
+    stats = ["Central" cRun["runTime"] avgTimeTs avgTimeTs 1 1]
+    push!(compareTable,stats)
 
     return compareTable
 end
@@ -375,29 +388,26 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     plotColors=allColors[1:P]'
 
     #Time plots
-    tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linewidth=4,linealpha=0.25,xlims=(0,Klen),
+    tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linewidth=6,linealpha=0.25,xlims=(0,Klen),
                     xlabel="",ylabel="Temp (C)",xticks=xticks)
     plot!(tempPlot,1:Klen,hubS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
-    plot!(tempPlot,T,labels="",seriescolor=plotColors)
+    plot!(tempPlot,T,labels="",seriescolor=plotColors,linewidth=2)
     if noLim !=nothing
         plot!(tempPlot,1:Klen,noLim["solution"].Tactual,label="",seriescolor=allColors[P+1])
     end
 
     iD=hubS.iD_actual[1:Klen]
     loadPlot=plot(1:Klen,cSol.uSum+iD,xlabel="",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
-                  seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
+                  seriescolor=:black,linewidth=6,linealpha=0.25,xticks=xticks)
     plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash))
-    plot!(loadPlot,uSum.+iD,labels="",seriescolor=plotColors)
+    plot!(loadPlot,uSum.+iD,labels="",seriescolor=plotColors,linewidth=2)
     if noLim !=nothing
         plot!(loadPlot,1:Klen,noLim["solution"].uSum+iD,label="",seriescolor=allColors[P+1])
     end
 
-    convItPlot=plot(convIt,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(0,Klen),xticks=xticks,labels=plotLabels)
-
-
     lamPlot=plot(1:Klen,cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",xlims=(0,Klen),labels="Central",
-                   seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
-    plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors)
+                   seriescolor=:black,linewidth=6,linealpha=0.25,xticks=xticks)
+    plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors,linewidth=2)
     if noLim !=nothing
         plot!(lamPlot,1:Klen,noLim["solution"].Lam,label="Uncoordinated",seriescolor=allColors[P+1])
     end
@@ -406,10 +416,20 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     if lowRes
         pubPlot(resPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
     else
-        pubPlot(resPlot,thickscale=0.8,sizeWH=(800,600),dpi=100)
+        pubPlot(resPlot,thickscale=1,sizeWH=(1000,600),dpi=100)
     end
 
-    if saveF savefig(resPlot,path*"resPlot.png") end
+    if saveF savefig(resPlot,path*"hubPlot.png") end
+
+
+    convItPlot=plot(convIt,xlabel="Time",ylabel="Number of Iterations",xlims=(0,Klen),xticks=xticks,labels=plotLabels,linewidth=2)
+    if lowRes
+        pubPlot(convItPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
+    else
+        pubPlot(convItPlot,thickscale=1.5,sizeWH=(1000,600),dpi=100)
+    end
+
+    if saveF savefig(convItPlot,path*"hubConvPlot.png") end
 
     return resPlot, convPlot
 end
