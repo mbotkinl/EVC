@@ -172,12 +172,14 @@ function pemHublocal(h,stepI,horzLen,packLen,hubS,pemSol)
 	#desiredSOC=1 # for now
 	# desiredSOC, desiredKn=findmax(hubS.eDepart_min[stepI:hubS.K,h])
 	# desiredSOC, desiredKn=findmax(hubS.eMax[stepI:hubS.K,h])
-	desiredKn=findfirst(hubS.eDepart_min[stepI:hubS.K,h].>0)
-	if isnothing(desiredKn)
-		desiredSOC=hubS.eMax[stepI+horzLen,h]
+	ii=findfirst(hubS.eDepart_min[stepI:hubS.K,h].>0)
+	if isnothing(ii)
+		desiredKn=stepI+horzLen
 	else
-		desiredSOC=hubS.eMax[stepI+desiredKn-1,h]
+		desiredKn=stepI+ii-1
 	end
+	desiredSOC=hubS.eMax[stepI+horzLen,h]
+
 	prevSOC= if stepI>1 pemSol.E[stepI-1,h] else hubS.e0[h] end
 
 	# clean up this logic***
