@@ -294,10 +294,13 @@ function pemHubcoord(stepI,horzLen,packLen,hubS,pemSol,ReqI)
 	end
 
 	#R>=1 and packRec get charged
+	eDepart_min=hubS.eDepart_min[stepI,:]
+	eArrive_actual=hubS.eArrive_actual[stepI,:]
 	for h=1:H
 		pemSol.U[stepI,h]= if Rec[h]==1 hubS.uMax[stepI,h] else  0  end
 		prevSOC= if stepI>1 pemSol.E[stepI-1,h] else hubS.e0[h] end
-		pemSol.E[stepI,h]=prevSOC+hubS.ηP[h]*pemSol.U[stepI,h]
+		#pemSol.E[stepI,h]=prevSOC+hubS.ηP[h]*pemSol.U[stepI,h]-(eDepart_min[h]+eΔ[h])+eArrive_actual[h])
+		pemSol.E[stepI,h]=prevSOC+hubS.ηP[h]*pemSol.U[stepI,h]-eDepart_min[h]+eArrive_actual[h]
 	end
 
 	return nothing
