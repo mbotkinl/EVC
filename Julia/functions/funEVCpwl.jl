@@ -278,24 +278,11 @@ function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,itLa
         #grad of lagragian
         for k=1:horzLen+1
             dLog.zSum[k,p]=sum(dLog.Z[(k-1)*(S)+s,p] for s=1:S)
-            dLog.uSum[k,p]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N)
-            dLog.couplConst[k,p]=dLog.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLog.zSum[k,p]
+            #dLog.uSum[k,p]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N)
+            #dLog.couplConst[k,p]=dLog.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLog.zSum[k,p]
         end
     end
 
-    if updateMethod=="fastAscent"
-        #fast ascent
-        if noTlimit==false
-            dLog.couplConst[:,p]=dLog.Tactual[:,p]-evS.Tmax*ones(horzLen+1,1)
-        else
-            dLog.couplConst[:,p]=zeros(horzLen+1,1)
-        end
-        #add some amount of future lambda
-        for k=1:(horzLen+1-2)
-            dLog.couplConst[k,p]=.6*dLog.couplConst[k,p]+.3*dLog.couplConst[k+1,p]+.1*dLog.couplConst[k+2,p]
-            #gradL[k,1]=.5*gradL[k,1]+.2*gradL[k+1,1]+.2*gradL[k+2,1]+.1*gradL[k+3,1]+.1*gradL[k+4,1]
-        end
-    end
     return nothing
 end
 
@@ -336,14 +323,9 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
 
     localXFRMDual(p,stepI,evS,dLog,itLam,roundSigFigs)
 
-    #update lambda
-    alphaP= max(alpha0/ceil(p/alphaDivRate),minAlpha)
-    dLog.itUpdate[1,p]=alphaP
-    #alphaP= alphaP*alphaRate
-
-    #dLog.Lam[:,p]=max.(itLam[:,1]+alphaP*dLog.couplConst[:,p],0)
-    dLog.Lam[:,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,p],sigdigits=roundSigFigs)
-
+    for k=1:horzLen+1
+        dLog.uSum[k,p]=sum(dLog.Un[(k-1)*N+n,p] for n=1:N)
+    end
     #calculate actual temperature from nonlinear model of XFRM
     for k=1:horzLen+1
         dLog.Itotal[k,p]=dLog.uSum[k,p] + evS.iD_actual[stepI+(k-1),1]
@@ -352,6 +334,32 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
     for k=1:horzLen
         dLog.Tactual[k+1,p]=evS.τP*dLog.Tactual[k,p]+evS.γP*dLog.Itotal[k+1,p]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
     end
+
+    if updateMethod=="fastAscent"
+        #fast ascent
+        if noTlimit==false
+            dLog.couplConst[:,p]=dLog.Tactual[:,p]-evS.Tmax*ones(horzLen+1,1)
+        else
+            dLog.couplConst[:,p]=zeros(horzLen+1,1)
+        end
+        #add some amount of future lambda
+        for k=1:(horzLen+1-2)
+            dLog.couplConst[k,p]=.6*dLog.couplConst[k,p]+.3*dLog.couplConst[k+1,p]+.1*dLog.couplConst[k+2,p]
+            #gradL[k,1]=.5*gradL[k,1]+.2*gradL[k+1,1]+.2*gradL[k+2,1]+.1*gradL[k+3,1]+.1*gradL[k+4,1]
+        end
+    else
+        dLog.couplConst[k,p]=dLog.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLog.zSum[k,p]
+    end
+
+
+    #update lambda
+    alphaP= max(alpha0/ceil(p/alphaDivRate),minAlpha)
+    dLog.itUpdate[1,p]=alphaP
+    #alphaP= alphaP*alphaRate
+
+    #dLog.Lam[:,p]=max.(itLam[:,1]+alphaP*dLog.couplConst[:,p],0)
+    dLog.Lam[:,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,p],sigdigits=roundSigFigs)
+
 
     #check convergence
     objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
@@ -436,7 +444,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
         dCM.convIt[1,1,ind]=convIt
     end
     #
-    # # # convergence plots
+    # # convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
     #                range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
@@ -451,6 +459,8 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
     # plot!(lamPlotd,cSave.Lam[:,:,ind],seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # constPlot2=plot(dLog.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
+    #
+    # tempPlot=plot(dLog.Tactual[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Temp",xlims=(0,horzLen+1),legend=false)
     #
     # #convergence metric plots
     # fPlot=plot(1:convIt,dCM.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)

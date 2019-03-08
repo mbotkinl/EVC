@@ -16,9 +16,14 @@ else
 	#initialize
     t0=evS.t0
     s0=evS.s0
+	#dualAscent
 	prevLam=1e5*ones(evS.K1+1,1)
-
 	alpha0 = 1e4 #for kA
+
+	#fastAscent
+	# prevLam=1e5*ones(evS.K1+1,1)
+	# alpha0 = 5e2 #for kA
+
 	#prevLam=round.(cSol.lamCoupl[1:evS.K1+1],digits=4)
 	roundSigFigs=30
 
