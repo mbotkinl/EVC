@@ -3,6 +3,9 @@ using Plots.PlotMeasures
 #run comparison
 #path = clips()
 path=path*"ForVis\\"
+
+path=path*"PWL\\"
+
 cRun,runs, noLim=readRuns(path);
 lowRes=true
 savefig=false
@@ -114,11 +117,11 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
 
-    # Plots.scalefontsizes(1.2)
+    Plots.scalefontsizes(1.2)
 
     #Time plots
     tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linealpha=0.4,xlims=(0,Klen),
-                    xlabel="",ylabel="Temp (C)",xticks=xticks,linewidth=8)
+                    xlabel="",ylabel="Temp (C)",xticks=xticks,linewidth=8, title="a")
     plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red),linewidth=4)
     plot!(tempPlot,T,labels="",seriescolor=plotColors,linewidth=2)
     if noLim !=nothing
@@ -134,7 +137,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 
     iD=evS.iD_actual[1:Klen]
     loadPlot=plot(1:Klen,cSol.uSum+iD,xlabel="",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
-                  seriescolor=:black,linewidth=6,linealpha=0.4,xticks=xticks)
+                  seriescolor=:black,linewidth=6,linealpha=0.4,xticks=xticks, title="b")
     plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash),linewidth=3)
     plot!(loadPlot,1:Klen,evS.ItotalMax*ones(Klen),label="Current Limit",line=(:dash,:red),linewidth=3)
     plot!(loadPlot,uSum.+iD,labels="",seriescolor=plotColors,linewidth=2)
@@ -168,7 +171,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     # end
 
     lamPlot=plot(1:Klen,cSol.lamCoupl/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",xlims=(0,Klen),labels="Central",
-                   seriescolor=:black,linewidth=6,linealpha=0.4,xticks=xticks)
+                   seriescolor=:black,linewidth=6,linealpha=0.4,xticks=xticks, title="c")
     plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors,linewidth=2)
     if noLim !=nothing
         plot!(lamPlot,1:Klen,noLim["solution"].lamCoupl/1000,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=2)
@@ -238,23 +241,24 @@ function compareConvGraph_New(evS;ind=1)
 
     #
     # plotLabels=["NL" "PWL"]
-    # plotLabels=["Equality ALADIN" "Inequlity ALADIN"]
+    #plotLabels=["Equality ALADIN" "Inequlity ALADIN"]
 
     for i=1:length(plotLabels)
         plotLabels[i]=renameLabel(plotLabels[i])
     end
 
 
-    #Plots.scalefontsizes(1.2)
+    Plots.scalefontsizes(1.2)
 
     maxIt=150
     #internal metrics
     couplLabel= L"||i_d[k+1]+\sum_{n=1}^N i_n[k+1]-\sum_{m=1}^M i_m^{PW}[k+1]||_1"
     couplLabel="1-Norm Coupling Gap"
-    couplPlot=plot(convDict["coupl1Norm"],legend=false,xlims=(0,maxIt),yscale=:log10,ylabel=couplLabel,linewidth=2)
+    couplPlot=plot(convDict["coupl1Norm"],legend=false,xlims=(0,maxIt),yscale=:log10,ylabel=couplLabel,linewidth=2,title="a")
     dualLabel=L"||\lambda^{(p)}-\lambda^{(p-1)}||_2"
     dualLabel="2-Norm Lambda It Gap"
-    dualPlot=plot(convDict["lamIt2Norm"],labels=plotLabels,xlims=(0,maxIt),yscale=:log10,xlabel="Iteration",ylabel=dualLabel,linewidth=2)
+    dualPlot=plot(convDict["lamIt2Norm"],labels=plotLabels,xlims=(0,maxIt),yscale=:log10,xlabel="Iteration",
+                    ylabel=dualLabel,linewidth=2,title="b")
     intConvPlot=plot(couplPlot,dualPlot,layout=(2,1))
     pubPlot(intConvPlot,thickscale=1,sizeWH=(1000,800),dpi=100)
     pname="convPlot.png"
@@ -333,11 +337,12 @@ end
 function compareRunsTable(runs,evS)
     # compareTable = DataFrame(name=String[],time=Float64[],cLamDiff=Float64[],lamDiff=Float64[],
     # cObjDiff=Float64[],objDiff=Float64[])
-    compareTable = DataFrame(name=String[],timeTotal=Float64[],avgTimePerTs=Float64[],avgtimePerIt=Float64[],avgconvIt=Float64[],maxConvIt=Float64[])
+    Klen=evS.K
+
+    compareSpeedTable = DataFrame(name=String[],timeTotal=Float64[],avgTimePerTs=Float64[],avgtimePerIt=Float64[],avgconvIt=Float64[],maxConvIt=Float64[])
     for keyI in keys(runs)
         println(keyI)
         loadF=runs[keyI]
-        Klen=evS.K
         timeT=loadF["runTime"]
         convIt=loadF["solution"].convIt
         #cm=loadF["convMetrics"]
@@ -349,15 +354,41 @@ function compareRunsTable(runs,evS)
         avgConv=max(sum(convIt),Klen)/Klen
         maxConv=maximum(convIt)
         stats = [renameLabel(keyI) timeT avgTimeTs avgTime avgConv maxConv]
-        push!(compareTable,stats)
+        push!(compareSpeedTable,stats)
     end
-
     #add central
     avgTimeTs=cRun["runTime"]/Klen
     stats = ["Central" cRun["runTime"] avgTimeTs avgTimeTs 1 1]
-    push!(compareTable,stats)
+    push!(compareSpeedTable,stats)
 
-    return compareTable
+    #EVC
+    cUn=cRun["solution"].Un
+    cLam = cRun["solution"].lamCoupl
+    comparePerfTable = DataFrame(name=String[],curr2Norm=Float64[],lam2Norm=Float64[])
+    for keyI in keys(runs)
+        println(keyI)
+        loadF=runs[keyI]
+        curr2Norm=norm(cUn-loadF["solution"].Un,2)
+        lam2Norm=norm(cLam-loadF["solution"].lamCoupl,2)
+        stats = [renameLabel(keyI) curr2Norm lam2Norm]
+        push!(comparePerfTable,stats)
+    end
+
+    #Hub
+    cU=cRun["solution"].U
+    cLam = cRun["solution"].Lam
+    comparePerfTable = DataFrame(name=String[],curr2Norm=Float64[],lam2Norm=Float64[])
+    for keyI in keys(runs)
+        println(keyI)
+        loadF=runs[keyI]
+        curr2Norm=norm(cU-loadF["solution"].U,2)
+        lam2Norm=norm(cLam-loadF["solution"].Lam,2)
+        stats = [renameLabel(keyI) curr2Norm lam2Norm]
+        push!(comparePerfTable,stats)
+    end
+
+
+    return compareSpeedTable, comparePerfTable
 end
 
 function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
@@ -395,7 +426,7 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 
     #Time plots
     tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linewidth=6,linealpha=0.25,xlims=(0,Klen),
-                    xlabel="",ylabel="Temp (C)",xticks=xticks)
+                    xlabel="",ylabel="Temp (C)",xticks=xticks,title="a")
     plot!(tempPlot,1:Klen,hubS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
     plot!(tempPlot,T,labels="",seriescolor=plotColors,linewidth=2)
     if noLim !=nothing
@@ -404,7 +435,7 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 
     iD=hubS.iD_actual[1:Klen]
     loadPlot=plot(1:Klen,cSol.uSum+iD,xlabel="",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
-                  seriescolor=:black,linewidth=6,linealpha=0.25,xticks=xticks)
+                  seriescolor=:black,linewidth=6,linealpha=0.25,xticks=xticks,title="b")
     plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash))
     plot!(loadPlot,uSum.+iD,labels="",seriescolor=plotColors,linewidth=2)
     if noLim !=nothing
@@ -412,7 +443,7 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     end
 
     lamPlot=plot(1:Klen,cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",xlims=(0,Klen),labels="Central",
-                   seriescolor=:black,linewidth=6,linealpha=0.25,xticks=xticks)
+                   seriescolor=:black,linewidth=6,linealpha=0.25,xticks=xticks,title="c")
     plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors,linewidth=2)
     if noLim !=nothing
         plot!(lamPlot,1:Klen,noLim["solution"].Lam,label="Uncoordinated",seriescolor=allColors[P+1])
@@ -422,7 +453,7 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     if lowRes
         pubPlot(resPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
     else
-        pubPlot(resPlot,thickscale=1,sizeWH=(1000,600),dpi=100)
+        pubPlot(resPlot,thickscale=1,sizeWH=(1000,600),dpi=40)
     end
 
     if saveF savefig(resPlot,path*"hubPlot.png") end
@@ -432,7 +463,7 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     if lowRes
         pubPlot(convItPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
     else
-        pubPlot(convItPlot,thickscale=1.5,sizeWH=(1000,600),dpi=100)
+        pubPlot(convItPlot,thickscale=1.5,sizeWH=(1000,600),dpi=40)
     end
 
     if saveF savefig(convItPlot,path*"hubConvPlot.png") end
@@ -440,7 +471,7 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     return resPlot, convPlot
 end
 
-function calcPrivacy(N,K,S)
+function calcPrivacy(N,K1,S)
     aladMaxIt=10
     admmMaxIt=100
     dualMaxIt=1000
@@ -452,32 +483,32 @@ function calcPrivacy(N,K,S)
     pem=N*bpi # 1 Req Int per EV
     pem+= 1*bpf # 1 float for temperature
 
-    dual=N*K*bpf #i_n
-    dual+=K*bpf #sum iPWL
-    dual+=K*bpf # price to transformer
-    dual+=K*N*bpf # price to EVs
+    dual=N*K1*bpf #i_n
+    dual+=K1*bpf #sum iPWL
+    dual+=K1*bpf # price to transformer
+    dual+=K1*N*bpf # price to EVs
     dual*=dualMaxIt
 
-    admm=N*K*bpf #i_n
-    admm+=K*S*bpf # iPWL
-    admm+=K*bpf # price to transformer
-    admm+=K*N*bpf # price to EVs
-    admm+=K*S*bpf # aux variable to transformer
-    admm+=K*N*bpf # aux variable to EVs
+    admm=N*K1*bpf #i_n
+    admm+=K1*S*bpf # iPWL
+    admm+=K1*bpf # price to transformer
+    admm+=K1*N*bpf # price to EVs
+    admm+=K1*S*bpf # aux variable to transformer
+    admm+=K1*N*bpf # aux variable to EVs
     admm*=admmMaxIt
 
-    alad=N*K*bpf #i_n
-    alad+=N*K*bpf #g_i
-    alad+=N*K*bpf #g_s
-    alad+=4*N*K*bpb # all Cs
-    alad+=K*S*bpf # iPWL
+    alad=N*K1*bpf #i_n
+    alad+=N*K1*bpf #g_i
+    alad+=N*K1*bpf #g_s
+    alad+=4*N*K1*bpb # all Cs
+    alad+=K1*S*bpf # iPWL
     # alad+=S*K*bpf #g_z
     # alad+=K*bpf #g_t
-    alad+=2*S*K*bpb+2*K*bpb # all Cs
-    alad+=K*bpf # price to transformer
-    alad+=K*N*bpf # price to EVs
-    alad+=K*S*bpf+K*bpf # aux variable to transformer
-    alad+=2*K*N*bpf # aux variables to EVs
+    alad+=2*S*K1*bpb+2*K*bpb # all Cs
+    alad+=K1*bpf # price to transformer
+    alad+=K1*N*bpf # price to EVs
+    alad+=K1*S*bpf+K*bpf # aux variable to transformer
+    alad+=2*K1*N*bpf # aux variables to EVs
     alad*=aladMaxIt
 
     pem/1e3 #kilobit
@@ -488,6 +519,7 @@ end
 
 function pwlSegPlot()
     #plot central PWL solutions
+
     I=evS.ItotalMax
     S=evS.S
     deltaI=I/S
@@ -527,26 +559,28 @@ function pwlSegPlot()
         global prevY=segs[i*dX]
     end
 
+    Plots.scalefontsizes(1.2)
+    mSize1=6
+    mSize2=4
 
     segP=plot(x,x.^2,label=L"i^2",legend=:topleft)
     plot!(segP,x,segs,label="PWL Approx",xlabel="Current (kA)")
-    scatter!(segP,solX[1:indT],solY[1:indT],label="Before Overload",markersize=10,markerstrokewidth=0,
+    scatter!(segP,solX[1:indT],solY[1:indT],label="Before Overload",markersize=mSize1,markerstrokewidth=0,
                 seriescolor="red",xlims=(minimum(solX)-deltaI,maximum(solX)+deltaI))
-    scatter!(segP,solX[indT+1:K],solY[indT+1:K],label="After Overload",markersize=5,markerstrokewidth=0,seriescolor="green")
+    scatter!(segP,solX[indT+1:K],solY[indT+1:K],label="After Overload",markersize=mSize2,markerstrokewidth=0,seriescolor="green")
     ylabel!("e[k]")
     xlims!(segP,(0,25))
 
 
     segP2=plot(x,x.^2,label=L"i^2",linewidth=2,widen=true,legend=:topleft)
     plot!(segP2,x,segs,label="PWL Approx",xlabel="Current (kA)",linewidth=2)
-    scatter!(segP2,solX[1:indT],solY[1:indT],label="Before Overload",markersize=15,markerstrokewidth=0,
+    scatter!(segP2,solX[1:indT],solY[1:indT],label="Before Overload",markersize=mSize1,markerstrokewidth=0,
                 seriescolor="red",xlims=(minimum(solX)-deltaI,maximum(solX)+deltaI))
     ylims!(segP2,(380,500))
-    xlims!(segP2,(19.5,22))
+    xlims!(segP2,(19.7,22))
 
 
-    segPlots=plot(segP,segP2,layout=(1,2))
-    pubPlot(segPlots,thickscale=1.5,sizeWH=(1200,400),dpi=100)
+    segPlots=plot(segP,segP2,layout=(1,2),size=(1200,800))
     savefig(segPlots,path*"pwlSegPlot.png")
 
 
@@ -667,8 +701,11 @@ function scenarioPlots(evS)
     # b_hist=histogram(b_kWh,nbins=20,legend=false,xlabel="EV Battery Size (kWh)",ylabel= "Number of EVs")
     # imax_hist=histogram(evS.imax,nbins=12,legend=false,xlabel="EV Max Charging Power (kW)",ylabel= "")
     # battParamsPlot=plot(b_hist,imax_hist,layout=(1,2))
+    plot(b_kWh,seriestype=:barhist)
+    tickS=40:10:100
+    xticksHist=(tickS,string.(collect(tickS)))
     battParamsPlot=histogram2d(b_kWh,evS.imax*1000,nbins=20,xlabel="EV Battery Size (kWh)",ylabel="EV Max Charging Power (A)",
-        colorbar_title="Number of EVs",thickness_scaling=1.8,dpi=100,size=(1000,500),bar_edges=false)
+        colorbar_title="Number of EVs",thickness_scaling=1.8,dpi=100,size=(1000,500),bar_edges=false,xticks=xticksHist)
     savefig(battParamsPlot,path*"Scenario\\battParamsPlot.png")
 
     s0Plot=histogram(evS.s0,nbins=40,legend=false,xlabel="EV Initial SoC (%)",ylabel= "Number of EVs",title="(a)")

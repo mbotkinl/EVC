@@ -27,7 +27,7 @@ end
 using LinearAlgebra
 using Plots;pyplot()
 #using Plots;gr()
-#using Statistics
+using Statistics
 #using Dates
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
