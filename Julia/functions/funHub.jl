@@ -332,6 +332,8 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
 		#global p
 		if p==1
 			itLam=prevLam
+			#alpha0 =1 #for kA
+			global alpha0=max(min(maximum(prevLam),1e6),1e-3)
 		else
 			itLam=round.(dLog.Lam[:,1,(p-1)],digits=8)
 		end
@@ -348,7 +350,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     # pd3alad=plot(hcat(dLog.Tactual[:,1,convIt],dLog.Tpred[:,1,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")
     # plot!(pd3alad,1:horzLen+1,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red))
 	#
-    # convergence plots
+    # #convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
     #                range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
@@ -371,7 +373,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     # convItPlot=plot(1:convIt,dCM.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convPlot=plot(1:convIt,dCM.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(2,convIt),legend=false,yscale=:log10)
     # constPlot=plot(1:convIt,dCM.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(2,convIt),legend=false,yscale=:log10)
-
+	#
 
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLog.Tpred[1,1,convIt]
