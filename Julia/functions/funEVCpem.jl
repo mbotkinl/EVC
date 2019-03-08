@@ -165,3 +165,172 @@ function pemEVC(evS::scenarioStruct,slack::Bool,silent::Bool)
 	pemSol.objVal[1,1]=sum(sum((pemSol.Sn[stepI,n]-1)^2*evS.Qsi[n,1]+(pemSol.Un[stepI,n])^2*evS.Ri[n,1] for n=1:N) for stepI=1:(evS.K))
 	return pemSol, Req
 end
+
+#HUB PEM
+function pemHublocal(h,stepI,horzLen,packLen,hubS,pemSol)
+	epsilon=1e-3
+	#desiredSOC=1 # for now
+	desiredSOC, desiredKn=findmax(hubS.eDepart_min[stepI:hubS.K,h])
+	prevSOC= if stepI>1 pemSol.E[stepI-1,h] else hubS.e0[h] end
+
+	# clean up this logic***
+	if stepI==1
+		existPack=false
+	elseif ((prevSOC-desiredSOC)>=-epsilon)
+		existPack=false
+	elseif (pemSol.U[stepI-1,h]>0)
+		if stepI<=packLen
+			prevChar=stepI-1
+			existPack=true
+		elseif (pemSol.U[stepI-(packLen),h]==0)
+			prevChar=sum(pemSol.U[(stepI-1):(stepI-(packLen)),h])
+			existPack=true
+		else
+			existPack=false
+		end
+	else
+		existPack=false
+	end
+
+	if existPack==true # still using a packet
+		Req=-packLen+prevChar
+	else
+		if (prevSOC-hubS.eMax[h])>=-epsilon #100% SOC reached
+			ratio=0
+			Req=0
+		elseif (prevSOC-desiredSOC)>=-epsilon #desired SOC reached
+			ratio=0
+			Req=2 #could use a probability here
+		else
+			# ratio=(desiredSOC-prevSOC)/(hubS.ηP[n]*hubS.imax[n]*(hubS.Kn[n]-(stepI-1)))
+			ratio=(desiredSOC-prevSOC)/(hubS.ηP[h]*hubS.uMax[stepI,h]*(desiredKn-(stepI)))
+			if ratio>=1 # opt out (need to charge for rest of time)
+				ratio=1
+				Req=-packLen
+			else
+				#mu[stepI,n] = 1/mttr*((desiredSOC-ratio[stepI,n])/(ratio[stepI,n]-0))*((setSOC-0)/(desiredSOC-setSOC))
+				mu = 1/mttr*((ratio-0)/(1-ratio))*((1-setSOC)/(setSOC-0))
+				P = min(max(1-exp(-mu*hubS.Ts),0),1)
+				t=rand()
+				Req=if (t>(1-P)) 1 else  0  end
+			end
+		end
+	end
+	#return ratio,mu,P,Req
+	return Req
+end
+
+function pemHubcoord(stepI,horzLen,packLen,hubS,pemSol,ReqI)
+	poolSol=Int(min(round(H*packLen),100))
+	slackWeight=1e8
+	extraWeight=round(1/(2*H*(horzLen+1)),digits=6)
+
+	#receive requests and forecast for the next packLen intervals
+	prevT = if stepI>1 pemSol.Tactual[stepI-1] else hubS.t0 end
+    requiredCh=Int.(ReqI.<0) # all negative numbers
+	requiredInd=findall(x->x==1,requiredCh)
+	extraInd=findall(x->x==2,ReqI)
+	optOffInd=findall(x->x==0,ReqI) #did not request
+
+	m = Model(solver = GurobiSolver(PoolSearchMode=1,PoolSolutions=poolSol,PoolGap=0,TimeLimit=9/10*hubS.Ts))
+	@variable(m,u[1:horzLen+1,1:H],Bin) #binary charge variable
+	@variable(m,Test[1:horzLen+1])
+	@variable(m,slackT)
+	objExp=slackWeight*slackT
+	if !isempty(extraInd)
+		objExp=objExp-extraWeight*sum(sum(u[:,h] for h in extraInd))
+	end
+	if !isempty(setdiff(1:H,extraInd))
+		objExp=objExp-sum(sum(u[:,h] for h in setdiff(1:H,extraInd)))
+	end
+	@objective(m,Min,objExp)
+
+	#need to index uMax
+	@constraint(m,tempCon1,Test[1]>=hubS.τP*prevT+hubS.γP*(sum(u[1,h]*hubS.uMax[stepI,h] for h=1:H)+hubS.iD_pred[stepI])^2+hubS.ρP*hubS.Tamb[stepI])
+	@constraint(m,tempCon2[kk=1:horzLen],Test[kk+1]>=hubS.τP*Test[kk]+hubS.γP*(sum(u[kk+1,h]*hubS.uMax[stepI+kk,h] for h=1:H)+hubS.iD_pred[stepI+kk])^2+hubS.ρP*hubS.Tamb[stepI+kk])
+	@constraint(m,Test.<=hubS.Tmax+slackT)
+	@constraint(m,slackT>=0)
+	@constraint(m,optOnC[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(min(abs(ReqI[requiredInd[nn]]),horzLen+1)))==min(abs(ReqI[requiredInd[nn]]),horzLen+1))
+	@constraint(m,optOffC[kk=1:horzLen+1],sum(u[kk,h] for h in optOffInd)==0)
+
+
+	if solverSilent
+        @suppress_out begin
+			statusC = solve(m)
+        end
+    else
+		statusC = solve(m)
+    end
+
+
+	if statusC==:Optimal
+		#take random solution if multiple
+		solCount=Gurobi.get_sol_count(getrawsolver(m))
+		if solCount>1
+			println(solCount," multiple solutions found")
+			solNum=rand(1:solCount-1)
+			setparam!(getrawsolver(m),"SolutionNumber",solNum)
+			getparam(getrawsolver(m),"SolutionNumber")
+			sol=Gurobi.get_dblattrarray(getrawsolver(m),"Xn",1,H)
+		elseif solCount==1
+			sol=getvalue(u)[1,:]
+		else
+			sol=requiredCh
+		end
+		Rec=sol
+	else
+		#return required EVs to charges
+		Rec=requiredCh
+	end
+
+	#R>=1 and packRec get charged
+	for h=1:H
+		pemSol.U[stepI,h]= if Rec[h]==1 hubS.uMax[stepI,h] else  0  end
+		prevSOC= if stepI>1 pemSol.E[stepI-1,h] else hubS.e0[h] end
+		pemSol.E[stepI,h]=prevSOC+hubS.ηP[h]*pemSol.U[stepI,h]
+	end
+
+	return nothing
+end
+
+function pemHubstep(stepI,hubS,pemSol,silent)
+
+	ReqI=zeros(H)
+	horzLen=min(packLen,hubS.K-stepI)
+
+	#println(stepI)
+	#send requests
+    for h=1:H
+		ReqI[h]=pemHublocal(h,stepI,horzLen,packLen,hubS,pemSol)
+	end
+
+	pemHubcoord(stepI,horzLen,packLen,hubS,pemSol,ReqI)
+
+	# actual dynamics
+	prevT = if stepI>1 pemSol.Tactual[stepI-1] else hubS.t0 end
+	pemSol.uSum[stepI] = round.(sum(pemSol.U[stepI,h] for h=1:H),sigdigits=roundSigFigs)
+	pemSol.Itotal[stepI] = round.(pemSol.uSum[stepI] + hubS.iD_actual[stepI],sigdigits=roundSigFigs)
+	pemSol.Tactual[stepI] = round.(hubS.τP*prevT+hubS.γP*pemSol.Itotal[stepI]^2+hubS.ρP*hubS.Tamb[stepI],sigdigits=roundSigFigs)
+	return ReqI
+end
+
+function pemHub(hubS,silent::Bool)
+	pemSol=hubSolutionStruct(K=hubS.K,H=H)
+	Req=zeros(hubS.K,H)
+
+	Juno.progress() do id
+		for stepI=1:hubS.K
+			@info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(hubS.K)....\n" progress=stepI/hubS.K _id=id
+			@printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI hubS.K
+			try
+				Req[stepI,:]=pemHubstep(stepI,hubS,pemSol,silent)
+			catch e
+				@printf "error: %s" e
+				break
+			end
+		end
+	end
+
+	#pemSol.objVal[1,1]=sum(sum((pemSol.Sn[stepI,n]-1)^2*hubS.Qsi[n,1]+(pemSol.Un[stepI,n])^2*hubS.Ri[n,1] for n=1:N) for stepI=1:(hubS.K))
+	return pemSol, Req
+end
