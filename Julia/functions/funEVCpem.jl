@@ -170,7 +170,14 @@ end
 function pemHublocal(h,stepI,horzLen,packLen,hubS,pemSol)
 	epsilon=1e-3
 	#desiredSOC=1 # for now
-	desiredSOC, desiredKn=findmax(hubS.eDepart_min[stepI:hubS.K,h])
+	# desiredSOC, desiredKn=findmax(hubS.eDepart_min[stepI:hubS.K,h])
+	# desiredSOC, desiredKn=findmax(hubS.eMax[stepI:hubS.K,h])
+	desiredKn=findfirst(hubS.eDepart_min[stepI:hubS.K,h].>0)
+	if isnothing(desiredKn)
+		desiredSOC=hubS.eMax[stepI+horzLen,h]
+	else
+		desiredSOC=hubS.eMax[stepI+desiredKn-1,h]
+	end
 	prevSOC= if stepI>1 pemSol.E[stepI-1,h] else hubS.e0[h] end
 
 	# clean up this logic***
@@ -193,31 +200,31 @@ function pemHublocal(h,stepI,horzLen,packLen,hubS,pemSol)
 	end
 
 	if existPack==true # still using a packet
-		Req=-packLen+prevChar
+		ReqH=-packLen+prevChar
 	else
-		if (prevSOC-hubS.eMax[h])>=-epsilon #100% SOC reached
+		if (prevSOC-hubS.eMax[stepI,h])>=-epsilon #100% SOC reached
 			ratio=0
-			Req=0
+			ReqH=0
 		elseif (prevSOC-desiredSOC)>=-epsilon #desired SOC reached
 			ratio=0
-			Req=2 #could use a probability here
+			ReqH=2 #could use a probability here
 		else
 			# ratio=(desiredSOC-prevSOC)/(hubS.ηP[n]*hubS.imax[n]*(hubS.Kn[n]-(stepI-1)))
 			ratio=(desiredSOC-prevSOC)/(hubS.ηP[h]*hubS.uMax[stepI,h]*(desiredKn-(stepI)))
 			if ratio>=1 # opt out (need to charge for rest of time)
 				ratio=1
-				Req=-packLen
+				ReqH=-packLen
 			else
 				#mu[stepI,n] = 1/mttr*((desiredSOC-ratio[stepI,n])/(ratio[stepI,n]-0))*((setSOC-0)/(desiredSOC-setSOC))
 				mu = 1/mttr*((ratio-0)/(1-ratio))*((1-setSOC)/(setSOC-0))
 				P = min(max(1-exp(-mu*hubS.Ts),0),1)
 				t=rand()
-				Req=if (t>(1-P)) 1 else  0  end
+				ReqH=if (t>(1-P)) 1 else  0  end
 			end
 		end
 	end
 	#return ratio,mu,P,Req
-	return Req
+	return ReqH
 end
 
 function pemHubcoord(stepI,horzLen,packLen,hubS,pemSol,ReqI)
@@ -250,6 +257,7 @@ function pemHubcoord(stepI,horzLen,packLen,hubS,pemSol,ReqI)
 	@constraint(m,tempCon2[kk=1:horzLen],Test[kk+1]>=hubS.τP*Test[kk]+hubS.γP*(sum(u[kk+1,h]*hubS.uMax[stepI+kk,h] for h=1:H)+hubS.iD_pred[stepI+kk])^2+hubS.ρP*hubS.Tamb[stepI+kk])
 	@constraint(m,Test.<=hubS.Tmax+slackT)
 	@constraint(m,slackT>=0)
+	@constraint(m,currMax[h=1:H,kk=1:horzLen],sum(u[kk,h]*hubS.uMax[stepI+kk-1,h] for h=1:H)+hubS.iD_pred[stepI+kk-1]<=hubS.ItotalMax)
 	@constraint(m,optOnC[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(min(abs(ReqI[requiredInd[nn]]),horzLen+1)))==min(abs(ReqI[requiredInd[nn]]),horzLen+1))
 	@constraint(m,optOffC[kk=1:horzLen+1],sum(u[kk,h] for h in optOffInd)==0)
 
