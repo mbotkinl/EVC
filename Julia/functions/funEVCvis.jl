@@ -701,9 +701,8 @@ function scenarioPlots(evS)
     # b_hist=histogram(b_kWh,nbins=20,legend=false,xlabel="EV Battery Size (kWh)",ylabel= "Number of EVs")
     # imax_hist=histogram(evS.imax,nbins=12,legend=false,xlabel="EV Max Charging Power (kW)",ylabel= "")
     # battParamsPlot=plot(b_hist,imax_hist,layout=(1,2))
-    plot(b_kWh,seriestype=:barhist)
-    tickS=40:10:100
-    xticksHist=(tickS,string.(collect(tickS)))
+    tickS=42.5:10:102.5
+    xticksHist=(tickS,string.(collect(40:10:100)))
     battParamsPlot=histogram2d(b_kWh,evS.imax*1000,nbins=20,xlabel="EV Battery Size (kWh)",ylabel="EV Max Charging Power (A)",
         colorbar_title="Number of EVs",thickness_scaling=1.8,dpi=100,size=(1000,500),bar_edges=false,xticks=xticksHist)
     savefig(battParamsPlot,path*"Scenario\\battParamsPlot.png")
