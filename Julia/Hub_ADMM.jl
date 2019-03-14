@@ -18,7 +18,6 @@ else
 	ρDivRate=1.02
 	roundSigFigs=16
 
-
 	println("Running ADMM Hub Sim")
 	timeT=@elapsed dSoladmm=hubADMM(maxIt,hubS,cSol,mode,silent)
 	if saveResults saveRun(path,fname,timeT, dSoladmm) end

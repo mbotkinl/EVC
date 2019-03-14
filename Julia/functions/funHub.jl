@@ -551,7 +551,7 @@ function runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,e
 
     #other parameters
 	# ρDivRate=1
-	maxRho=1e9
+	maxRho=1e7
     #solve decoupled
     if runParallel
         @sync @distributed for hubInd=1:H
@@ -599,6 +599,7 @@ function runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,e
 	#cc=norm(hcat((itVu[:,:]-dLogadmm.Vu[:,:,p]),(itVz[:,:]-dLogadmm.Vz[:,:,p])),2)
 	if(constGap <= primChk  && itGap <=dualChk)
         if !silent @printf "Converged after %g iterations\n" p end
+		@printf "Y"
         convIt=p
         #break
         return true
