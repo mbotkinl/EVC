@@ -123,7 +123,6 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
 	#
 	# aggU=plot(hcat(sum(uRaw,dims=2),sum(uRaw,dims=2) .+ hubS.iD_actual[1:horzLen+1],hubS.iD_actual[1:horzLen+1]),label=["Central" "Total" "iD"],xlims=(0,horzLen+1),xlabel="Time",ylabel="Current (kA)")
 	# plot!(aggU,1:hubS.K,hubS.ItotalMax*ones(hubS.K),label="XFRM Limit",line=(:dash,:red))
-	#
 
     # new states
     t0=cSol.Tactual[stepI,1]
@@ -168,7 +167,7 @@ function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog:
     eArrive_actual=hubS.eArrive_actual[stepI:(stepI+horzLen),hubInd]
     slackMax=hubS.slackMax[stepI:(stepI+horzLen),hubInd]
 
-    hubM=Model(solver = GurobiSolver())
+    hubM=Model(solver = GurobiSolver(NumericFocus=3))
     @variable(hubM,u[1:horzLen+1])
     @variable(hubM,e[1:horzLen+1])
     @variable(hubM,eΔ[1:(horzLen+1)])
@@ -206,7 +205,7 @@ function localXFRMDual(p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogP
     S=hubS.S
     horzLen=min(hubS.K1,hubS.K-stepI)
 
-    coorM=Model(solver = GurobiSolver())
+    coorM=Model(solver = GurobiSolver(NumericFocus=3))
     @variable(coorM,t[1:(horzLen+1)])
     @constraint(coorM,upperTCon,t.<=hubS.Tmax)
     @constraint(coorM,t.>=0)
@@ -260,8 +259,9 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
     S=hubS.S
     horzLen=min(hubS.K1,K-stepI)
 
-    alphaDivRate=2
-    minAlpha=1e-6
+    minAlpha=1e-9
+	alphaDivRate=2
+
 
     #solve subproblem for each EV
 	if runParallel
@@ -289,7 +289,7 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
     dLog.itUpdate[1,1,p]=alphaP
     #alphaP= alphaP*alphaRate
 
-    #dLog.Lam[:,p]=max.(itLam[:,1]+alphaP*dLog.couplConst[:,p],0)
+	#dLog.Lam[:,1,p]=round.(max.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],0),sigdigits=roundSigFigs)
     dLog.Lam[:,1,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],sigdigits=roundSigFigs)
 
     #calculate actual temperature from nonlinear model of XFRM

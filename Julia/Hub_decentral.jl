@@ -10,8 +10,7 @@ else
 	t0=hubS.t0
 	e0=hubS.e0
 	#prevLam=ones(hubS.K1+1,1)
-	#prevLam=1e-3*ones(hubS.K1+1,1)
-	prevLam=1e-3*ones(hubS.K1+1,1)
+	prevLam=3e3*ones(hubS.K1+1,1)
 
 	# alpha0 =1 #for kA
 	roundSigFigs=16

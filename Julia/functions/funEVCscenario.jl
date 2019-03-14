@@ -273,13 +273,13 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     #histogram(qrRatio,nbins=40)
     Rh=1e3*ones(1,H)
     #Rh=1e6*ones(1,H)
-    Qh=qrRatio.*Rh/100
+    Qh=qrRatio.*Rh/10
     Oh=orRatio.*Rh
     #action happens immediately afte interval before ends
     #hub information
     arriveLast=round(Int,2*3600/Ts) #last arrival at 10PM
     departFirst=round(Int,10*3600/Ts) #first departure at 6AM
-    K_arrive_pred=rand(1:arriveLast,Nh,H)
+    K_arrive_pred=max.(rand(-Int(arriveLast/2):arriveLast,Nh,H),0) #arrive between 7PM and 10PM
     K_depart_pred=rand(departFirst:K,Nh,H)
     # K_arrive_pred=zeros(Nh,H)
     # K_arrive_pred[1:Int(Nh/2),1]=1:Int(Nh/2)
@@ -295,8 +295,8 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     Sn_arrive_actual=Sn_arrive_pred
     #EVcap=b./3.6e6 #kWh
     EVcap=round.(b./3.6e6/1e3,digits=6) #MWh
-    e0=zeros(H) # no vehicles have arrived yet
-    #e0=[sum(Sn_arrive_actual[n,h]*EVcap[n,h] for n in findall(x->x==0,K_arrive_actual[:,h])) for h=1:H]
+    #e0=zeros(H) # no vehicles have arrived yet
+    e0=[sum(Sn_arrive_actual[n,h]*EVcap[n,h] for n in findall(x->x==0,K_arrive_actual[:,h])) for h=1:H]
 
     #prepare predicted values for optimization
     eMax=zeros(K,H)
