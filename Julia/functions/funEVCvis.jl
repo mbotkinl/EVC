@@ -8,7 +8,7 @@ path=path*"PWL\\"
 
 cRun,runs, noLim=readRuns(path);
 lowRes=true
-savefig=false
+saveF=false
 
 #resPlot=compareRunsGraph(runs, cRun, noLim, saveResults,lowRes)
 #cTable=compareRunsTable(runs,evS)
@@ -119,30 +119,34 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 
     Plots.scalefontsizes(1.2)
 
+
+
+    cAlpha=0.25
+    lWidth=1.5
     #Time plots
-    tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linealpha=0.4,xlims=(0,Klen),
+    tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linealpha=cAlpha,
                     xlabel="",ylabel="Temp (C)",xticks=xticks,linewidth=8, title="a")
-    plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red),linewidth=4)
-    plot!(tempPlot,T,labels="",seriescolor=plotColors,linewidth=2)
+    plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red),linewidth=2)
+    plot!(tempPlot,T,labels="",seriescolor=plotColors,linewidth=lWidth)
     if noLim !=nothing
-        plot!(tempPlot,1:Klen,noLim["solution"].Tactual,label="",seriescolor=allColors[P+1],linewidth=2)
+        plot!(tempPlot,1:Klen,noLim["solution"].Tactual,label="",seriescolor=allColors[P+1],linewidth=lWidth)
     end
 
     uSumPlot=plot(1:Klen,cSol.uSum,xlabel="",ylabel="Current Sum (kA)",xlims=(0,Klen),labels="Central",
-                  seriescolor=:black,linewidth=6,linealpha=0.4,xticks=xticks)
-    plot!(uSumPlot,uSum,labels=plotLabels,seriescolor=plotColors,legend=false,linewidth=2)
+                  seriescolor=:black,linewidth=6,linealpha=cAlpha,xticks=xticks)
+    plot!(uSumPlot,uSum,labels=plotLabels,seriescolor=plotColors,legend=false,linewidth=lWidth)
     if noLim !=nothing
-        plot!(uSumPlot,1:Klen,noLim["solution"].uSum,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=2)
+        plot!(uSumPlot,1:Klen,noLim["solution"].uSum,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=lWidth)
     end
 
     iD=evS.iD_actual[1:Klen]
-    loadPlot=plot(1:Klen,cSol.uSum+iD,xlabel="",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
-                  seriescolor=:black,linewidth=6,linealpha=0.4,xticks=xticks, title="b")
-    plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash),linewidth=3)
-    plot!(loadPlot,1:Klen,evS.ItotalMax*ones(Klen),label="Current Limit",line=(:dash,:red),linewidth=3)
-    plot!(loadPlot,uSum.+iD,labels="",seriescolor=plotColors,linewidth=2)
+    loadPlot=plot(1:Klen,(cSol.uSum+iD)/Ntf*1000,xlabel="",ylabel="Current (A)",labels="",
+                  seriescolor=:black,linewidth=6,linealpha=cAlpha,xticks=xticks, title="b")
+    plot!(loadPlot,1:Klen,iD/Ntf*1000,label="Background Demand",line=(:dash),linewidth=2)
+    #plot!(loadPlot,1:Klen,evS.ItotalMax/Ntf*1000*ones(Klen),label="Current Limit",line=(:dash,:red),linewidth=3)
+    plot!(loadPlot,(uSum.+iD)/Ntf*1000,labels="",seriescolor=plotColors,linewidth=lWidth)
     if noLim !=nothing
-        plot!(loadPlot,1:Klen,noLim["solution"].uSum+iD,label="",seriescolor=allColors[P+1],linewidth=2)
+        plot!(loadPlot,1:Klen,(noLim["solution"].uSum+iD)/Ntf*1000,label="",seriescolor=allColors[P+1],linewidth=lWidth)
     end
 
     target=zeros(Klen)
@@ -153,7 +157,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 
     snSumCentral=sum(cSol.Sn,dims=2)# sum up across N
     snSumPlot=plot(snSumCentral,xlabel="",ylabel="SoC Sum",xlims=(0,Klen),labels="",
-                   seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
+                   seriescolor=:black,linewidth=4,linealpha=cAlpha,xticks=xticks)
     plot!(snSumPlot,target,label="SoC Target",line=(:dash))
     plot!(snSumPlot,snSum,labels="",seriescolor=plotColors)
     if noLim !=nothing
@@ -170,11 +174,11 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     #     plot!(snAvgPlot,1:Klen,snAvgNoLim,label="Uncoordinated",seriescolor=allColors[P+1])
     # end
 
-    lamPlot=plot(1:Klen,cSol.lamCoupl/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",xlims=(0,Klen),labels="Central",
-                   seriescolor=:black,linewidth=6,linealpha=0.4,xticks=xticks, title="c")
-    plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors,linewidth=2)
+    lamPlot=plot(1:Klen,cSol.lamCoupl/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",labels="Central",
+                   seriescolor=:black,linewidth=6,linealpha=cAlpha,xticks=xticks, title="c")
+    plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors,linewidth=lWidth)
     if noLim !=nothing
-        plot!(lamPlot,1:Klen,noLim["solution"].lamCoupl/1000,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=2)
+        plot!(lamPlot,1:Klen,noLim["solution"].lamCoupl/1000,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=lWidth)
     end
 
     # R plot***
@@ -187,8 +191,6 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
             Ravg[k,p]=mean(R)
         end
     end
-
-
     Rmax=plot(Rmax,xlabel="Time",ylabel="R Max",xlims=(0,Klen),labels=plotLabels,seriescolor=plotColors,legend=false)
 
 
@@ -197,7 +199,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     if lowRes
         pubPlot(resPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
     else
-        pubPlot(resPlot,thickscale=1,sizeWH=(1000,600),dpi=100)
+        pubPlot(resPlot,thickscale=1,sizeWH=(1000,600),dpi=40)
     end
 
     if saveF savefig(resPlot,path*"resPlot.png") end
@@ -434,12 +436,12 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     end
 
     iD=hubS.iD_actual[1:Klen]
-    loadPlot=plot(1:Klen,cSol.uSum+iD,xlabel="",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
+    loadPlot=plot(1:Klen,(cSol.uSum+iD)/Ntf*1000,xlabel="",ylabel="Current (A)",xlims=(0,Klen),labels="",
                   seriescolor=:black,linewidth=6,linealpha=0.25,xticks=xticks,title="b")
-    plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash))
-    plot!(loadPlot,uSum.+iD,labels="",seriescolor=plotColors,linewidth=2)
+    plot!(loadPlot,1:Klen,iD/Ntf*1000,label="Background Demand",line=(:dash))
+    plot!(loadPlot,(uSum.+iD)/Ntf*1000,labels="",seriescolor=plotColors,linewidth=2)
     if noLim !=nothing
-        plot!(loadPlot,1:Klen,noLim["solution"].uSum+iD,label="",seriescolor=allColors[P+1])
+        plot!(loadPlot,1:Klen,(noLim["solution"].uSum+iD)/Ntf*1000,label="",seriescolor=allColors[P+1])
     end
 
     lamPlot=plot(1:Klen,cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",xlims=(0,Klen),labels="Central",
