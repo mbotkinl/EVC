@@ -14,7 +14,7 @@ else
 	#prevVu=repeat(maximum(hubS.uMax,dims=1),outer=[(hubS.K1+1),1])
 	prevVu=.01*ones((hubS.K1+1),hubS.H)
 
-	#ρADMMp = 1
+	ρADMMp = 1e3
 	ρDivRate=1.02
 	roundSigFigs=16
 

@@ -552,10 +552,6 @@ function runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,e
     #other parameters
 	# ρDivRate=1
 	maxRho=1e7
-
-	dualChk = 5e-2
-	primChk = 5e-3
-
     #solve decoupled
     if runParallel
         @sync @distributed for hubInd=1:H
@@ -633,8 +629,8 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
 			itLam=prevLam
 			itVu=prevVu
 			itVz=prevVz
-			#itρ=ρADMMp
-			itρ=max(min(maximum(prevLam),1e6),1e-3)
+			itρ=ρADMMp
+			#itρ=max(min(maximum(prevLam),1e9),1e-3)
 		else
 			itLam=round.(dLogadmm.Lam[:,1,(p-1)],sigdigits=roundSigFigs)
 			itVu=round.(dLogadmm.Vu[:,:,(p-1)],sigdigits=roundSigFigs)
