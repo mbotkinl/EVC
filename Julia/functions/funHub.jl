@@ -551,7 +551,7 @@ function runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,e
 
     #other parameters
 	# ρDivRate=1
-	maxRho=1e7
+	maxRho=1e9
     #solve decoupled
     if runParallel
         @sync @distributed for hubInd=1:H
@@ -629,8 +629,8 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
 			itLam=prevLam
 			itVu=prevVu
 			itVz=prevVz
-			itρ=ρADMMp
-			#itρ=max(min(maximum(prevLam),1e9),1e-3)
+			#itρ=ρADMMp
+			itρ=max(min(maximum(prevLam),1e9),1e-3)
 		else
 			itLam=round.(dLogadmm.Lam[:,1,(p-1)],sigdigits=roundSigFigs)
 			itVu=round.(dLogadmm.Vu[:,:,(p-1)],sigdigits=roundSigFigs)
@@ -686,7 +686,7 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     dSol.U[stepI,:]=dLogadmm.U[1,1:H,convIt]
     dSol.E[stepI,:]=dLogadmm.E[1,1:H,convIt]
 	dSol.D[stepI,:]=dLogadmm.D[1,1:H,convIt]
-    #dSol.Z[stepI,:]=dLogadmm.Z[1:S,convIt]
+    dSol.zSum[stepI,1]=dLogadmm.zSum[1,1,convIt]
     dSol.uSum[stepI,1]=dLogadmm.uSum[1,1,convIt]
     dSol.zSum[stepI,1]=dLogadmm.zSum[1,1,convIt]
     dSol.Itotal[stepI,1]=dLogadmm.Itotal[1,1,convIt]
