@@ -551,7 +551,7 @@ function runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,e
 
     #other parameters
 	# ρDivRate=1
-	maxRho=1e9
+	maxRho=1e7
 
 	dualChk = 5e-2
 	primChk = 5e-3

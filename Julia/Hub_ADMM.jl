@@ -9,7 +9,7 @@ if loadResults
 else
 	t0=hubS.t0
 	e0=hubS.e0
-	prevLam=ones(hubS.K1+1,1)
+	prevLam=3e3*ones(hubS.K1+1,1)
 	prevVz=-hubS.deltaI*ones((hubS.K1+1),hubS.S)
 	#prevVu=repeat(maximum(hubS.uMax,dims=1),outer=[(hubS.K1+1),1])
 	prevVu=.01*ones((hubS.K1+1),hubS.H)
