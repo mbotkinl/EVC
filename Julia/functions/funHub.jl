@@ -306,11 +306,12 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
 	itGap = norm(dLog.Lam[:,1,p]-itLam[:,1],2)
     if((constGap<=primChk) && (itGap <= dualChk))
         if !silent @printf "Converged after %g iterations\n" p end
+		@printf "Y"
         convIt=p
         return true
     else
         if !silent
-            @printf "itGap %e after %g iterations\n" itGap p
+            @printf "itGap    %e after %g iterations\n" itGap p
             @printf "constGap %e after %g iterations\n\n" constGap p
             #@printf "snGap   %e after %g iterations\n" snGap p
             #@printf "unGap   %e after %g iterations\n" unGap p
@@ -333,7 +334,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
 		if p==1
 			itLam=prevLam
 			#alpha0 =1 #for kA
-			global alpha0=max(min(maximum(prevLam),1e6),1e-3)
+			global alpha0=max(min(maximum(prevLam)/20,1e6),1e-3)
 		else
 			itLam=round.(dLog.Lam[:,1,(p-1)],digits=8)
 		end
@@ -378,6 +379,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLog.Tpred[1,1,convIt]
     dSol.U[stepI,:]=dLog.U[1,1:H,convIt]
+	dSol.uSum[stepI,1]=sum(dLog.U[1,1:H,convIt])
     dSol.E[stepI,:]=dLog.E[1,1:H,convIt]
 	dSol.D[stepI,:]=dLog.D[1,1:H,convIt]
     #dSol.Z[stepI,:]=dLog.Z[1:S,convIt]
