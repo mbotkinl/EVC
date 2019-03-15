@@ -14,7 +14,7 @@ using Suppressor
 # check all indexing????
 #especially stepI +k for iD and Tamb
 H=4
-maxIt=1000
+maxIt=2000
 dualChk = 1e-2 #lamIt=0
 primChk = 1e-2 # Ax-B=0s
 datafile="jld2"
@@ -49,8 +49,6 @@ else #create scenario
 	using Distributions
 	hubS=setupHubScenario(H,Nh,Tmax=Tmax,saveS=saveS,path=path)
 end
-
-
 
 stT1=Time(20,0)
 endT1=Time(23,59)

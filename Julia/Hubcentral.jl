@@ -29,7 +29,7 @@ plot!(twinx(),sum(cSol.U,dims=2),label="Hub Current",seriestype=:line,seriescolo
 
 p2=plot(cSol.U,xlabel="",ylabel="Current (kA)",legend=false,xticks=xticks, xlims=(0,hubS.K))
 
-p3=plot(hcat(cSol.Tactual,cSol.Tpred),label=["Actual Temp" "PWL Temp"],xlabel="",ylabel="Temp (K)", xlims=(0,hubS.K))
+p3=plot(hcat(cSol.Tactual,cSol.Tpred),label=["Actual Temp" "PWL Temp"],xlabel="",ylabel="Temp (C)", xlims=(0,hubS.K))
 plot!(p3,hubS.Tmax*ones(hubS.K),label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 
 p4=plot(cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",legend=false,xticks=xticks, xlims=(0,hubS.K))

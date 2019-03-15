@@ -632,22 +632,17 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
     end
 
     plotLabels=copy(permutedims(runNames))
-
+    plotLabels=["Uncoordinated" "Centrally Coordinated"]
 
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
 
-    stT1=Time(20,0)
-    endT1=Time(23,59)
-    stT2=Time(0,0)
-    endT2=Time(10,0)
-    Xlabels=vcat(collect(stT1:Dates.Second(round(evS.Ts)):endT1),collect(stT2:Dates.Second(round(evS.Ts)):endT2))
-    #Xlabels=vcat(collect(stT1:Dates.Minute(3):endT1),collect(stT2:Dates.Minute(3):endT2))
-    xticks=(1:40:Klen,Dates.format.(Xlabels[1:40:Klen],"HH:MM"))
+    Plots.scalefontsizes(1.2)
+
 
     #Time plots
     tempPlot=plot(1:Klen,T,label="",seriescolor=plotColors,xlims=(0,Klen),
-                    xlabel="",ylabel="Temp (K)",xticks=xticks)
+                    xlabel="",ylabel="Temp (C)",xticks=xticks)
     plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
 
     iD=evS.iD_actual
@@ -664,10 +659,12 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
     if lowRes
         pubPlot(resPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
     else
-        pubPlot(resPlot,thickscale=1.4,sizeWH=(1000,600),dpi=100)
+        pubPlot(resPlot,thickscale=1,sizeWH=(1000,600),dpi=40)
     end
 
-    if saveF savefig(resPlot,path*"nl_pwl.png") end
+    pName="nl_pwl.png"
+    pName="central_uncoord.png"
+    if saveF savefig(resPlot,path*pName) end
 
     return resPlot
 end

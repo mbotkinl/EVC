@@ -21,21 +21,19 @@ else
 end
 
 println("plotting....")
-pd1alad=plot(dSol.Sn,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,hubS.K),ylims=(0,1))
-if drawFig savefig(pd1alad,path*"J_decentral_ALADIN_SOC.png") end
+pd1alad=plot(dSol.E,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,hubS.K),ylims=(0,1))
 
 pd2alad=plot(dSol.U,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,hubS.K))
-if drawFig savefig(pd2alad,path*"J_decentral_ALADIN_Curr.png") end
 
 pd3alad=plot(hcat(dSol.Tactual[:,1],dSol.Tpred[:,1]),label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")
 plot!(pd3alad,1:hubS.K,hubS.Tmax*ones(hubS.K),label="XFRM Limit",line=(:dash,:red))
-if drawFig savefig(pd3alad,path*"J_decentral_ALADIN_Temp.png") end
+
 
 pd4alad=plot(hcat(cSol.Lam,dSol.Lam),xlabel="Time",ylabel=raw"Lambda ($/kA)",
              xlims=(0,hubS.K),labels=["Central" "Dual"])
-if drawFig savefig(pd4alad,path*"J_decentral_ALADIN_Lam.png") end
 
-aggU=plot(hcat(cSol.uSum,dSol.uSum),label=["Central" "ALAD"],
+
+aggU=plot(hcat(cSol.uSum,dSol.uSum),label=["Central" "Dual"],
 			xlims=(0,hubS.K),xlabel="Time",ylabel="PEV Current (kA)")
 
 checkDesiredStates(dSol.Sn,evS.Kn,evS.Snmin)
