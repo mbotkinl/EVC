@@ -334,7 +334,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
 		if p==1
 			itLam=prevLam
 			#alpha0 =1 #for kA
-			global alpha0=max(min(maximum(prevLam)/20,1e6),1e-3)
+			global alpha0=max(min(maximum(prevLam),1e6),1e-3)
 		else
 			itLam=round.(dLog.Lam[:,1,(p-1)],digits=8)
 		end
@@ -382,7 +382,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
 	dSol.uSum[stepI,1]=sum(dLog.U[1,1:H,convIt])
     dSol.E[stepI,:]=dLog.E[1,1:H,convIt]
 	dSol.D[stepI,:]=dLog.D[1,1:H,convIt]
-    #dSol.Z[stepI,:]=dLog.Z[1:S,convIt]
+	dSol.zSum[stepI,1]=dLog.zSum[1,1,convIt]
     dSol.Itotal[stepI,1]=dLog.Itotal[1,1,convIt]
     dSol.Tactual[stepI,1]=dLog.Tactual[1,1,convIt]
     dSol.convIt[stepI,1]=convIt

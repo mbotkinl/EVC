@@ -21,7 +21,7 @@ else
 end
 
 println("plotting....")
-pd1alad=plot(dSol.E,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,hubS.K),ylims=(0,1))
+pd1alad=plot(dSol.E,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,hubS.K))
 
 pd2alad=plot(dSol.U,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,hubS.K))
 
@@ -36,4 +36,5 @@ pd4alad=plot(hcat(cSol.Lam,dSol.Lam),xlabel="Time",ylabel=raw"Lambda ($/kA)",
 aggU=plot(hcat(cSol.uSum,dSol.uSum),label=["Central" "Dual"],
 			xlims=(0,hubS.K),xlabel="Time",ylabel="PEV Current (kA)")
 
-checkDesiredStates(dSol.Sn,evS.Kn,evS.Snmin)
+aggZ=plot(hcat(cSol.zSum,dSol.zSum),label=["Central" "Dual"],
+			xlims=(0,hubS.K),xlabel="Time",ylabel="PEV Current (kA)")
