@@ -22,6 +22,7 @@ end
 
 println("plotting....")
 pd1alad=plot(dSol.E,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,hubS.K))
+plot!(hubS.eMax,label=hubLabels.*" Max",line=(:dash),seriescolor=plotColors)
 
 pd2alad=plot(dSol.U,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(0,hubS.K))
 

@@ -22,10 +22,31 @@ plotColors=allColors'
 p1=plot(cSol.E,xlabel="",ylabel="Energy (MWh)",seriestype=:line,labels=hubLabels,xticks=xticks, xlims=(0,hubS.K))
 plot!(hubS.eMax,label=hubLabels.*" Max",line=(:dash),seriescolor=plotColors)
 
+
+eD=cSol.E_depart
+eD[eD.==0].=NaN
+eDmin=hubS.eDepart_min
+eDmin[eDmin.==0].=NaN
+eA=cSol.E_arrive
+eA[eA.==0].=NaN
 sumPlot=plot(sum(cSol.E,dims=2),xlabel="",ylabel="Energy (MWh)",label="Hub Energy",seriestype=:bar,xticks=xticks)
-plot!(sumPlot,sum(cSol.E_depart,dims=2),label="Depart Energy",seriestype=:scatter,markersize=10)
-plot!(sumPlot,sum(cSol.E_arrive,dims=2),label="Arrive Energy",seriestype=:scatter,markersize=10)
+plot!(sumPlot,sum(eD,dims=2),label="Depart Energy",seriestype=:scatter,markersize=10)
+plot!(sumPlot,sum(eA,dims=2),label="Arrive Energy",seriestype=:scatter,markersize=10)
 plot!(twinx(),sum(cSol.U,dims=2),label="Hub Current",seriestype=:line,seriescolor=:red,legend=false,ylabel="Current (kA)",xticks=xticks)
+
+h=4
+sumPlot=plot(cSol.E[:,h],xlabel="",ylabel="Energy (MWh)",label="Hub Energy",seriestype=:bar,xticks=xticks)
+plot!(sumPlot,eD[:,h],label="Depart Energy",seriestype=:scatter,markersize=10)
+plot!(sumPlot,eA[:,h],label="Arrive Energy",seriestype=:scatter,markersize=10)
+plot!(twinx(),cSol.U[:,h],label="Hub Current",seriestype=:line,seriescolor=:red,legend=false,ylabel="Current (kA)",xticks=xticks)
+
+#departPlot=plot(eD[:,h],label="Depart Actual Energy",seriestype=:bar,xlims=(200,hubS.K),yerror=eDmin[:,h] .- eD[:,h])
+
+departPlot=plot(eD[:,h],label="Depart Actual Energy",seriestype=:bar,xlims=(200,hubS.K))
+plot!(departPlot,eDmin[:,h],label="Depart Min Energy",seriestype=:scatter,markersize=5)
+plot!(departPlot,eDmin[:,h].+hubS.slackMax[:,h],label="Depart Max Energy",seriestype=:scatter,markersize=5)
+
+t=zip(eDmin[:,h] .- eD[:,h],eDmin[:,h].+hubS.slackMax[:,h])
 
 p2=plot(cSol.U,xlabel="",ylabel="Current (kA)",legend=false,xticks=xticks, xlims=(0,hubS.K))
 

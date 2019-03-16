@@ -426,27 +426,34 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
 
+
+    Plots.scalefontsizes(1.2)
+
+
+
+    cAlpha=0.25
+    lWidth=1.5
     #Time plots
-    tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linewidth=6,linealpha=0.25,xlims=(0,Klen),
+    tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linewidth=8,linealpha=cAlpha,
                     xlabel="",ylabel="Temp (C)",xticks=xticks,title="a")
     plot!(tempPlot,1:Klen,hubS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
-    plot!(tempPlot,T,labels="",seriescolor=plotColors,linewidth=2)
+    plot!(tempPlot,T,labels="",seriescolor=plotColors,linewidth=lWidth)
     if noLim !=nothing
-        plot!(tempPlot,1:Klen,noLim["solution"].Tactual,label="",seriescolor=allColors[P+1])
+        plot!(tempPlot,1:Klen,noLim["solution"].Tactual,label="",seriescolor=allColors[P+1],linewidth=lWidth)
     end
 
     iD=hubS.iD_actual[1:Klen]
-    loadPlot=plot(1:Klen,(cSol.uSum+iD)/Ntf*1000,xlabel="",ylabel="Current (A)",xlims=(0,Klen),labels="",
-                  seriescolor=:black,linewidth=6,linealpha=0.25,xticks=xticks,title="b")
+    loadPlot=plot(1:Klen,(cSol.uSum+iD)/Ntf*1000,xlabel="",ylabel="Current (A)",labels="",
+                  seriescolor=:black,linewidth=8,linealpha=cAlpha,xticks=xticks,title="b")
     plot!(loadPlot,1:Klen,iD/Ntf*1000,label="Background Demand",line=(:dash))
-    plot!(loadPlot,(uSum.+iD)/Ntf*1000,labels="",seriescolor=plotColors,linewidth=2)
+    plot!(loadPlot,(uSum.+iD)/Ntf*1000,labels="",seriescolor=plotColors,linewidth=lWidth)
     if noLim !=nothing
         plot!(loadPlot,1:Klen,(noLim["solution"].uSum+iD)/Ntf*1000,label="",seriescolor=allColors[P+1])
     end
 
-    lamPlot=plot(1:Klen,cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",xlims=(0,Klen),labels="Central",
-                   seriescolor=:black,linewidth=6,linealpha=0.25,xticks=xticks,title="c")
-    plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors,linewidth=2)
+    lamPlot=plot(1:Klen,cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",labels="Central",
+                   seriescolor=:black,linewidth=8,linealpha=cAlpha,xticks=xticks,title="c")
+    plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors,linewidth=lWidth)
     if noLim !=nothing
         plot!(lamPlot,1:Klen,noLim["solution"].Lam,label="Uncoordinated",seriescolor=allColors[P+1])
     end
@@ -461,7 +468,7 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     if saveF savefig(resPlot,path*"hubPlot.png") end
 
 
-    convItPlot=plot(convIt,xlabel="Time",ylabel="Number of Iterations",xlims=(0,Klen),xticks=xticks,labels=plotLabels,linewidth=2)
+    convItPlot=plot(convIt,xlabel="Time",ylabel="Number of Iterations",xticks=xticks,labels=plotLabels,linewidth=2,yscale=:log10)
     if lowRes
         pubPlot(convItPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
     else
@@ -641,17 +648,17 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
 
 
     #Time plots
-    tempPlot=plot(1:Klen,T,label="",seriescolor=plotColors,xlims=(0,Klen),
+    tempPlot=plot(1:Klen,T,label="",seriescolor=plotColors,
                     xlabel="",ylabel="Temp (C)",xticks=xticks)
     plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
 
     iD=evS.iD_actual
-    loadPlot=plot(1:Klen,uSum.+iD,xlabel="",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
+    loadPlot=plot(1:Klen,(uSum.+iD)/Ntf*1000,xlabel="",ylabel="Total Load (A)",labels="",
                   seriescolor=plotColors,xticks=xticks)
-    plot!(loadPlot,1:Klen,iD,label="Background Demand",line=(:dash))
+    plot!(loadPlot,1:Klen,(iD)/Ntf*1000,label="Background Demand",line=(:dash))
 
 
-    lamPlot=plot(1:Klen,Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",xlims=(0,Klen),labels=plotLabels,
+    lamPlot=plot(1:Klen,Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",labels=plotLabels,
                    seriescolor=plotColors,xticks=xticks)
 
     #resPlot=plot(tempPlot,loadPlot,snSumPlot,lamPlot,layout=(4,1))
