@@ -171,7 +171,7 @@ function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog:
     @variable(hubM,u[1:horzLen+1])
     @variable(hubM,e[1:horzLen+1])
     @variable(hubM,eΔ[1:(horzLen+1)])
-    objExp=sum((e[k,1]-eMax[k,1])^2*hubS.Qh[1,hubInd]+(u[k,1])^2*hubS.Rh[1,hubInd]+itLam[k,1]*u[k,1] for k=1:horzLen+1)
+    objExp=sum((e[k,1]-eMax[k,1])^2*hubS.Qh[1,hubInd]+(u[k,1])^2*hubS.Rh[1,hubInd]-hubS.Oh[1,hubInd]*eΔ[k,1]+itLam[k,1]*u[k,1] for k=1:horzLen+1)
     @objective(hubM,Min,objExp)
 
     #hub constraints
@@ -334,7 +334,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
 		if p==1
 			itLam=prevLam
 			#alpha0 =1 #for kA
-			global alpha0=max(min(maximum(prevLam),1e6),1e-3)
+			global alpha0=max(min(maximum(prevLam)/20,1e6),1e-3)
 		else
 			itLam=round.(dLog.Lam[:,1,(p-1)],digits=8)
 		end
@@ -374,7 +374,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     # convItPlot=plot(1:convIt,dCM.lamIt[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convPlot=plot(1:convIt,dCM.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(2,convIt),legend=false,yscale=:log10)
     # constPlot=plot(1:convIt,dCM.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(2,convIt),legend=false,yscale=:log10)
-	#
+
 
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLog.Tpred[1,1,convIt]
