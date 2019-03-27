@@ -38,9 +38,9 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
         @variable(centralModel,slackSn[1:N])
     end
     if !silent println("obj") end
-    objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,1]+(u[n,1])^2*evS.Ri[n,1] for n=1:N)
+    objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,stepI]+(u[n,1])^2*evS.Ri[n,stepI] for n=1:N)
     for k=2:horzLen+1
-        append!(objExp,sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,1]  for n=1:N))
+        append!(objExp,sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]  for n=1:N))
     end
     if slack append!(objExp,sum(1e3*evS.β[n]*slackSn[n]^2 for n=1:N)) end
     if tempAugment append!(objExp,ψ*sum((evS.Tmax-t[k]) for k=1:horzLen+1)) end
@@ -189,7 +189,7 @@ function pwlEVcentral(evS::scenarioStruct,slack::Bool,silent::Bool)
         end
     end
 
-    objFun(sn,u)=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,1] for n=1:N) +sum((u[k,n])^2*evS.Ri[n,1] for n=1:N) for k=1:evS.K)
+    objFun(sn,u)=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,k] for n=1:N) +sum((u[k,n])^2*evS.Ri[n,k] for n=1:N) for k=1:evS.K)
     cSol.objVal[1,1]=objFun(cSol.Sn,cSol.Un)
 
     return cSol, cSave
@@ -207,7 +207,7 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
     @variable(evM,un[1:horzLen+1])
     @variable(evM,sn[1:horzLen+1])
     if slack @variable(evM,slackSn) end
-    objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(un[k,1])^2*evS.Ri[evInd,1]+itLam[k,1]*un[k,1] for k=1:horzLen+1)
+    objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,stepI+k-1]+(un[k,1])^2*evS.Ri[evInd,stepI+k-1]+itLam[k,1]*un[k,1] for k=1:horzLen+1)
     if slack
         append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
     end
@@ -362,8 +362,8 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
 
 
     #check convergence
-    objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) for k=1:horzLen+1) +
-                    sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
+    objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1]     for n=1:N) for k=1:horzLen+1) +
+                    sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]           for n=1:N) for k=1:horzLen+1)
     dLog.objVal[1,p]=objFun(dLog.Sn[:,p],dLog.Un[:,p])
     itGap = norm(dLog.Lam[:,p]-itLam[:,1],2)
     couplGap=norm(dLog.couplConst[:,p],1)
@@ -525,7 +525,7 @@ function pwlEVdual(maxIt::Int,updateMethod::String,evS::scenarioStruct,cSave::ce
         end
     end
 
-    objFun(sn,u)=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,1] for n=1:N) +sum((u[k,n])^2*evS.Ri[n,1] for n=1:N) for k=1:evS.K)
+    objFun(sn,u)=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,k] for n=1:N) +sum((u[k,n])^2*evS.Ri[n,k] for n=1:N) for k=1:evS.K)
     dSol.objVal[1,1]=objFun(dSol.Sn,dSol.Un)
 
     return dSol, dCM
@@ -545,7 +545,7 @@ function localEVADMM(evInd::Int,p::Int,stepI::Int,evS,dLogadmm::itLogPWL,
     @variable(evM,sn[1:(horzLen+1)])
     @variable(evM,u[1:(horzLen+1)])
     if slack @variable(evM,slackSn) end
-    objExp= sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
+    objExp= sum((sn[k,1]-1)^2*evS.Qsi[evInd,stepI+k-1]+(u[k,1])^2*evS.Ri[evInd,stepI+k-1]+
                             itLam[k,1]*(u[k,1]-evV[k,1])+
                             itρ/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1)
     if slack
@@ -683,8 +683,8 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,ro
 
     #check convergence
     cc=norm(vcat((itVu[:,1]-dLogadmm.Vu[:,p]),(itVz[:,1]-dLogadmm.Vz[:,p])),1)
-    objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) +
-                     sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
+    objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1]     for n=1:N) +
+                     sum((u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]           for n=1:N) for k=1:horzLen+1)
     dLogadmm.objVal[1,p]=objFun(dLogadmm.Sn[:,p],dLogadmm.Un[:,p])
 
     constGap=norm(dLogadmm.couplConst[:,p],1)
@@ -877,7 +877,7 @@ function pwlEVadmm(maxIt::Int,evS,cSave::centralLogStruct,slack::Bool,roundSigFi
         end
     end
 
-    objFun(sn,u)=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,1] for n=1:N) +sum((u[k,n])^2*evS.Ri[n,1] for n=1:N) for k=1:evS.K)
+    objFun(sn,u)=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,k] for n=1:N) +sum((u[k,n])^2*evS.Ri[n,k] for n=1:N) for k=1:evS.K)
     dSol.objVal[1,1]=objFun(dSol.Sn,dSol.Un)
 
     return dSol, dCM
@@ -900,7 +900,7 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     @variable(evM,sn[1:(horzLen+1)])
     @variable(evM,u[1:(horzLen+1)])
     if slack @variable(evM,slackSn) end
-    objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
+    objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,stepI+k-1]+(u[k,1])^2*evS.Ri[evInd,stepI+k-1]+
                             itLam[k,1]*(u[k,1])+
                             itρ/2*(u[k,1]-evVu[k,1])*σU[evInd,1]*(u[k,1]-evVu[k,1])+
                             itρ/2*(sn[k,1]-evVs[k,1])*σS[evInd,1]*(sn[k,1]-evVs[k,1]) for k=1:horzLen+1)
@@ -958,16 +958,16 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     dLogalad.Sn[ind,p]=round.(snVal,sigdigits=roundSigFigs)
     dLogalad.Un[ind,p]=round.(uVal,sigdigits=roundSigFigs)
 
-    # dLogalad.Gu[ind,p]=2*evS.Ri[evInd,1]*uVal
-    # dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]
+    # dLogalad.Gu[ind,p]=2*evS.Ri[evInd,stepI:stepI+horzLen]*uVal
+    # dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,stepI:stepI+horzLen]*snVal.-2*evS.Qsi[evInd,stepI:stepI+horzLen]
 
 
     # if reg
-    #     dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal+2*reg_weight*uVal,sigdigits=roundSigFigs)
-    #     dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1]+2*reg_weight*snVal,sigdigits=roundSigFigs)
+    #     dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,stepI:stepI+horzLen]*uVal+2*reg_weight*uVal,sigdigits=roundSigFigs)
+    #     dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,stepI:stepI+horzLen]*snVal.-2*evS.Qsi[evInd,stepI:stepI+horzLen]+2*reg_weight*snVal,sigdigits=roundSigFigs)
     # else
-    dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,1]*uVal,sigdigits=roundSigFigs)
-    dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,1]*snVal.-2*evS.Qsi[evInd,1],sigdigits=roundSigFigs)
+    dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,stepI:stepI+horzLen].*uVal,sigdigits=roundSigFigs)
+    dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,stepI:stepI+horzLen].*snVal .- 2*evS.Qsi[evInd,stepI:stepI+horzLen],sigdigits=roundSigFigs)
     #end
     #use convex ALADIN approach
     #dLogalad.Gu[ind,p]=σU[evInd,1]*(evVu-uVal)-prevLam[:,1]
@@ -1060,8 +1060,8 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,i
     #     Hz=2*reg_weight
     #     Ht=2*reg_weight
     # else
-        Hu=2*evS.Ri
-        Hs=2*evS.Qsi
+        Hu=2*evS.Ri[:,stepI:stepI+horzLen]
+        Hs=2*evS.Qsi[:,stepI:stepI+horzLen]
         # Hu=2*evS.Ri *((1.5-2.5)*rand()+2.5)
         # Hs=2*evS.Qsi *((1.5-2.5)*rand()+2.5)
         Hz=0
@@ -1090,8 +1090,8 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,i
     #                   coupledObj(dSn[collect(n:N:(N)*(horzLen+1)),1],Hn[n,1],Gs[collect(n:N:(N)*(horzLen+1)),p+1])
     # end
 
-    objExp=sum(sum(0.5*dUn[(k-1)*N+n,1]^2*Hu[n,1]+dLogalad.Gu[(k-1)*N+n,p]*dUn[(k-1)*N+n,1] +
-                   0.5*dSn[(k-1)*N+n,1]^2*Hs[n,1]+dLogalad.Gs[(k-1)*N+n,p]*dSn[(k-1)*N+n,1] for n=1:N) +
+    objExp=sum(sum(0.5*dUn[(k-1)*N+n,1]^2*Hu[n,k]+dLogalad.Gu[(k-1)*N+n,p]*dUn[(k-1)*N+n,1] +
+                   0.5*dSn[(k-1)*N+n,1]^2*Hs[n,k]+dLogalad.Gs[(k-1)*N+n,p]*dSn[(k-1)*N+n,1] for n=1:N) +
                sum(0.5*dZ[(k-1)*(S)+s,1]^2*Hz for s=1:S)+
                0.5*dT[k,1]^2*Ht   for k=1:(horzLen+1))
     objExp=objExp+itLam[:,1]'*relaxS+μALADp/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
@@ -1264,8 +1264,8 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
     # cc=norm(vcat(σU[1]*(itVu[:,1]-dLogalad.Un[:,p]),σZ*(itVz[:,1]-dLogalad.Z[:,p]),
     #              σT*(itVt[:,1]-dLogalad.Tpred[:,p]),σS[1]*(itVs[:,1]-dLogalad.Sn[:,p])),1)
     #cc=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
-    objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1] for n=1:N) +
-                     sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]       for n=1:N) for k=1:horzLen+1)
+    objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1] for n=1:N) +
+                     sum((u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]       for n=1:N) for k=1:horzLen+1)
     dLogalad.objVal[1,p]=objFun(dLogalad.Sn[:,p],dLogalad.Un[:,p])
     itGap = norm(dLogalad.Lam[:,p]-itLam[:,1],2)
 
@@ -1517,7 +1517,7 @@ function pwlEValad(maxIt::Int,evS,cSave::centralLogStruct,slack::Bool,eqForm::Bo
         end
     end
 
-    objFun(sn,u)=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,1] for n=1:N) +sum((u[k,n])^2*evS.Ri[n,1] for n=1:N) for k=1:evS.K)
+    objFun(sn,u)=sum(sum((sn[k,n]-1)^2*evS.Qsi[n,k] for n=1:N) +sum((u[k,n])^2*evS.Ri[n,k] for n=1:N) for k=1:evS.K)
     dSol.objVal[1,1]=objFun(dSol.Sn,dSol.Un)
 
     return dSol, dCM

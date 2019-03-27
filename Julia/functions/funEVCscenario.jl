@@ -163,13 +163,17 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     qrRatio=round.((2-0.1)*rand(Beta(1, 1),N,1) .+ 0.1,digits=2)
     #qrRatio=round.((300-.1)*rand(N,1) .+ .1,digits=5)
     #histogram(qrRatio,nbins=40)
-    Ri=1e6*ones(N,1)
+    Ri=1e6*ones(N,K)
     Qi=qrRatio.*Ri/100
+
+    for n=1:N
+        Ri[n,Kn[n]:K].=Ri[n,1]*100
+        Qi[n,Kn[n]:K].=Qi[n,1]/10
+    end
 
     #histogram(Qi[1:N]*100 ./Ri,nbins=100)
 
-
-    QT=0
+    QT=zeros(1,K)
     Qsi=[Qi;QT];
 
     #for slack
