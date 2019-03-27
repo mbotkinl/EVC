@@ -3,7 +3,7 @@
 # C:\Users\micah\AppData\Local\Julia-1.0.1\bin\julia
 # C:\Users\micah\AppData\Local\Julia-1.0.2\bin\julia
 println("Loading Packages...")
-runParallel=true
+runParallel=false
 
 using Distributed
 
@@ -32,7 +32,7 @@ using Statistics
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
 N=100
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_largeQ\\"
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_new\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\PWL\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_K\\"
 
@@ -53,7 +53,7 @@ tempAugment=false
 ψ=-0
 
 drawFig=false
-saveResults=true
+saveResults=false
 saveS=false
 loadResults=false
 silent=true
@@ -72,8 +72,9 @@ if datafile=="jld2"
 else #create scenario
 	println("Creating EV Scenario...")
 	#Tmax=500/1000
-	Tmax=120 # Celsius
+	Tmax=100 # Celsius
 	num_homes=1000
+	Tamb_amplitude = 18 #C
 	Dload_error=0
 
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")

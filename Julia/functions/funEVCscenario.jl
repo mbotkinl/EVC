@@ -15,7 +15,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     b_high=100 #kWh
     b_low = 40 #kWh
     b_options = [40 60 75 100]
-    b_prob = [.2 .5 .9]
+    b_prob = [.2 .4 .85]
     r_ind = rand(N,1)
     b_kWh = b_options[1]*ones(Int,N,1)
     b_kWh[r_ind.>b_prob[1]] .= b_options[2]
@@ -93,7 +93,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     b_nom = (b_kWh.-b_low)/(b_high-b_low)
     shift=2
     i_nom = min.(max.((b_nom .+ rand(Beta(4,3),N,1)/shift .- 1/(2*shift)),0),1)
-    imax =round.(((80-12)*i_nom.+12)/1000,digits=6)  # kA, charging with 12-80 A
+    imax =round.(((80-28)*i_nom.+28)/1000,digits=6)  # kA, charging with 12-80 A
     #histogram(b_nom,nbins=40)
     #histogram(i_nom,nbins=40)
     #histogram(imax,nbins=40)
@@ -108,7 +108,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     s0 = round.(((.7)*rand(Beta(4, 3),N,1)),digits=4)   # initial states of charge
     #histogram(s0,nbins=40)
     #t0 = 320/1000                 # initial temp (~65 K below Tmax) 368K
-    t0=Tmax-65
+    t0=Tmax-30
 
     #desired states
     Snmin = round.(((1-.75)*rand(Beta(3, 2),N,1).+.75),digits=4)   # Required min final states of charge (~0.80-1)
@@ -125,12 +125,11 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     #Dload_amplitude = 75000 #Watts?
     #Dload_amplitude = 0
     #Tamb_amplitude  = 313/1000   # assume hot night in summer (30 C) 303K
-    Tamb_amplitude = 30 #C
 
     # Disturbance scenario:
     #num_homes= 1000
-    peak_demand_house = 4000 #W
-    min_demand_house = 800 #W
+    peak_demand_house = 4500 #W
+    min_demand_house = 3500 #W
     Dload_amplitude=num_homes*peak_demand_house #W
     Dload_minimum = num_homes*min_demand_house
 
@@ -141,12 +140,13 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     FullinelasticDemand = (inelasticDemand.-minimum(inelasticDemand))/(maximum(inelasticDemand)-minimum(inelasticDemand))
 
     #FullinelasticDemand = [FullinelasticDemand; FullinelasticDemand[length(FullinelasticDemand)]*ones(K2+1,1)]
-    FullDload=reshape(Dload_amplitude*FullinelasticDemand.+Dload_minimum,(K,1));    # total non-EV demand (in W)
+    FullDload=reshape((Dload_amplitude-Dload_minimum)*FullinelasticDemand.+Dload_minimum ,(K,1));    # total non-EV demand (in W)
     iD_pred = round.(FullDload/Vac/1e3,digits=6)    #background demand current (kA)
     noisePerc= Dload_error/Dload_amplitude
     iD_actual = round.(iD_pred+2*noisePerc*iD_pred.*rand(length(iD_pred),1).-iD_pred*noisePerc,digits=6)
-    Tamb_raw  = round.(Tamb_amplitude*ones(K+1,1).-pdf.(d,range(-10,stop=10,length=K+1))*20,digits=6);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
 
+    Tamb_raw  = round.(Tamb_amplitude*ones(K+1,1).-pdf.(d,range(-8,stop=8,length=K+1))*10,digits=6);             #normpdf(0,linspace(-10,10,max(K,kmax)),3)';   # exogenous peaks during mid-day          % OVER-NIGHT CHARGING: TIMES -1?
+    #plot(Tamb_raw,ylims=(20,32))
     Tamb = Tamb_raw.+alpha/beta
 
     # penalty matrix new (need to fix for k>Ki)
