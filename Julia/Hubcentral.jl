@@ -23,11 +23,13 @@ p1=plot(cSol.E,xlabel="",ylabel="Energy (MWh)",seriestype=:line,labels=hubLabels
 plot!(hubS.eMax,label=hubLabels.*" Max",line=(:dash),seriescolor=plotColors)
 
 
-eD=cSol.E_depart
+eD=copy(cSol.E_depart)
 eD[eD.==0].=NaN
-eDmin=hubS.eDepart_min
+eDmin=copy(hubS.eDepart_min)
 eDmin[eDmin.==0].=NaN
-eA=cSol.E_arrive
+eDmax=copy(hubS.eDepart_min .+ hubS.slackMax)
+eDmax[eDmax.==0].=NaN
+eA=copy(cSol.E_arrive)
 eA[eA.==0].=NaN
 sumPlot=plot(sum(cSol.E,dims=2),xlabel="",ylabel="Energy (MWh)",label="Hub Energy",seriestype=:bar,xticks=xticks)
 plot!(sumPlot,sum(eD,dims=2),label="Depart Energy",seriestype=:scatter,markersize=10)
@@ -42,9 +44,19 @@ plot!(twinx(),cSol.U[:,h],label="Hub Current",seriestype=:line,seriescolor=:red,
 
 #departPlot=plot(eD[:,h],label="Depart Actual Energy",seriestype=:bar,xlims=(200,hubS.K),yerror=eDmin[:,h] .- eD[:,h])
 
-departPlot=plot(eD[:,h],label="Depart Actual Energy",seriestype=:bar,xlims=(200,hubS.K))
-plot!(departPlot,eDmin[:,h],label="Depart Min Energy",seriestype=:scatter,markersize=5)
-plot!(departPlot,eDmin[:,h].+hubS.slackMax[:,h],label="Depart Max Energy",seriestype=:scatter,markersize=5)
+
+stT=Time(7,00)
+endT=Time(10,0)
+XlabelsAM=vcat(collect(stT:Dates.Second(Int(round(hubS.Ts))):endT))
+xticksAM=(220:10:hubS.K,Dates.format.(XlabelsAM[1:10:61],"HH:MM"))
+
+Plots.scalefontsizes(1.2)
+departPlot=plot(eD[:,h],label="Depart Actual Energy",seriestype=:bar,xlims=(220,hubS.K),ylabel="Energy (MWh)",
+				xlabel="Time",xticks=xticksAM,size=(1200,800))
+plot!(departPlot,eDmin[:,h],label="Depart Min Energy",seriestype=:scatter,markersize=12)
+plot!(departPlot,eDmax[:,h],label="Depart Max Energy",seriestype=:scatter,markersize=12)
+savefig(departPlot,path*"hubPlot_departE.png")
+
 
 t=zip(eDmin[:,h] .- eD[:,h],eDmin[:,h].+hubS.slackMax[:,h])
 

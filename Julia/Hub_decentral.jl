@@ -20,6 +20,12 @@ else
 	if saveResults saveRun(path,fname,timeT, dSol) end
 end
 
+
+
+hubLabels=permutedims(["Hub $(h)" for h=1:hubS.H])
+allColors=get_color_palette(:auto, plot_color(:white), H)
+plotColors=allColors'
+
 println("plotting....")
 pd1alad=plot(dSol.E,xlabel="Time",ylabel="PEV SOC",legend=false,xlims=(0,hubS.K))
 plot!(hubS.eMax,label=hubLabels.*" Max",line=(:dash),seriescolor=plotColors)

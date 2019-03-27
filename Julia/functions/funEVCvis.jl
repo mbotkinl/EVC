@@ -443,12 +443,12 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     end
 
     iD=hubS.iD_actual[1:Klen]
-    loadPlot=plot(1:Klen,(cSol.uSum+iD)/Ntf*1000,xlabel="",ylabel="Current (A)",labels="",
+    loadPlot=plot(1:Klen,(cSol.uSum+iD)/Ntf,xlabel="",ylabel="Current (kA)",labels="",
                   seriescolor=:black,linewidth=8,linealpha=cAlpha,xticks=xticks,title="b")
-    plot!(loadPlot,1:Klen,iD/Ntf*1000,label="Background Demand",line=(:dash))
-    plot!(loadPlot,(uSum.+iD)/Ntf*1000,labels="",seriescolor=plotColors,linewidth=lWidth)
+    plot!(loadPlot,1:Klen,iD/Ntf,label="Background Demand",line=(:dash))
+    plot!(loadPlot,(uSum.+iD)/Ntf,labels="",seriescolor=plotColors,linewidth=lWidth)
     if noLim !=nothing
-        plot!(loadPlot,1:Klen,(noLim["solution"].uSum+iD)/Ntf*1000,label="",seriescolor=allColors[P+1])
+        plot!(loadPlot,1:Klen,(noLim["solution"].uSum+iD)/Ntf,label="",seriescolor=allColors[P+1])
     end
 
     lamPlot=plot(1:Klen,cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",labels="Central",
@@ -489,41 +489,50 @@ function calcPrivacy(N,K1,S)
     bpi= 16 #bits per int
     bpb= 1#bits per bool
 
-    pem=N*bpi # 1 Req Int per EV
-    pem+= 1*bpf # 1 float for temperature
+    pemIt=N*bpi # 1 Req Int per EV
+    pemIt+=N*bpi # 1 Rec Int per EV
+    pemIt+= 1*bpf # 1 float for temperature
+    pem=pemIt
 
-    dual=N*K1*bpf #i_n
-    dual+=K1*bpf #sum iPWL
-    dual+=K1*bpf # price to transformer
-    dual+=K1*N*bpf # price to EVs
-    dual*=dualMaxIt
+    dualIt=N*K1*bpf #i_n
+    dualIt+=K1*bpf #sum iPWL
+    dualIt+=K1*bpf # price to transformer
+    dualIt+=K1*N*bpf # price to EVs
+    dual=dualIt*dualMaxIt
 
-    admm=N*K1*bpf #i_n
-    admm+=K1*S*bpf # iPWL
-    admm+=K1*bpf # price to transformer
-    admm+=K1*N*bpf # price to EVs
-    admm+=K1*S*bpf # aux variable to transformer
-    admm+=K1*N*bpf # aux variable to EVs
-    admm*=admmMaxIt
+    admmIt=N*K1*bpf #i_n
+    admmIt+=K1*S*bpf # iPWL
+    admmIt+=K1*bpf # price to transformer
+    admmIt+=K1*N*bpf # price to EVs
+    admmIt+=K1*S*bpf # aux variable to transformer
+    admmIt+=K1*N*bpf # aux variable to EVs
+    admm=admmIt*admmMaxIt
 
-    alad=N*K1*bpf #i_n
-    alad+=N*K1*bpf #g_i
-    alad+=N*K1*bpf #g_s
-    alad+=4*N*K1*bpb # all Cs
-    alad+=K1*S*bpf # iPWL
+    aladIt=N*K1*bpf #i_n
+    aladIt+=N*K1*bpf #g_i
+    aladIt+=N*K1*bpf #g_s
+    aladIt+=4*N*K1*bpb # all Cs
+    aladIt+=K1*S*bpf # iPWL
     # alad+=S*K*bpf #g_z
     # alad+=K*bpf #g_t
-    alad+=2*S*K1*bpb+2*K*bpb # all Cs
-    alad+=K1*bpf # price to transformer
-    alad+=K1*N*bpf # price to EVs
-    alad+=K1*S*bpf+K*bpf # aux variable to transformer
-    alad+=2*K1*N*bpf # aux variables to EVs
-    alad*=aladMaxIt
+    aladIt+=2*S*K1*bpb+2*K1*bpb # all Cs
+    aladIt+=K1*bpf # price to transformer
+    aladIt+=K1*N*bpf # price to EVs
+    aladIt+=K1*S*bpf+K1*bpf # aux variable to transformer
+    aladIt+=2*K1*N*bpf # aux variables to EVs
+    alad=aladIt*aladMaxIt
 
-    pem/1e3 #kilobit
+
+
+    aladIt/1e6 #megabit
+    dualIt/1e9 #gigabit
+    admmIt/1e6 #megabit
+    pemIt/1e3 #kilobit
+
+    alad/1e6 #megabit
     dual/1e9 #gigabit
     admm/1e6 #megabit
-    alad/1e6 #megabit
+    pem/1e3 #kilobit
 end
 
 function pwlSegPlot()
