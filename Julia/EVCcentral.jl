@@ -1,9 +1,12 @@
 #Micah Botkin-Levy
 #4/8/18
-@everywhere using Gurobi
-@everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
-# using Gurobi
-# include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
+if runParallel
+	@everywhere using Gurobi
+	@everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
+else
+	using Gurobi
+	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
+end
 fname = "central_N$(N)"
 
 if loadResults
@@ -38,7 +41,7 @@ plot!(p3,1:evS.K,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(p3,path*"J_central_Temp.png") end
 
 p4b=plot(cSol.lamTemp,xlabel="Time",ylabel=raw"Lambda ($/K)",xlims=(1,evS.K),legend=false)
-p4=plot(cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,evS.K),legend=false)
+p4=plot(cSol.lamCoupl/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",xlims=(1,evS.K),legend=false,xticks=xticks)
 if drawFig savefig(p4,path*"J_central_Lam.png") end
 
 
