@@ -19,7 +19,7 @@ else
 	#initialize
     t0=evS.t0
     s0=evS.s0
-	prevLam=1e4*ones(evS.K1+1,1)
+	prevLam=2e4*ones(evS.K1+1,1)
 	#prevLam=0*ones(evS.K1+1,1)
 	prevVz=-evS.deltaI/2*ones(evS.S*(evS.K1+1),1)
 	prevVu=.02*ones(evS.N*(evS.K1+1),1)
@@ -36,7 +36,10 @@ else
 	# ρDivRate=1.02
 
 	#100_largeQ best so far?
-	ρADMMp = 2e5
+	# ρADMMp = 2e5
+	# ρDivRate=1.02
+
+	ρADMMp = 1e5
 	ρDivRate=1.02
 
 	roundSigFigs=30
