@@ -208,6 +208,7 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
     @variable(evM,sn[1:horzLen+1])
     if slack @variable(evM,slackSn) end
     objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,stepI+k-1]+(un[k,1])^2*evS.Ri[evInd,stepI+k-1]+itLam[k,1]*un[k,1] for k=1:horzLen+1)
+    #objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(un[k,1])^2*evS.Ri[evInd,1]+itLam[k,1]*un[k,1] for k=1:horzLen+1)
     if slack
         append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
     end
@@ -300,14 +301,14 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
     if updateMethod=="fastAscent"
         #alpha0 = 0.1  #for A
         #alpha0 = 5e4 #for kA
-        alphaDivRate=2
+        # alphaDivRate=2
         minAlpha=1e-6
     else
         #alpha0 = 3e-3 #for A
         # alpha = 3e4 #for kA
         # alphaDivRate=4
         #alpha0 = 2e6 #for kA
-        alphaDivRate=2
+        #alphaDivRate=2
         minAlpha=1e-6
     end
     #solve subproblem for each EV
@@ -348,7 +349,9 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
             #gradL[k,1]=.5*gradL[k,1]+.2*gradL[k+1,1]+.2*gradL[k+2,1]+.1*gradL[k+3,1]+.1*gradL[k+4,1]
         end
     else
-        dLog.couplConst[k,p]=dLog.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLog.zSum[k,p]
+        for k=1:horzLen+1
+            dLog.couplConst[k,p]=dLog.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLog.zSum[k,p]
+        end
     end
 
 
@@ -360,11 +363,10 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
     #dLog.Lam[:,p]=max.(itLam[:,1]+alphaP*dLog.couplConst[:,p],0)
     dLog.Lam[:,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,p],sigdigits=roundSigFigs)
 
-
     #check convergence
-    objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1]     for n=1:N) for k=1:horzLen+1) +
-                    sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]           for n=1:N) for k=1:horzLen+1)
-    dLog.objVal[1,p]=objFun(dLog.Sn[:,p],dLog.Un[:,p])
+    # objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1]     for n=1:N) for k=1:horzLen+1) +
+    #                 sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]           for n=1:N) for k=1:horzLen+1)
+    # dLog.objVal[1,p]=objFun(dLog.Sn[:,p],dLog.Un[:,p])
     itGap = norm(dLog.Lam[:,p]-itLam[:,1],2)
     couplGap=norm(dLog.couplConst[:,p],1)
 
@@ -429,6 +431,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
         #global p
         if p==1
             itLam=prevLam
+            global alpha0=max(min(maximum(prevLam)/5,1e6),1e-3)
         else
             itLam=round.(dLog.Lam[:,(p-1)],sigdigits=roundSigFigs)
         end
@@ -443,7 +446,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
         ind=findall(x->x==stepI,saveLogInd)[1]
         dCM.convIt[1,1,ind]=convIt
     end
-    #
+
     # # convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);

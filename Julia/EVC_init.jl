@@ -3,7 +3,7 @@
 # C:\Users\micah\AppData\Local\Julia-1.0.1\bin\julia
 # C:\Users\micah\AppData\Local\Julia-1.0.2\bin\julia
 println("Loading Packages...")
-runParallel=false
+runParallel=true
 
 using Distributed
 
@@ -33,6 +33,7 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 
 N=100
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_new\\"
+#path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_largeQ\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\PWL\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_K\\"
 
@@ -53,7 +54,7 @@ tempAugment=false
 ψ=-0
 
 drawFig=false
-saveResults=false
+saveResults=true
 saveS=false
 loadResults=false
 silent=true

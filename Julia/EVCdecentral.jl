@@ -17,8 +17,13 @@ else
     t0=evS.t0
     s0=evS.s0
 	#dualAscent
-	prevLam=1e5*ones(evS.K1+1,1)
-	alpha0 = 1e4 #for kA
+	# prevLam=5e5*ones(evS.K1+1,1)
+	# alphaDivRate=2
+	# alpha0 = 1e5 #for kA
+
+	prevLam=5e5*ones(evS.K1+1,1)
+	alphaDivRate=2
+	#alpha0 = 1e5 #for kA
 
 	#fastAscent
 	# prevLam=1e5*ones(evS.K1+1,1)
