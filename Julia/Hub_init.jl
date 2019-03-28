@@ -14,7 +14,7 @@ using Suppressor
 # check all indexing????
 #especially stepI +k for iD and Tamb
 H=4
-maxIt=2000
+maxIt=5000
 dualChk = 1e-2 #lamIt=0
 primChk = 1e-2 # Ax-B=0s
 datafile="jld2"
@@ -32,6 +32,8 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4_100\\"
+#path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4_100\\"
+
 file="HubscenarioH$(H).jld2"
 if datafile=="jld2"
 	using FileIO

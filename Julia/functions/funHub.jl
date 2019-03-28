@@ -260,7 +260,7 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
     horzLen=min(hubS.K1,K-stepI)
 
     minAlpha=1e-9
-	alphaDivRate=2
+	alphaDivRate=20
 
 
     #solve subproblem for each EV
@@ -358,13 +358,14 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
 	#
     # uSumPlotd=plot(dLog.uSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
     # plot!(uSumPlotd,sum(uRaw,dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
+	# plot!(uSumPlotd,cSol.uSum[stepI:stepI+horzLen],seriescolor=:black,linewidth=2,linealpha=0.8)
 	#
     # zSumPlotd=plot(dLog.zSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
 	# plot!(zSumPlotd,sum(zRaw,dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
 	#
     # lamPlotd=plot(dLog.Lam[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
     # plot!(lamPlotd,lambdaCurr,seriescolor=:black,linewidth=2,linealpha=0.8)
-	#
+	# plot!(lamPlotd,cSol.Lam[stepI:stepI+horzLen],seriescolor=:black,linewidth=2,linealpha=0.8)
     # #plot(dLog.Lam[:,1:convIt],color=:RdYlBu,line_z=(1:convIt)')
 	#
     # constPlot2=plot(dLog.couplConst[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
