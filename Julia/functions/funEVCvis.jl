@@ -491,44 +491,56 @@ function calcPrivacy(N,K1,S)
 
     pemIt=N*bpi # 1 Req Int per EV
     pemIt+=N*bpi # 1 Rec Int per EV
+    pemEV=pemIt/N  # data per EV
     pemIt+= 1*bpf # 1 float for temperature
     pem=pemIt
 
     dualIt=N*K1*bpf #i_n
+    dualIt+=K1*N*bpf # price to EVs
+    dualEV=dualIt/N*dualMaxIt # data per EV
     dualIt+=K1*bpf #sum iPWL
     dualIt+=K1*bpf # price to transformer
-    dualIt+=K1*N*bpf # price to EVs
     dual=dualIt*dualMaxIt
 
     admmIt=N*K1*bpf #i_n
+    admmIt+=K1*N*bpf # price to EVs
+    admmIt+=K1*N*bpf # aux variable to EVs
+    admmEV=admmIt/N*admmMaxIt # data per EV
     admmIt+=K1*S*bpf # iPWL
     admmIt+=K1*bpf # price to transformer
-    admmIt+=K1*N*bpf # price to EVs
     admmIt+=K1*S*bpf # aux variable to transformer
-    admmIt+=K1*N*bpf # aux variable to EVs
     admm=admmIt*admmMaxIt
 
     aladIt=N*K1*bpf #i_n
     aladIt+=N*K1*bpf #g_i
     aladIt+=N*K1*bpf #g_s
     aladIt+=4*N*K1*bpb # all Cs
+    aladIt+=K1*N*bpf # price to EVs
+    aladIt+=2*K1*N*bpf # aux variables to EVs
+    aladEV=aladIt/N*aladMaxIt # data per EV
     aladIt+=K1*S*bpf # iPWL
     # alad+=S*K*bpf #g_z
     # alad+=K*bpf #g_t
     aladIt+=2*S*K1*bpb+2*K1*bpb # all Cs
     aladIt+=K1*bpf # price to transformer
-    aladIt+=K1*N*bpf # price to EVs
     aladIt+=K1*S*bpf+K1*bpf # aux variable to transformer
-    aladIt+=2*K1*N*bpf # aux variables to EVs
     alad=aladIt*aladMaxIt
 
 
-
+    # per iteration total data
     aladIt/1e6 #megabit
     dualIt/1e9 #gigabit
     admmIt/1e6 #megabit
     pemIt/1e3 #kilobit
 
+
+    # total time step per EV
+    aladEV/1e3 #kilobit
+    dualEV/1e6 #megabit
+    admmEV/1e6 #megabit
+    pemEV #bit
+
+    # total time step total data
     alad/1e6 #megabit
     dual/1e9 #gigabit
     admm/1e6 #megabit
