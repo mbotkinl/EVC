@@ -32,7 +32,7 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
 path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4_100\\"
-#path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4_100\\"
+#path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4_100_old\\"
 
 file="HubscenarioH$(H).jld2"
 if datafile=="jld2"

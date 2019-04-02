@@ -36,17 +36,17 @@ if drawFig savefig(p1,path*"J_central_SoC.png") end
 p2=plot(cSol.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(1,evS.K))
 if drawFig savefig(p2,path*"J_central_Curr.png") end
 
-p3=plot(hcat(cSol.Tpred,cSol.Tactual,evS.Tamb_raw[2:evS.K+1]),label=["Pred Temp" "Actual Temp" "Ambient Temp"],xlims=(1,evS.K),xlabel="Time",ylabel="Temp (K)")
-plot!(p3,1:evS.K,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
+p3=plot(hcat(cSol.Tpred,cSol.Tactual,evS.Tamb_raw[2:evS.K+1]),label=["Pred Temp" "Actual Temp" "Ambient Temp"],xlabel="Time",ylabel="Temp (K)")
+plot!(p3,1:evS.K,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 if drawFig savefig(p3,path*"J_central_Temp.png") end
 
-p4b=plot(cSol.lamTemp,xlabel="Time",ylabel=raw"Lambda ($/K)",xlims=(1,evS.K),legend=false)
-p4=plot(cSol.lamCoupl/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",xlims=(1,evS.K),legend=false,xticks=xticks)
+p4b=plot(cSol.lamTemp,xlabel="Time",ylabel=raw"Lambda ($/K)",legend=false)
+p4=plot(cSol.lamCoupl/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",legend=false,xticks=xticks)
 if drawFig savefig(p4,path*"J_central_Lam.png") end
 
 
 #draw(PNG(path*fName, 13inch, 14inch), vstack(p1,p2,p3,p4))
-aggU=plot(hcat(cSol.uSum,cSol.Itotal,evS.iD_actual),label=["Central" "Total" "iD"],xlims=(0,evS.K),xlabel="Time",ylabel="Current (kA)")
-plot!(aggU,1:evS.K,evS.ItotalMax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
+aggU=plot(hcat(cSol.uSum,cSol.Itotal,evS.iD_actual),label=["Central" "Total" "iD"],xlabel="Time",ylabel="Current (kA)")
+plot!(aggU,1:evS.K,evS.ItotalMax*ones(evS.K),label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 
 checkDesiredStates(cSol.Sn,evS.Kn,evS.Snmin)
