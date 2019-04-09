@@ -82,9 +82,13 @@ status=solve(m)
 
 
 
-
+S=6
 xfrmR=10e3/3
-L=0
+Vtf = 8320
+ItotalMax =  (xfrmR/Vtf)#kA
+deltaI=ItotalMax/S
+#L=xfrmR
+L=(S-0.5)/S*xfrmR
 t0=0
 Ta=40
 T0=40
@@ -93,7 +97,7 @@ abase=0.000939
 #checking Pauls XFRM equation continous
 using QuadGK
 using Plots; pyplot()
-alpha = 0.178*5
+alphaP = 0.178*5
 #a=0.000939e-6*1.5
 a=abase/(1e3/3/2.5)^2*1.5
 b=0.0149*2
@@ -101,7 +105,7 @@ t_range=1:3:4*60
 T_Ct=zeros(length(t_range))
 for i=1:length(t_range)
     t=t_range[i]
-    f(tau) = exp(-b*(t-tau))*(a*L^2+b*Ta+alpha)
+    f(tau) = exp(-b*(t-tau))*(a*L^2+b*Ta+alphaP)
     # f(tau) = exp(-b*(t-tau))*(0.000939*L^2+b*Ta+0.178)
     (T_1,E)=quadgk(f,0,t, rtol=1e-9)
     T_Ct[i]=exp(-b*t)*T0+T_1
@@ -111,13 +115,12 @@ plot(t_range,T_Ct)
 
 #testing new model in Celsius disctete
 #Vac = 240                              # PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
-Vtf = 8320                             # distr-level transformer rms voltage --- V [used in inelastic kW -> kA conv]
 #Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
-#power_weight = 0.000939/(1e3/3/2.5)^2*1.5/60
-power_weight = a/60
+power_weight = 0.000939/(1e3/3/2.5)^2*1.5/60
+#power_weight = a/60
 
 b_dt = b/60
-alpha_dt = alpha/60
+alpha_dt = alphaP/60
 # Ts=3 #minutes
 # K=round(Int,13*60/Ts)
 Ts=3*60 #minutes
@@ -126,28 +129,49 @@ K=round(Int,4*60*60/Ts)
 ρP = (1 - τP)
 curr_weight = power_weight*Vtf^2
 γP = 1/b_dt*ρP*curr_weight
-ItotalMax =  (L/Vtf)#kA
 #ItotalMax =  (xfrmR/Vtf)*Ntf#kA
 T=zeros(K,1)
-u=ItotalMax*ones(K,1)
+u=L/Vtf*ones(K,1)
 #p=xfrmR*ones(K,1)
-T_Dt=zeros(K+1)
 T_Dt=zeros(K)
 T_Dt[1]=T0
+
+
+T_PWL=zeros(K)
+T_PWL[1]=T0
+
+
+z=deltaI*ones(S,1)
+z[S]=deltaI/2
+#z[S]=0
+
+
 for k=1:K-1
     T_Dt[k+1,1]=τP*T_Dt[k,1]+γP*u[k]^2+ρP*(Ta+alpha_dt/b_dt)
-    #T[k+1,1]=τP*T[k,1]+γP*p[k]^2+ρP*(Tamb+1/beta*alpha)  #works
+	T_PWL[k+1,1]=τP*T_PWL[k,1]+γP*deltaI*sum((2*s-1)*z[s,1] for s=1:S)+ρP*(Ta+alpha_dt/b_dt)
 end
 #plot(collect(Ts*(1:K-1)),T_Dt)
-discPlot=plot(hcat(T_Ct,T_Dt),labels=["CT" "DT"],xlabel="Time (m)",ylabel="Temperature (C)",xlims=(0,80))
+discPlot=plot(hcat(T_Ct,T_Dt,T_PWL),labels=["CT" "DT" "PWL"],xlabel="Time (m)",ylabel="Temperature (C)",xlims=(0,80))
 #discPlot=plot(hcat(T_Ct,T_Dt[2:K+1]),labels=["CT" "DT"],xlabel="Time (m)",ylabel="Temperature (C)",xlims=(0,80))
-pubPlot(discPlot,thickscale=1.4,sizeWH=(800,400),dpi=100)
-savefig(discPlot,path*"discPlot.png")
+# pubPlot(discPlot,thickscale=1.4,sizeWH=(800,400),dpi=100)
+# savefig(discPlot,path*"discPlot.png")
 
 
+#theoretical I diff
+ItotalMax^2/(4*S^2)
+#actual I diff
+deltaI*sum((2*s-1)*z[s,1] for s=1:S) - u[1]^2
 
+#Theoretical temp diff
+γP*ItotalMax^2/(4*S^2)
+γP*sum(τP^(80-1-j)*ItotalMax^2/(4*S^2) for j=0:80)
 
+evS.γP*evS.ItotalMax^2/(4*S^2)
+evS.γP*Ntf^2/1000^2*(evS.ItotalMax/Ntf*1000)^2/(4*evS.S^2)
 
+#actual Temp diff
+T_PWL[80]-T_Dt[80]
+T_PWL[2]-T_Dt[2]
 
 
 
