@@ -1,15 +1,28 @@
 # README for Julia EVC
 
-One Paragraph of project description goes here
+Masters project for electric vehicle charging
 
-## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+## General Code/Folder Structure
+
+## Running Code
 
 ### Prerequisites
 
-What things you need to install the software and how to install them
+Main Julia Packages needed
+```
+JuMP
+Gurobi
+```
 
-```
-Give examples
-```
+### Initialization 
+
+Run `EVC_init.jl` to load packages, set parameters, and load or create scenario. Setting `datafile="n"` will create new scenario and `datafile="jld2"` will read saved scenario file. 
+
+### Create/Read Central Solution
+
+Run `EVCcentral.jl` will read or run central solution depending on `loadResults` parameter. 
+
+### Create/Read Decentralized Solution
+
+Similarly running scripts `EVCdecentral.jl`, `EVCdecentral_ADMM.jl`, or `EVCdecentral_ALADIN.jl` will run dual decomposition, ADMM, and ALADIN distributed methods, respectively. 
