@@ -56,7 +56,7 @@ drawFig=false      # draws output figures
 saveResults=false  # saves result file
 saveS=false        # saves scenario file
 loadResults=false  # loads results
-silent=false       # prevents output to console
+silent=true       # prevents output to console
 solverSilent=true  # prevents feedback from JuMP solver
 
 file="EVCscenarioN$(N)."*datafile

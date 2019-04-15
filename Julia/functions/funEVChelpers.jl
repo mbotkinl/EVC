@@ -15,6 +15,12 @@ function rebuildEVS(evS)
     newS=scenarioStruct(evS.N,evS.Ts,evS.K1,evS.K2,evS.K,evS.S,evS.ItotalMax,evS.deltaI,evS.Tmax,evS.imin,evS.imax,
                         a,b_kWh,evS.ηP,evS.τP,evS.ρP,evS.γP,evS.s0,evS.t0,evS.Snmin,evS.Kn,evS.iD_pred,evS.iD_actual,
                         evS.Tamb,Tamb_raw,evS.Qsi,evS.Ri,evS.β)
+
+    # for old Qsi and Ri
+    # newS=scenarioStruct(evS.N,evS.Ts,evS.K1,evS.K2,evS.K,evS.S,evS.ItotalMax,evS.deltaI,evS.Tmax,evS.imin,evS.imax,
+    #                     evS.a,evS.b_kWh,evS.ηP,evS.τP,evS.ρP,evS.γP,evS.s0,evS.t0,evS.Snmin,evS.Kn,evS.iD_pred,evS.iD_actual,
+    #                     evS.Tamb,evS.Tamb_raw,repeat(evS.Qsi,outer=[1,evS.K]),repeat(evS.Ri,outer=[1,evS.K]),evS.β)
+
     #
     # newS=scenarioStruct(N=evS.N,Ts=evS.Ts,K1=evS.K1,K2=evS.K2,K=evS.K,S=evS.S,ItotalMax=evS.ItotalMax,deltaI=evS.deltaI,
     #                     Tmax=evS.Tmax,imin=evS.imin,imax=evS.imax,a=evS.a,b_kWh=evS.b_kWh,ηP=evS.ηP,τP=evS.τP,ρP=evS.ρP,

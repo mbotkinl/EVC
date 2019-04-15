@@ -29,13 +29,13 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
     #centralModel = Model(solver = GurobiSolver(Presolve=0,BarHomogeneous=1,NumericFocus=3))
 
     #u iD and z are one index ahead of sn and T. i.e the x[k+1]=x[k]+eta*u[k+1]
-
     @variable(centralModel,sn[1:(N)*(horzLen+1)])
     @variable(centralModel,u[1:(N)*(horzLen+1)])
     @variable(centralModel,t[1:(horzLen+1)])
     @variable(centralModel,z[1:S*(horzLen+1)])
     if slack
         @variable(centralModel,slackSn[1:N])
+        #@variable(centralModel,slackT[1:(horzLen+1)])
     end
     if !silent println("obj") end
     objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,stepI]+(u[n,1])^2*evS.Ri[n,stepI] for n=1:N)
@@ -44,8 +44,6 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
     end
     if slack append!(objExp,sum(1e3*evS.β[n]*slackSn[n]^2 for n=1:N)) end
     if tempAugment append!(objExp,ψ*sum((evS.Tmax-t[k]) for k=1:horzLen+1)) end
-    #if slack objExp=objExp+sum(1e6*evS.β[n]*slackSn[n]^2 for n=1:N) end
-    #if tempAugment objExp=ψ*sum((evS.Tmax-t[k]) for k=1:horzLen+1) end
     @objective(centralModel,Min,objExp)
 
     if !silent println("constraints") end
@@ -63,6 +61,8 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
     end
     if noTlimit==false
     	@constraint(centralModel,upperTCon,t.<=evS.Tmax)
+        # @constraint(centralModel,upperTCon,t.<=evS.Tmax+slackT)
+        # @constraint(centralModel,slackT.>=0)
     end
     @constraint(centralModel,t.>=0)
     @constraint(centralModel,upperCCon,u.<=repeat(evS.imax,horzLen+1,1))
@@ -93,14 +93,20 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
 
     #calculate actual temp
     Tactual=zeros(horzLen+1,1)
+    Tactual_background=zeros(horzLen+1,1)
     itotal=zeros(horzLen+1,1)
+    itotal_background=zeros(horzLen+1,1)
     for k=1:horzLen+1
         itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + iD_actual[stepI+(k-1),1]
+        itotal_background[k,1]= iD_actual[stepI+(k-1),1]
     end
     Tactual[1,1]=evS.τP*t0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
+    Tactual_background[1,1]=evS.τP*t0+evS.γP*itotal_background[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
     for k=1:horzLen
         Tactual[k+1,1]=evS.τP*Tactual[k,1]+evS.γP*itotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]
+        Tactual_background[k+1,1]=evS.τP*Tactual_background[k,1]+evS.γP*itotal_background[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]
     end
+
     lambdaCurr=-getdual(currCon)
     if noTlimit==false
     	lambdaUpperT=-getdual(upperTCon)
@@ -203,7 +209,7 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
 
     target=zeros((horzLen+1),1)
     target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
-    evM=Model(solver = GurobiSolver(NumericFocus=1))
+    evM=Model(solver = GurobiSolver(NumericFocus=3))
     @variable(evM,un[1:horzLen+1])
     @variable(evM,sn[1:horzLen+1])
     if slack @variable(evM,slackSn) end
@@ -427,11 +433,11 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
     p=1
     timeStart=now()
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
-    #while (p<maxIt)
+        #while (p<maxIt)
         #global p
         if p==1
             itLam=prevLam
-            global alpha0=max(min(maximum(prevLam)/5,1e6),1e-3)
+            #global alpha0=max(min(maximum(prevLam)/5,1e6),1e-3)
         else
             itLam=round.(dLog.Lam[:,(p-1)],sigdigits=roundSigFigs)
         end
@@ -454,12 +460,17 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
     #
     # uSumPlotd=plot(dLog.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
     # plot!(uSumPlotd,sum(cSave.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
+    # plot!(uSumPlotd,cSol.uSum[stepI:stepI+horzLen],seriescolor=:black,linewidth=2,linealpha=0.8)
+    # plot!(uSumPlotd,uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # zSumPlotd=plot(dLog.zSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
     # plot!(zSumPlotd,sum(cSave.Z[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
     #
     # lamPlotd=plot(dLog.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
     # plot!(lamPlotd,cSave.Lam[:,:,ind],seriescolor=:black,linewidth=2,linealpha=0.8)
+    # plot!(lamPlotd,cSol.lamCoupl[stepI:stepI+horzLen],seriescolor=:black,linewidth=2,linealpha=0.8)
+    # plot!(lamPlotd,lambdaCurr,seriescolor=:black,linewidth=2,linealpha=0.8)
+    #
     #
     # constPlot2=plot(dLog.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
     #
@@ -551,6 +562,9 @@ function localEVADMM(evInd::Int,p::Int,stepI::Int,evS,dLogadmm::itLogPWL,
     objExp= sum((sn[k,1]-1)^2*evS.Qsi[evInd,stepI+k-1]+(u[k,1])^2*evS.Ri[evInd,stepI+k-1]+
                             itLam[k,1]*(u[k,1]-evV[k,1])+
                             itρ/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1)
+    # objExp= sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(u[k,1])^2*evS.Ri[evInd,1]+
+    #                         itLam[k,1]*(u[k,1]-evV[k,1])+
+    #                         itρ/2*(u[k,1]-evV[k,1])^2 for k=1:horzLen+1)
     if slack
         append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
     end
@@ -688,6 +702,8 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,ro
     cc=norm(vcat((itVu[:,1]-dLogadmm.Vu[:,p]),(itVz[:,1]-dLogadmm.Vz[:,p])),1)
     objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1]     for n=1:N) +
                      sum((u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]           for n=1:N) for k=1:horzLen+1)
+    # objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) +
+    #                  sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
     dLogadmm.objVal[1,p]=objFun(dLogadmm.Sn[:,p],dLogadmm.Un[:,p])
 
     constGap=norm(dLogadmm.couplConst[:,p],1)
@@ -743,7 +759,7 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,ro
     else
         if !silent
             #@printf "convGap  %e after %g iterations\n" convGap p
-            @printf "dual residue  %e after %g iterations\n" cc p
+            #@printf "dual residue  %e after %g iterations\n" cc p
             @printf "lastGap  %e after %g iterations\n" itGap p
             @printf "constGap %e after %g iterations\n\n" constGap p
             #@printf "snGap    %e after %g iterations\n" snGap p
@@ -764,7 +780,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS,dSol::solutionStruct,dCM,cSave:
     p=1
     timeStart=now()
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
-    #while (p<=maxIt)
+        #while (p<=maxIt)
         #global p
         if p==1
             itLam=prevLam
@@ -788,7 +804,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS,dSol::solutionStruct,dCM,cSave:
         ind=findall(x->x==stepI,saveLogInd)[1]
         dCM.convIt[1,1,ind]=convIt
     end
-    #
+
     # #convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
@@ -1337,7 +1353,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     p=1
     timeStart=now()
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
-    #while (p<=maxIt)
+        #while (p<=maxIt)
         #global p
         #@printf "%git" p
         if p==1
@@ -1366,8 +1382,8 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
         ind=findall(x->x==stepI,saveLogInd)[1]
         dCM.convIt[1,1,ind]=convIt
     end
-    # print(round(now()-timeStart,Second))
-    #
+
+    #print(round(now()-timeStart,Second))
     # xPlot=zeros(horzLen+1,N)
     # uPlot=zeros(horzLen+1,N)
     # for ii= 1:N

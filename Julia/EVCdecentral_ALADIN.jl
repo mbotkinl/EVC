@@ -1,4 +1,4 @@
-#EVC with ALADIN for PWL convex relaxation
+#EVC with ALADIN for PWL convex relaxation (must run EVC_init and EVCcentral first)
 #Micah Botkin-Levy
 #5/22/18
 
@@ -32,11 +32,10 @@ else
 		ρRate=1.1
 	end
 
-
 	roundSigFigs=30
 
-	reg_weight=1e-3
-	reg=false
+	reg_weight=1e-3  # regularization weight
+	reg=false        # flag to add regularization term
 
 	println("Running ALAD Sim")
 	timeT=@elapsed dSolalad,dCMalad=pwlEValad(maxIt,evS,cSave,slack,eqForm,roundSigFigs,silent)
