@@ -1,5 +1,7 @@
+# wrapper to run PWL centralized problem (must run EVC_init.jl first)
 #Micah Botkin-Levy
 #4/8/18
+
 if runParallel
 	@everywhere using Gurobi
 	@everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
@@ -15,12 +17,11 @@ if loadResults
 	cSol=loadF["solution"]
 	cSave=loadF["centralLog"]
 else
-	#initialize
+	#initial states
     t0=evS.t0
     s0=evS.s0
 
 	roundSigFigs=12
-
 
 	println("Running Central Sim")
 	timeT=@elapsed cSol, cSave=pwlEVcentral(evS,slack,silent)
@@ -45,7 +46,6 @@ p4=plot(cSol.lamCoupl/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",legend=false,x
 if drawFig savefig(p4,path*"J_central_Lam.png") end
 
 
-#draw(PNG(path*fName, 13inch, 14inch), vstack(p1,p2,p3,p4))
 aggU=plot(hcat(cSol.uSum,cSol.Itotal,evS.iD_actual),label=["Central" "Total" "iD"],xlabel="Time",ylabel="Current (kA)")
 plot!(aggU,1:evS.K,evS.ItotalMax*ones(evS.K),label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 
