@@ -366,26 +366,40 @@ function compareRunsTable(runs,evS)
     #EVC
     cUn=cRun["solution"].Un
     cLam = cRun["solution"].lamCoupl
-    comparePerfTable = DataFrame(name=String[],curr2Norm=Float64[],lam2Norm=Float64[])
+    comparePerfTable = DataFrame(name=String[],curr2Norm=Float64[],currRMSE=Float64[],lam2Norm=Float64[],lamRMSE=Float64[])
     for keyI in keys(runs)
         println(keyI)
         loadF=runs[keyI]
-        curr2Norm=norm(cUn-loadF["solution"].Un,2)
-        lam2Norm=norm(cLam-loadF["solution"].lamCoupl,2)
-        stats = [renameLabel(keyI) curr2Norm lam2Norm]
+        curr2Norm=norm(cUn*1000-loadF["solution"].Un*1000,2)
+        # norm(cUn*1000,2)
+        # norm(cUn-loadF["solution"].Un,2)
+        # norm(cUn-loadF["solution"].Un,1)
+        # norm((cUn-loadF["solution"].Un)./cUn,2)
+        # norm((cUn-loadF["solution"].Un)./cUn,1)
+        currRMSE=sqrt(sum((cUn*1000 .-loadF["solution"].Un*1000).^2)/length(cUn))
+
+        lam2Norm=norm(cLam/1000-loadF["solution"].lamCoupl/1000,2)
+        #norm((cLam/1000-loadF["solution"].lamCoupl/1000)./cLam/1000,2)
+        lamRMSE=sqrt(sum((cLam/1000 .-loadF["solution"].lamCoupl/1000).^2)/length(cLam))
+
+        stats = [renameLabel(keyI) curr2Norm currRMSE lam2Norm lamRMSE]
         push!(comparePerfTable,stats)
     end
 
     #Hub
     cU=cRun["solution"].U
     cLam = cRun["solution"].Lam
-    comparePerfTable = DataFrame(name=String[],curr2Norm=Float64[],lam2Norm=Float64[])
+    comparePerfTable = DataFrame(name=String[],curr2Norm=Float64[],currRMSE=Float64[],lam2Norm=Float64[],lamRMSE=Float64[])
     for keyI in keys(runs)
         println(keyI)
         loadF=runs[keyI]
-        curr2Norm=norm(cU-loadF["solution"].U,2)
-        lam2Norm=norm(cLam-loadF["solution"].Lam,2)
-        stats = [renameLabel(keyI) curr2Norm lam2Norm]
+        curr2Norm=norm(cU*1000-loadF["solution"].U*1000,2)
+        currRMSE=sqrt(sum((cU*1000 .-loadF["solution"].U*1000).^2)/length(cU))
+
+        lam2Norm=norm(cLam/1000-loadF["solution"].Lam/1000,2)
+        lamRMSE=sqrt(sum((cLam/1000 .-loadF["solution"].Lam/1000).^2)/length(cLam))
+
+        stats = [renameLabel(keyI) curr2Norm currRMSE lam2Norm lamRMSE]
         push!(comparePerfTable,stats)
     end
 
@@ -540,6 +554,13 @@ function calcPrivacy(N,K1,S)
     admmEV/1e6 #megabit
     pemEV #bit
 
+    # percent of average US internet
+    bandwidth=18.7e6*180
+    aladEV/bandwidth*100
+    admmEV/bandwidth*100
+    dualEV/bandwidth*100
+    pemEV/bandwidth*100
+
     # total time step total data
     alad/1e6 #megabit
     dual/1e9 #gigabit
@@ -661,6 +682,7 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
 
     plotLabels=copy(permutedims(runNames))
     plotLabels=["Uncoordinated" "Centrally Coordinated"]
+    plotLabels=["NL" "PWL"]
 
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
@@ -669,9 +691,9 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
 
 
     #Time plots
-    tempPlot=plot(1:Klen,T,label="",seriescolor=plotColors,
+    tempPlot=plot(T,label="",seriescolor=plotColors,
                     xlabel="",ylabel="Temp (C)",xticks=xticks)
-    plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
+    plot!(tempPlot,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
 
     iD=evS.iD_actual
     loadPlot=plot(1:Klen,(uSum.+iD)/Ntf*1000,xlabel="",ylabel="Total Load (A)",labels="",
@@ -679,7 +701,7 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
     plot!(loadPlot,1:Klen,(iD)/Ntf*1000,label="Background Demand",line=(:dash))
 
 
-    lamPlot=plot(1:Klen,Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",labels=plotLabels,
+    lamPlot=plot(Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",labels=plotLabels,
                    seriescolor=plotColors,xticks=xticks)
 
     #resPlot=plot(tempPlot,loadPlot,snSumPlot,lamPlot,layout=(4,1))
@@ -702,12 +724,12 @@ function forecastError()
     #plotLabels
     plotLabels=["Perfect Forecast" "Forecast Error"]
     iD=uSum
-    iD[:,1]=iD[:,1] .+ evS.iD_pred
-    iD[:,2]=iD[:,2] .+ iD_actual
+    iD[:,1]=(iD[:,1] .+ evS.iD_pred)/Ntf*1000
+    iD[:,2]=(iD[:,2] .+ iD_actual)/Ntf*1000
 
-    loadPlot=plot(1:Klen,iD,xlabel="",ylabel="Total Load (kA)",xlims=(0,Klen),labels="",
+    loadPlot=plot(1:Klen,iD,xlabel="",ylabel="Total Load (A)",labels="",
                   seriescolor=plotColors,xticks=xticks)
-    plot!(loadPlot,1:Klen,hcat(evS.iD_pred,iD_actual),label=["Predicted Background Demand" "Actual Background Demand"],line=(:dash))
+    plot!(loadPlot,1:Klen,hcat(evS.iD_pred/Ntf*1000,iD_actual/Ntf*1000),label=["Predicted Background Demand" "Actual Background Demand"],line=(:dash))
     savefig(resPlot,path*"iDError.png")
 end
 
