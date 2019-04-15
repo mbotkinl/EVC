@@ -110,6 +110,7 @@ function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 		end
 		Rec=sol
 	else
+		println("Infeasible coordinator")
 		#return required EVs to charges
 		Rec=requiredCh
 	end
@@ -259,7 +260,7 @@ function pemHubcoord(stepI,horzLen,packLen,hubS,pemSol,ReqI)
 	@constraint(m,tempCon2[kk=1:horzLen],Test[kk+1]>=hubS.τP*Test[kk]+hubS.γP*(sum(u[kk+1,h]*hubS.uMax[stepI+kk,h] for h=1:H)+hubS.iD_pred[stepI+kk])^2+hubS.ρP*hubS.Tamb[stepI+kk])
 	@constraint(m,Test.<=hubS.Tmax+slackT)
 	@constraint(m,slackT>=0)
-	@constraint(m,currMax[h=1:H,kk=1:horzLen],sum(u[kk,h]*hubS.uMax[stepI+kk-1,h] for h=1:H)+hubS.iD_pred[stepI+kk-1]<=hubS.ItotalMax)
+	#@constraint(m,currMax[h=1:H,kk=1:horzLen],sum(u[kk,h]*hubS.uMax[stepI+kk-1,h] for h=1:H)+hubS.iD_pred[stepI+kk-1]<=hubS.ItotalMax)
 	@constraint(m,optOnC[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(min(abs(ReqI[requiredInd[nn]]),horzLen+1)))==min(abs(ReqI[requiredInd[nn]]),horzLen+1))
 	@constraint(m,optOffC[kk=1:horzLen+1],sum(u[kk,h] for h in optOffInd)==0)
 
@@ -289,6 +290,7 @@ function pemHubcoord(stepI,horzLen,packLen,hubS,pemSol,ReqI)
 		end
 		Rec=sol
 	else
+		println(" Infeasible solution found")
 		#return required EVs to charges
 		Rec=requiredCh
 	end
