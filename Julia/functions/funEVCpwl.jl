@@ -905,6 +905,8 @@ end
 #ALADIN
 function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Array{Float64,2},evS,dLogalad::itLogPWL,
     ind,evVu,evVs,itLam,s0,itρ,slack,solverSilent,roundSigFigs,silent)
+    # local decoupled ALADIN EV problem
+
     N=evS.N
     S=evS.S
     horzLen=min(evS.K1,evS.K-stepI)
@@ -912,7 +914,6 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     tolU=1e-6
     tolS=1e-6
 
-    #evV=zeros(horzLen+1,1)
     target=zeros((horzLen+1),1)
     target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
     evM = Model(solver = GurobiSolver(NumericFocus=3))
@@ -952,10 +953,6 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
 
     @assert statusEVM==:Optimal "ALAD EV NLP optimization not solved to optimality"
 
-    # kappaMax=-getdual(curKappaMax)
-    # kappaMin=-getdual(curKappaMin)
-    # socMax=-getdual(socKappaMax)
-    # socMin=-getdual(socKappaMin)
     uVal=getvalue(u)
     snVal=getvalue(sn)
 
@@ -977,10 +974,6 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     dLogalad.Sn[ind,p]=round.(snVal,sigdigits=roundSigFigs)
     dLogalad.Un[ind,p]=round.(uVal,sigdigits=roundSigFigs)
 
-    # dLogalad.Gu[ind,p]=2*evS.Ri[evInd,stepI:stepI+horzLen]*uVal
-    # dLogalad.Gs[ind,p]=2*evS.Qsi[evInd,stepI:stepI+horzLen]*snVal.-2*evS.Qsi[evInd,stepI:stepI+horzLen]
-
-
     # if reg
     #     dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,stepI:stepI+horzLen]*uVal+2*reg_weight*uVal,sigdigits=roundSigFigs)
     #     dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,stepI:stepI+horzLen]*snVal.-2*evS.Qsi[evInd,stepI:stepI+horzLen]+2*reg_weight*snVal,sigdigits=roundSigFigs)
@@ -988,6 +981,7 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,stepI:stepI+horzLen].*uVal,sigdigits=roundSigFigs)
     dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,stepI:stepI+horzLen].*snVal .- 2*evS.Qsi[evInd,stepI:stepI+horzLen],sigdigits=roundSigFigs)
     #end
+
     #use convex ALADIN approach
     #dLogalad.Gu[ind,p]=σU[evInd,1]*(evVu-uVal)-prevLam[:,1]
     #dLogalad.Gs[ind,p]=σS[evInd,1]*(evVs-snVal)#-prevLam[:,1]
@@ -996,6 +990,8 @@ end
 
 function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS,dLogalad::itLogPWL,
     itLam,itVz,itVt,itρ,roundSigFigs)
+    # local transformer ALADIN problem
+
     N=evS.N
     S=evS.S
     deltaI=evS.deltaI
@@ -1032,11 +1028,6 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS,dLogalad:
     end
     @assert statusTM==:Optimal "ALAD XFRM NLP optimization not solved to optimality"
 
-    #kappaMax=-getdual(pwlKappaMax)
-    #kappaMin=-getdual(pwlKappaMin)
-    #tMax=-getdual(upperTCon)
-    #tMin=-getdual(lowerTCon)
-    #lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
     zVal=getvalue(z)
     tVal=getvalue(t)
 
@@ -1068,6 +1059,8 @@ end
 
 function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,itVt,itρ,
     dLogalad::itLogPWL,roundSigFigs)
+    # ALADIN coordinator problem
+
     N=evS.N
     S=evS.S
     deltaI=evS.deltaI
@@ -1092,7 +1085,6 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,i
     ρALADmax=1e6
     #μALADp=μALADp*p^2
 
-
     #coupled QP
     cM = Model(solver = GurobiSolver(NumericFocus=3))
     @variable(cM,dUn[1:(N)*(horzLen+1)])
@@ -1100,15 +1092,6 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,i
     @variable(cM,dZ[1:(S)*(horzLen+1)])
     @variable(cM,dT[1:(horzLen+1)])
     @variable(cM,relaxS[1:(horzLen+1)])
-
-    # coupledObj(deltaY,Hi,gi)=1/2*deltaY'*Hi*deltaY+gi'*deltaY
-    # objExp=coupledObj(dZ,Hz,Gz[:,p+1])
-    # objExp=objExp+coupledObj(dXt,Ht,zeros(length(dXt)))
-    # for n=1:N
-    #     objExp=objExp+coupledObj(dUn[collect(n:N:(N)*(horzLen+1)),1],Hu[n,1],Gu[collect(n:N:(N)*(horzLen+1)),p+1])+
-    #                   coupledObj(dSn[collect(n:N:(N)*(horzLen+1)),1],Hn[n,1],Gs[collect(n:N:(N)*(horzLen+1)),p+1])
-    # end
-
     objExp=sum(sum(0.5*dUn[(k-1)*N+n,1]^2*Hu[n,k]+dLogalad.Gu[(k-1)*N+n,p]*dUn[(k-1)*N+n,1] +
                    0.5*dSn[(k-1)*N+n,1]^2*Hs[n,k]+dLogalad.Gs[(k-1)*N+n,p]*dSn[(k-1)*N+n,1] for n=1:N) +
                sum(0.5*dZ[(k-1)*(S)+s,1]^2*Hz for s=1:S)+
@@ -1117,9 +1100,6 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,i
     objExp=objExp+dot(dLogalad.Gz[:,p],dZ)+dot(dLogalad.Gt[:,p],dT)
 
     @objective(cM,Min,objExp)
-
-    # Unp=dLogalad.Un[:,p]
-    # Zp=dLogalad.Z[:,p]
     Unp=round.(dLogalad.Un[:,p],sigdigits=roundSigFigs)
     Zp=round.(dLogalad.Z[:,p],sigdigits=roundSigFigs)
     @constraint(cM,currCon[k=1:horzLen+1],sum(Unp[(k-1)*(N)+n,1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
@@ -1194,6 +1174,8 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,i
 end
 
 function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSol,cSave,eqForm,roundSigFigs,silent)
+    # Function for a single iteration of the ALADIN algorithm
+
     K=evS.K
     N=evS.N
     S=evS.S
@@ -1202,12 +1184,6 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
     #initialize with current states
     global s0
     global t0
-    # global prevLam
-    # global prevVu
-    # global prevVz
-    # global prevVt
-    # global prevVs
-    # global ρALADp
 
     #ALADIN tuning
     # if eqForm
@@ -1233,8 +1209,7 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
     # μRate=1
     # μALADmax=2e9
 
-    #@printf "1"
-    #solve decoupled
+    #solve decoupled local EV problems
     if runParallel
         @sync @distributed for evInd=1:N
             ind=[evInd]
@@ -1247,7 +1222,6 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
         end
     else
         for evInd=1:N
-            #print(evInd)
             ind=[evInd]
             for k=1:horzLen
                 append!(ind,k*N+evInd)
@@ -1257,17 +1231,18 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
             localEVALAD(evInd,p,stepI,σU,σS,evS,dLogalad,ind,evVu,evVs,itLam,s0,itρ,slack,solverSilent,roundSigFigs,silent)
         end
     end
-    #@printf "2"
 
+    # solve local transformer problem
     localXFRMALAD(p,stepI,σZ,σT,evS,dLogalad,itLam,itVz,itVt,itρ,roundSigFigs)
 
+    # save useful vectors
     for k=1:horzLen+1
         dLogalad.uSum[k,p]=sum(dLogalad.Un[(k-1)*N+n,p] for n=1:N)
         dLogalad.zSum[k,p]=sum(dLogalad.Z[(k-1)*(S)+s,p] for s=1:S)
         dLogalad.couplConst[k,p]=dLogalad.uSum[k,p] + evS.iD_pred[stepI+(k-1),1] - dLogalad.zSum[k,p]
     end
 
-    #calculate actual temperature from nonlinear model of XFRM
+    # calculate actual temperature from nonlinear model of XFRM
     for k=1:horzLen+1
         dLogalad.Itotal[k,p]=dLogalad.uSum[k,p] + evS.iD_actual[stepI+(k-1),1]
     end
@@ -1276,17 +1251,15 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
         dLogalad.Tactual[k+1,p]=evS.τP*dLogalad.Tactual[k,p]+evS.γP*dLogalad.Itotal[k,p]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
     end
 
+    # ALADIN coordination problem
     coordALAD(p,stepI,μALADp,evS,itLam,itVu,itVs,itVz,itVt,itρ,dLogalad,roundSigFigs)
 
     #check for convergence
     constGap=norm(dLogalad.couplConst[:,p],1)
-    # cc=norm(vcat(σU[1]*(itVu[:,1]-dLogalad.Un[:,p]),σZ*(itVz[:,1]-dLogalad.Z[:,p]),
-    #              σT*(itVt[:,1]-dLogalad.Tpred[:,p]),σS[1]*(itVs[:,1]-dLogalad.Sn[:,p])),1)
-    #cc=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
+    itGap = norm(dLogalad.Lam[:,p]-itLam[:,1],2)
     objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1] for n=1:N) +
                      sum((u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]       for n=1:N) for k=1:horzLen+1)
     dLogalad.objVal[1,p]=objFun(dLogalad.Sn[:,p],dLogalad.Un[:,p])
-    itGap = norm(dLogalad.Lam[:,p]-itLam[:,1],2)
 
     #only if saving
     if stepI in saveLogInd
@@ -1321,30 +1294,22 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
         dCM.zInfNorm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],Inf)
     end
 
-    #convCheck[p,1]=cc
-    # if  constGap<=epsilon && cc<=epsilon
     if  constGap<=primChk && itGap<=dualChk
-        #if !silent @printf "Converged after %g iterations\n" p end
         @printf "Converged after %g iterations" p
         convIt=p
-        #break
         return true
     else
         if !silent
-            #@printf "convCheck  %e after %g iterations\n" cc p
             @printf "lamIt      %e after %g iterations\n" itGap p
             @printf "constGap   %e after %g iterations\n\n" constGap p
-            #@printf "snGap      %e after %g iterations\n" snGap p
-            #@printf("fGap       %e after %g iterations\n",fGap,p)
         end
     end
-
-    # coordALAD(p,stepI,μALADp,evS,itLam,itVu,itVs,itVz,itVt,itρ,dLogalad,dCM)
-
     return false
 end
 
 function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent)
+    # Function for each MPC time step
+
     K=evS.K
     N=evS.N
     S=evS.S
@@ -1352,18 +1317,18 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     dLogalad=itLogPWL(horzLen=horzLen,N=N,S=S)
     p=1
     timeStart=now()
+
+    # keep iterating while not converged, under maximum number of iterations, and time left in timestep
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
-        #while (p<=maxIt)
         #global p
-        #@printf "%git" p
-        if p==1
+        if p==1 #first iteration: hot start with previous timestep solutions
             itLam=prevLam
             itVu=prevVu
             itVz=prevVz
             itVs=prevVs
             itVt=prevVt
             itρ=ρALADp
-        else
+        else   # use last iteration solutions
             itLam=round.(dLogalad.Lam[:,(p-1)],sigdigits=roundSigFigs)
             itVu=round.(dLogalad.Vu[:,(p-1)],sigdigits=roundSigFigs)
             itVz=round.(dLogalad.Vz[:,(p-1)],sigdigits=roundSigFigs)
@@ -1374,7 +1339,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
         cFlag=runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSol,cSave,eqForm,roundSigFigs,silent)
         global convIt=p
         if cFlag
-            break
+            break # if converged, end iterations
         end
         p+=1
     end
@@ -1383,6 +1348,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
         dCM.convIt[1,1,ind]=convIt
     end
 
+    # these are plots I use to debug a single time step
     #print(round(now()-timeStart,Second))
     # xPlot=zeros(horzLen+1,N)
     # uPlot=zeros(horzLen+1,N)
@@ -1468,8 +1434,8 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     global t0=round(dSol.Tactual[stepI,1],sigdigits=roundSigFigs)
     global s0=dSol.Sn[stepI,:]
 
-    #function getAttr()
-    #clean this up
+    # prepare solutions for next time step
+    #TODO: clean this up
     if convIt==1
         dSol.lamCoupl[stepI,1]=prevLam[1,1]
         if stepI+horzLen==evS.K
@@ -1513,6 +1479,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
 end
 
 function pwlEValad(maxIt::Int,evS,cSave::centralLogStruct,slack::Bool,eqForm::Bool,roundSigFigs::Int,silent::Bool)
+    # wrapper function for MPC PWL ALADIN
 
     horzLen=evS.K1
     K=evS.K
