@@ -6,7 +6,7 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 N=evS.N
 K=evS.K
 
-runAnalysis=true
+runAnalysis=false
 
 numRuns=10
 packLen=2 #number of time steps
@@ -22,7 +22,8 @@ for i=1:length(setSOCs)
     mu = 1 / mttr*((ratio.-0)./(1 .- ratio))*((1 - setSOCs[i])/(setSOCs[i] - 0))
     setP[:,i] = min.(max.(1 .- exp.(-mu*evS.Ts),0),1)
     temp=@sprintf "=%s" setSOCs[i]
-	plotLabels[i]=L"\hat s_n"*temp
+	# plotLabels[i]=L"\hat r_{\text{set},n}"*temp
+	plotLabels[i]=L"\hat r_{set,n}"*temp
 end
 setPlot=plot(ratio,setP,xlabel="Ratio",ylabel="Request Probability",label=permutedims(plotLabels))
 pubPlot(setPlot,thickscale=1,sizeWH=(600,400),dpi=60)
@@ -30,11 +31,11 @@ pubPlot(setPlot,thickscale=1,sizeWH=(600,400),dpi=60)
 
 saveFile=path*"Analysis\\pemAnalysis"*".jld2"
 
+lenCalcs=length(setSOCs)
 
 if runAnalysis
 
 	### changing setSOC
-	lenCalcs=length(setSOCs)
 	Sn=zeros(K,N,lenCalcs)
 	Tactual=zeros(K,1,lenCalcs)
 	uSum=zeros(K,1,lenCalcs)
@@ -78,12 +79,12 @@ Xlabels=vcat(collect(stT1:Dates.Second(round(evS.Ts)):endT1),collect(stT2:Dates.
 xticks=(1:40:evS.K,Dates.format.(Xlabels[1:40:evS.K],"HH:MM"))
 
 # normal plots
-p3pem=plot(Tactual[:,1,:],xlims=(0,evS.K),xlabel="Time",ylabel="Temp (K)",
+p3pem=plot(Tactual[:,1,:],xlabel="Time",ylabel="Temp (C)",
 			label="",xticks=xticks,seriescolor=plotColors)
 plot!(p3pem,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
 plot!(p3pem,cSol.Tactual,label="",seriescolor=allColors[1])
-aggUpem=plot(hcat(cSol.uSum,uSum[:,1,:]),label="",xticks=xticks, #label=["Central" permutedims(plotLabels)]
-			xlims=(0,evS.K),xlabel="Time",ylabel="PEV Current (kA)",seriescolor=allColors')
+aggUpem=plot(hcat(cSol.uSum/Ntf*1000,uSum[:,1,:]/Ntf*1000),label="",xticks=xticks, #label=["Central" permutedims(plotLabels)]
+			xlabel="Time",ylabel="PEV Current (A)",seriescolor=allColors')
 
 
 #plot parallelogram for n
@@ -108,11 +109,10 @@ savefig(parPlot3,path*"setSOCPlot3par.png")
 
 
 #plot requests per timestep
-reqPlot=plot(1:K,requests[:,1,:],xlabel="Time",ylabel="Number of Requests",xlims=(0,evS.K),
-			xticks=xticks,seriescolor=plotColors,legend=false)
+reqPlot=plot(requests[:,1,:],xlabel="Time",ylabel="Number of Requests",xticks=xticks,seriescolor=plotColors,legend=false)
 
 #plot parallelogram for all n
-parPlot=plot(1:K,mean(Sn,dims=2)[:,1,:],xlabel="Time",ylabel="Avg PEV SoC",xlims=(0,evS.K),ylims=(0.35,1),
+parPlot=plot(mean(Sn,dims=2)[:,1,:],xlabel="Time",ylabel="Avg PEV SoC",ylims=(0.35,1),
 			label=permutedims(plotLabels),xticks=xticks,seriescolor=plotColors)
 plot!(parPlot,mean(cSol.Sn,dims=2),label="Central",seriescolor=allColors[1])
 
