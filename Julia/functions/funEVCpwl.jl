@@ -215,7 +215,6 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
     @variable(evM,sn[1:horzLen+1])
     if slack @variable(evM,slackSn) end
     objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,stepI+k-1]+(un[k,1])^2*evS.Ri[evInd,stepI+k-1]+itLam[k,1]*un[k,1] for k=1:horzLen+1)
-    #objExp=sum((sn[k,1]-1)^2*evS.Qsi[evInd,1]+(un[k,1])^2*evS.Ri[evInd,1]+itLam[k,1]*un[k,1] for k=1:horzLen+1)
     if slack
         append!(objExp,sum(evS.β[n]*slackSn^2 for n=1:N))
     end
@@ -364,6 +363,7 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
 
     #update lambda
     alphaP= max(alpha0/ceil(p/alphaDivRate),minAlpha)
+    #alphaP= max(alpha0/(p/alphaDivRate),minAlpha)
     dLog.itUpdate[1,p]=alphaP
     #alphaP= alphaP*alphaRate
 
@@ -457,7 +457,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
         dCM.convIt[1,1,ind]=convIt
     end
 
-    # # convergence plots
+    # # # convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
     #                range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
@@ -475,16 +475,41 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
     # plot!(lamPlotd,cSol.lamCoupl[stepI:stepI+horzLen],seriescolor=:black,linewidth=2,linealpha=0.8)
     # plot!(lamPlotd,lambdaCurr,seriescolor=:black,linewidth=2,linealpha=0.8)
     #
-    #
     # constPlot2=plot(dLog.couplConst[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
     #
     # tempPlot=plot(dLog.Tactual[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Temp",xlims=(0,horzLen+1),legend=false)
     #
     # #convergence metric plots
-    # fPlot=plot(1:convIt,dCM.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # fAbsPlot=plot(1:convIt,dCM.objAbs[1:convIt,ind],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # fPlot=plot(1:convIt,dCM.objPerc[2:convIt-1,ind],xlabel="Iteration",ylabel="obj function gap",xlims=(2,convIt-1),legend=false,yscale=:log10)
+    # fItPlot=plot(1:convIt,dCM.objItPerc[2:convIt-1,ind],xlabel="Iteration",ylabel="obj function gap",xlims=(2,convIt),legend=false,yscale=:log10)
     # convItPlot=plot(1:convIt,dCM.lamIt2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Lambda Gap",xlims=(1,convIt),legend=false,yscale=:log10)
-    # convPlot=plot(1:convIt,dCM.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(2,convIt),legend=false,yscale=:log10)
+    # convLamPlot=plot(1:convIt,dCM.lam2Norm[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(2,convIt),legend=false,yscale=:log10)
     # constPlot=plot(1:convIt,dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(2,convIt),legend=false,yscale=:log10)
+    # #savefig(lamPlotd,path*"lamPlotd"*".png")
+    # testRel2 = zeros(convIt-1)
+    # testRelInf = zeros(convIt-1)
+    # testV = zeros(convIt-1)
+    # testV2 = zeros(convIt-1)
+    # testZ = zeros(convIt-1)
+    # for i in 2:convIt
+    #     v1=dLog.Lam[:,i]
+    #     v2=dLog.Lam[:,i-1]
+    #     testV[i-1]=1/2*(var(v1-v2))/(var(v1)+var(v2))
+    #     testV2[i-1]=sqrt(sum((v1[k]-v2[k])^2/(var(v1)+var(v2)) for k=1:horzLen+1))
+    #     testRel2[i-1] = norm(v1-v2,2)/norm(v2,2)
+    #     testRelInf[i-1] = norm(v1-v2,Inf)/norm(v2,Inf)
+    #
+    #     z1=(v1 .- mean(v1))./std(v1)
+    #     z2=(v2 .- mean(v2))./std(v2)
+    #     testZ[i-1]=norm(z1-z2,2)
+    #
+    # end
+    # plot(testRel2,yscale=:log10,legend=false,xlabel="Iteration")
+    # plot(testRelInf,yscale=:log10,legend=false,xlabel="Iteration")
+    # # plot(testV,yscale=:log10,legend=false,xlabel="Iteration")
+    # # plot(testV2,yscale=:log10,legend=false,xlabel="Iteration")
+    # # plot(testZ,yscale=:log10,legend=false,xlabel="Iteration")
 
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLog.Tpred[1,convIt]
@@ -809,12 +834,11 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS,dSol::solutionStruct,dCM,cSave:
         dCM.convIt[1,1,ind]=convIt
     end
 
-    # #convergence plots
+    # # #convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
     #                range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
     #
-    # ind=findall(x->x==stepI,saveLogInd)[1]
     # uSumPlotadmm=plot(dLogadmm.uSum[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
     # plot!(uSumPlotadmm,sum(cSave.Un[:,:,ind],dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
     #
@@ -826,10 +850,15 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS,dSol::solutionStruct,dCM,cSave:
     # lamPlotadmm=plot(dLogadmm.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
     # plot!(lamPlotadmm,cSave.Lam[:,:,ind],seriescolor=:black,linewidth=2,linealpha=0.8)
     #
-    # fPlotalad=plot(dCM.objAbs[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # fAbsPlot=plot(dCM.objAbs[1:convIt,ind],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # fPlot=plot(dCM.objPerc[2:convIt-1,ind],xlabel="Iteration",ylabel="obj function gap",legend=false,yscale=:log10)
+    # fItPlot=plot(dCM.objItPerc[2:convIt-1,ind],xlabel="Iteration",ylabel="obj function gap",legend=false,yscale=:log10)
+    #
     # convPlotalad=plot(dCM.lam2Norm[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convItPlotalad2=plot(dCM.lamIt2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Dual",xlims=(1,convIt),legend=false,yscale=:log10)
     # constPlotalad1=plot(dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="1-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
+    # #savefig(lamPlotadmm,path*"lamPlotadmm"*".png")
+
 
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLogadmm.Tpred[1,convIt]
@@ -1091,6 +1120,10 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,i
 
     #coupled QP
     cM = Model(solver = GurobiSolver(NumericFocus=3))
+    cM = Model(solver = GurobiSolver(Presolve=1))
+    #cM = Model(solver = IpoptSolver())
+    #cM = Model(solver = MosekSolver())
+
     @variable(cM,dUn[1:(N)*(horzLen+1)])
     @variable(cM,dSn[1:(N)*(horzLen+1)])
     @variable(cM,dZ[1:(S)*(horzLen+1)])
@@ -1326,6 +1359,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
 
     # keep iterating while not converged, under maximum number of iterations, and time left in timestep
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
+        #while (p<=maxIt)
         #global p
         if p==1 #first iteration: hot start with previous timestep solutions
             itLam=prevLam
@@ -1354,8 +1388,8 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
         dCM.convIt[1,1,ind]=convIt
     end
 
-    # these are plots I use to debug a single time step
-    #print(round(now()-timeStart,Second))
+    # # these are plots I use to debug a single time step
+    # #print(round(now()-timeStart,Second))
     # xPlot=zeros(horzLen+1,N)
     # uPlot=zeros(horzLen+1,N)
     # for ii= 1:N
@@ -1407,7 +1441,9 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     #                   legend=false,xlims=(2,convIt))
     # #solChangesplot=plot(2:convIt,hcat(ΔY[2:convIt],convCheck[2:convIt]),xlabel="Iteration",labels=["ΔY" "y-x"],xlims=(1,convIt))
     #
-    # fPlotalad=plot(dCM.objAbs[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
+    # fAbsPlot=plot(dCM.objAbs[1:convIt,ind],xlabel="Iteration",ylabel="obj function gap",legend=false,yscale=:log10)
+    # fPlot=plot(dCM.objPerc[2:convIt-1,ind],xlabel="Iteration",ylabel="obj function gap",legend=false,yscale=:log10)
+    # fItPlot=plot(dCM.objItPerc[2:convIt-1,ind],xlabel="Iteration",ylabel="obj function gap",legend=false,yscale=:log10)
     # convPlotalad=plot(dCM.lam2Norm[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convItPlotalad1=plot(dCM.lamIt1Norm[1:convIt,1],xlabel="Iteration",ylabel="1-Norm Dual",xlims=(1,convIt),legend=false,yscale=:log10)
     # convItPlotalad2=plot(dCM.lamIt2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Dual",xlims=(1,convIt),legend=false,yscale=:log10)
@@ -1416,14 +1452,24 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     # constPlotalad2=plot(dCM.coupl2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
     # constPlotaladInf=plot(dCM.couplInfNorm[1:convIt,1],xlabel="Iteration",ylabel="Inf-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
     #
-    # checkPlot2=plot(convItPlotalad1,constPlotalad1,convItPlotalad2,
-    #                 constPlotalad2,convItPlotaladInf,constPlotaladInf,layout=(3,2))
-    # pubPlot(checkPlot2,thickscale=1,sizeWH=(600,400),dpi=60)
-    # savefig(checkPlot2,path*"checkPlot2"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
-    #
-    # checkPlot=plot(convItPlotalad,constPlotalad,fPlotalad,convPlotalad,layout=(2,2))
-    # pubPlot(checkPlot,thickscale=1,sizeWH=(600,400),dpi=60)
-    # savefig(checkPlot,path*"checkPlot"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
+    # # checkPlot2=plot(convItPlotalad1,constPlotalad1,convItPlotalad2,
+    # #                 constPlotalad2,convItPlotaladInf,constPlotaladInf,layout=(3,2))
+    # # pubPlot(checkPlot2,thickscale=1,sizeWH=(600,400),dpi=60)
+    # # savefig(checkPlot2,path*"checkPlot2"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
+    # #
+    # # checkPlot=plot(convItPlotalad,constPlotalad,fPlotalad,convPlotalad,layout=(2,2))
+    # # pubPlot(checkPlot,thickscale=1,sizeWH=(600,400),dpi=60)
+    # # savefig(checkPlot,path*"checkPlot"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
+    # testRel2 = zeros(convIt-1)
+    # testRelInf = zeros(convIt-1)
+    # for i in 2:convIt
+    #     v1=dLogalad.Lam[:,i]
+    #     v2=dLogalad.Lam[:,i-1]
+    #     testRel2[i-1] = norm(v1-v2,2)/norm(v2,2)
+    #     testRelInf[i-1] = norm(v1-v2,Inf)/norm(v2,Inf)
+    # end
+    # plot(testRel2,yscale=:log10,legend=false,xlabel="Iteration")
+    # plot(testRelInf,yscale=:log10,legend=false,xlabel="Iteration")
 
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLogalad.Tpred[1,convIt]
