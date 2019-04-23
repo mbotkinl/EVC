@@ -370,10 +370,11 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
     dLog.Lam[:,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,p],sigdigits=roundSigFigs)
 
     #check convergence
-    # objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1]     for n=1:N) for k=1:horzLen+1) +
-    #                 sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]           for n=1:N) for k=1:horzLen+1)
-    # dLog.objVal[1,p]=objFun(dLog.Sn[:,p],dLog.Un[:,p])
+    objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1]     for n=1:N) for k=1:horzLen+1) +
+                    sum(sum((u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]           for n=1:N) for k=1:horzLen+1)
+    dLog.objVal[1,p]=objFun(dLog.Sn[:,p],dLog.Un[:,p])
     itGap = norm(dLog.Lam[:,p]-itLam[:,1],2)
+    #itGap = norm((dLog.Lam[:,p] .- itLam[:,1])./itLam[:,1],2)
     couplGap=norm(dLog.couplConst[:,p],1)
 
     if stepI in saveLogInd
@@ -381,7 +382,9 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
         dCM.coupl1Norm[p,ind]=couplGap
         dCM.lamIt2Norm[p,ind]=itGap
         dCM.objAbs[p,ind]=abs(dLog.objVal[1,p]-cSave.Obj[1,1,ind])
-        dCM.objPerc[p,ind]=abs(dLog.objVal[1,p]-cSave.Obj[1,1,ind])/cSave.Obj[1,1,ind]*100
+        dCM.objPerc[p,ind]=abs(dLog.objVal[1,p]-cSave.Obj[1,1,ind])/cSave.Obj[1,1,ind]
+        prevObj = if p==1 dLog.objVal[1,p] else dLog.objVal[1,p-1] end
+        dCM.objItPerc[p,ind]=abs(dLog.objVal[1,p]-prevObj)/prevObj
         dCM.lam1Norm[p,ind]= norm(dLog.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],1)
         dCM.lam2Norm[p,ind]= norm(dLog.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],2)
         dCM.lamInfNorm[p,ind]= norm(dLog.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],Inf)
@@ -702,8 +705,6 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,ro
     cc=norm(vcat((itVu[:,1]-dLogadmm.Vu[:,p]),(itVz[:,1]-dLogadmm.Vz[:,p])),1)
     objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1]     for n=1:N) +
                      sum((u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]           for n=1:N) for k=1:horzLen+1)
-    # objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,1]     for n=1:N) +
-    #                  sum((u[(k-1)*N+n,1])^2*evS.Ri[n,1]           for n=1:N) for k=1:horzLen+1)
     dLogadmm.objVal[1,p]=objFun(dLogadmm.Sn[:,p],dLogadmm.Un[:,p])
 
     constGap=norm(dLogadmm.couplConst[:,p],1)
@@ -728,7 +729,9 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,ro
         dCM.coupl1Norm[p,ind]=constGap
         dCM.lamIt2Norm[p,ind]=itGap
         dCM.objAbs[p,ind]=abs(dLogadmm.objVal[1,p]-cSave.Obj[1,1,ind])
-        dCM.objPerc[p,ind]=abs(dLogadmm.objVal[1,p]-cSave.Obj[1,1,ind])/cSave.Obj[1,1,ind]*100
+        dCM.objPerc[p,ind]=abs(dLogadmm.objVal[1,p]-cSave.Obj[1,1,ind])/cSave.Obj[1,1,ind]
+        prevObj = if p==1 dLogadmm.objVal[1,p] else dLogadmm.objVal[1,p-1] end
+        dCM.objItPerc[p,ind]=abs(dLogadmm.objVal[1,p]-prevObj)/prevObj
         dCM.lam1Norm[p,ind]= norm(dLogadmm.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],1)
         dCM.lam2Norm[p,ind]= norm(dLogadmm.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],2)
         dCM.lamInfNorm[p,ind]= norm(dLogadmm.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],Inf)
@@ -1271,7 +1274,9 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
         dCM.lamIt2Norm[p,ind]=itGap
         dCM.lamItInfNorm[p,ind]= norm(dLogalad.Lam[:,p]-itLam[:,1],Inf)
         dCM.objAbs[p,ind]=abs(dLogalad.objVal[1,p]-cSave.Obj[1,1,ind])
-        dCM.objPerc[p,ind]=abs(dLogalad.objVal[1,p]-cSave.Obj[1,1,ind])/cSave.Obj[1,1,ind]*100
+        dCM.objPerc[p,ind]=abs(dLogalad.objVal[1,p]-cSave.Obj[1,1,ind])/cSave.Obj[1,1,ind]
+        prevObj = if p==1 dLogalad.objVal[1,p] else dLogalad.objVal[1,p-1] end
+        dCM.objItPerc[p,ind]=abs(dLogalad.objVal[1,p]-prevObj)/prevObj
         dCM.lam1Norm[p,ind]= norm(dLogalad.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],1)
         dCM.lam2Norm[p,ind]= norm(dLogalad.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],2)
         dCM.lamInfNorm[p,ind]= norm(dLogalad.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],Inf)

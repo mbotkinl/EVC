@@ -121,6 +121,7 @@ end
     # only if central open loop is availble
     objAbs::Array=zeros(maxIt,logLength)
     objPerc::Array=zeros(maxIt,logLength)
+    objItPerc::Array=zeros(maxIt,logLength)
     lam1Norm::Array=zeros(maxIt,logLength)
     lam2Norm::Array=zeros(maxIt,logLength)
     lamInfNorm::Array=zeros(maxIt,logLength)
