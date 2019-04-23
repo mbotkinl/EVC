@@ -187,7 +187,7 @@ function pwlEVcentral(evS::scenarioStruct,slack::Bool,silent::Bool)
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)" progress=stepI/K _id=id
             @printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI K
             try
-                runEVCCentralStep(stepI,evS,cSol,cSave,silent)
+                cSol.timeT[stepI]=@elapsed runEVCCentralStep(stepI,evS,cSol,cSave,silent)
             catch e
                 @printf "error: %s" e
                 break
@@ -530,7 +530,7 @@ function pwlEVdual(maxIt::Int,updateMethod::String,evS::scenarioStruct,cSave::ce
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)" progress=stepI/K _id=id
             @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
             try
-                runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
+                dSol.timeT[stepI]=@elapsed runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
                 @printf "convIt: %g\n" dSol.convIt[stepI,1]
             catch e
                 @printf "error: %s" e
@@ -887,7 +887,7 @@ function pwlEVadmm(maxIt::Int,evS,cSave::centralLogStruct,slack::Bool,roundSigFi
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)" progress=stepI/K _id=id
             @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
             try
-                runEVADMMStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
+                dSol.timeT[stepI]=@elapsed runEVADMMStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
                 @printf "convIt: %g\n" dSol.convIt[stepI,1]
             catch e
                 @printf "error: %s" e
@@ -1494,7 +1494,7 @@ function pwlEValad(maxIt::Int,evS,cSave::centralLogStruct,slack::Bool,eqForm::Bo
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)" progress=stepI/K _id=id
             @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
             try
-                runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent)
+                dSol.timeT[stepI]=@elapsed runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent)
                 @printf "convIt: %g\n" dSol.convIt[stepI,1]
             catch e
                 @printf "error: %s" e
