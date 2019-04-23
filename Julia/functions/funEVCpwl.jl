@@ -38,8 +38,9 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
         #@variable(centralModel,slackT[1:(horzLen+1)])
     end
     if !silent println("obj") end
-    objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,stepI]+(u[n,1])^2*evS.Ri[n,stepI] for n=1:N)
-    for k=2:horzLen+1
+    #objExp =sum((sn[n,1]-1)^2*evS.Qsi[n,stepI]+(u[n,1])^2*evS.Ri[n,stepI] for n=1:N)
+    objExp=0*u[1,1]^2
+    for k=1:horzLen+1
         append!(objExp,sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1]+(u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]  for n=1:N))
     end
     if slack append!(objExp,sum(1e3*evS.β[n]*slackSn[n]^2 for n=1:N)) end
