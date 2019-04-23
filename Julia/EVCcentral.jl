@@ -9,7 +9,12 @@ else
 	using Gurobi
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 end
+
 fname = "central_N$(N)"
+
+if noTlimit
+	fname = fname*"_noLim"
+end
 
 if loadResults
 	println("Reading in Central Sim")
