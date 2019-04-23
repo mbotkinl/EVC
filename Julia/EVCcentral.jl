@@ -49,4 +49,6 @@ if drawFig savefig(p4,path*"J_central_Lam.png") end
 aggU=plot(hcat(cSol.uSum,cSol.Itotal,evS.iD_actual),label=["Central" "Total" "iD"],xlabel="Time",ylabel="Current (kA)")
 plot!(aggU,1:evS.K,evS.ItotalMax*ones(evS.K),label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 
+timePlot = plot(cSol.timeT,xlabel="Time",ylabel="Computational Time (s)",legend=false, )
+
 checkDesiredStates(cSol.Sn,evS.Kn,evS.Snmin)

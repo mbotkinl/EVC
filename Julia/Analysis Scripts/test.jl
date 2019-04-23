@@ -8,7 +8,6 @@ end
 test()
 
 
-
 function innerloop()
     cc=cc+1
 end
@@ -25,6 +24,16 @@ end
 
 
 wrapper()
+
+
+w=rand(10,1)
+
+m=Model(solver=GurobiSolver(Presolve=0))
+@variable(m,x[1:10])
+@objective(m,Min,sum(w[i]*x[i]^2 for i=1:10))
+@constraint(m,sum(x)==10)
+status=solve(m)
+
 
 using JuMP
 using Gurobi

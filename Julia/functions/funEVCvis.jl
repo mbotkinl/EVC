@@ -314,6 +314,16 @@ function compareConvGraph()
         lamConv[cIt:numIt,i].=NaN
     end
 
+
+    savefPerc[savefPerc.==0] .=NaN
+    convPlot= plot(savefPerc,xlabel="Iteration",ylabel="|o^p-o^*|/o^*",labels=["Dual" "ADMM" "ALADIN"],yscale=:log10, xlims=(0,200))
+    savefig(convPlot,path*"savefPerc"*".png")
+
+    savefItPerc[savefItPerc.==0] .=NaN
+    convPlot= plot(savefItPerc,xlabel="Iteration",ylabel="|o^p-o^(p-1)|/o^(p-1)",labels=["Dual" "ADMM" "ALADIN"],yscale=:log10, xlims=(0,200))
+    savefig(convPlot,path*"savefItPerc"*".png")
+
+
     #Iteration plots
     lamConvPlot=plot(lamConv,xlabel="",ylabel="2-norm Lambda gap",labels=plotLabels,yscale=:log10,
                     seriescolor=plotColors,legend=false,xlims=(0,numIt))
