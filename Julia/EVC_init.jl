@@ -31,8 +31,9 @@ include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions/
 N=100 # number of EVs
 
 # path to working directory
-#path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_new\\"
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_largeQ\\"
+#path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\test\\"
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_new\\"
+#path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_largeQ\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\PWL\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_K\\"
 
@@ -56,7 +57,7 @@ drawFig=false      # draws output figures
 saveResults=false  # saves result file
 saveS=false        # saves scenario file
 loadResults=false  # loads results
-silent=false       # prevents output to console
+silent=true       # prevents output to console
 solverSilent=true  # prevents feedback from JuMP solver
 
 file="EVCscenarioN$(N)."*datafile
@@ -69,7 +70,7 @@ else               #create scenario
 	println("Creating EV Scenario...")
 	Tmax=100            # Temperature limit (Celsius)
 	num_homes=1000      # affects background demand magnitude
-	Tamb_amplitude = 18 # affects ambeint temperature magnitude
+	Tamb_amplitude = 18 # affects ambient temperature magnitude
 	Dload_error=0       # legacy
 
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
