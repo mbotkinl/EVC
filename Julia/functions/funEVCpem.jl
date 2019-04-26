@@ -49,7 +49,7 @@ function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 	poolSol=Int(min(round(N*packLen),100))
 	slackWeight=1e8
 	extraWeight=round(1/(2*N*(horzLen+1)),digits=6)
-
+	backgroundForecast = min(20,evS.K-stepI)
 	#receive requests and forecast for the next packLen intervals
 	prevT = if stepI>1 pemSol.Tactual[stepI-1] else evS.t0 end
     requiredCh=Int.(Req.<0) # all negative numbers
@@ -57,54 +57,64 @@ function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 	extraInd=findall(x->x==2,Req)
 	optOffInd=findall(x->x==0,Req) #did not request
 
-	m = Model(solver = GurobiSolver(PoolSearchMode=1,PoolSolutions=poolSol,PoolGap=0,TimeLimit=9/10*evS.Ts))
-	@variable(m,u[1:horzLen+1,1:N],Bin) #binary charge variable
-	@variable(m,Test[1:horzLen+1])
-	@variable(m,slackT)
-	objExp=slackWeight*slackT
-	if !isempty(extraInd)
-		objExp=objExp-extraWeight*sum(sum(u[:,n] for n in extraInd))
-	end
-	if !isempty(setdiff(1:N,extraInd))
-		objExp=objExp-sum(sum(u[:,n] for n in setdiff(1:N,extraInd)))
-	end
-	@objective(m,Min,objExp)
-	@constraint(m,tempCon1,Test[1]>=evS.τP*prevT+evS.γP*(sum(u[1,n]*evS.imax[n] for n=1:N)+evS.iD_pred[stepI])^2+evS.ρP*evS.Tamb[stepI])
-	@constraint(m,tempCon2[kk=1:horzLen],Test[kk+1]>=evS.τP*Test[kk]+evS.γP*(sum(u[kk+1,n]*evS.imax[n] for n=1:N)+evS.iD_pred[stepI+kk])^2+evS.ρP*evS.Tamb[stepI+kk])
-	@constraint(m,Test.<=evS.Tmax+slackT)
-	@constraint(m,slackT>=0)
-	@constraint(m,optOnC[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(min(abs(Req[requiredInd[nn]]),horzLen+1)))==min(abs(Req[requiredInd[nn]]),horzLen+1))
-	@constraint(m,optOffC[kk=1:horzLen+1],sum(u[kk,n] for n in optOffInd)==0)
-
-
-	if solverSilent
-        @suppress_out begin
-			statusC = solve(m)
-        end
-    else
-		statusC = solve(m)
-    end
-
-
-	if statusC==:Optimal
-		#take random solution if multiple
-		solCount=Gurobi.get_sol_count(getrawsolver(m))
-		if solCount>1
-			println(solCount," multiple solutions found")
-			solNum=rand(1:solCount-1)
-			setparam!(getrawsolver(m),"SolutionNumber",solNum)
-			getparam(getrawsolver(m),"SolutionNumber")
-			sol=Gurobi.get_dblattrarray(getrawsolver(m),"Xn",1,N)
-		elseif solCount==1
-			sol=getvalue(u)[1,:]
-		else
-			sol=requiredCh
-		end
-		Rec=sol
-	else
-		println("Infeasible coordinator")
-		#return required EVs to charges
+	if stepI==280
 		Rec=requiredCh
+	else
+
+		m = Model(solver = GurobiSolver(PoolSearchMode=1,PoolSolutions=poolSol,PoolGap=0,TimeLimit=9/10*evS.Ts))
+		@variable(m,u[1:horzLen,1:N],Bin) #binary charge variable
+		@variable(m,Test[1:backgroundForecast])
+		@variable(m,slackT)
+		objExp=slackWeight*slackT
+		if !isempty(extraInd)
+			objExp=objExp-extraWeight*sum(sum(u[:,n] for n in extraInd))
+		end
+		if !isempty(setdiff(1:N,extraInd))
+			objExp=objExp-sum(sum(u[:,n] for n in setdiff(1:N,extraInd)))
+		end
+		@objective(m,Min,objExp)
+		@constraint(m,tempCon1,Test[1]>=evS.τP*prevT+evS.γP*(sum(u[1,n]*evS.imax[n] for n=1:N)+evS.iD_pred[stepI])^2+evS.ρP*evS.Tamb[stepI])
+		@constraint(m,tempCon2[kk=1:horzLen-1],Test[kk+1]>=evS.τP*Test[kk]+evS.γP*(sum(u[kk+1,n]*evS.imax[n] for n=1:N)+evS.iD_pred[stepI+kk])^2+evS.ρP*evS.Tamb[stepI+kk])
+		@constraint(m,tempCon3[kk=horzLen:backgroundForecast-1],Test[kk+1]>=evS.τP*Test[kk]+evS.ρP*evS.Tamb[stepI+kk])
+		@constraint(m,Test.<=evS.Tmax+slackT)
+		@constraint(m,slackT>=0)
+		@constraint(m,optOnC[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(min(abs(Req[requiredInd[nn]]),horzLen)))==min(abs(Req[requiredInd[nn]]),horzLen))
+		@constraint(m,optOffC[kk=1:horzLen],sum(u[kk,n] for n in optOffInd)==0)
+
+		if solverSilent
+	        @suppress_out begin
+				statusC = solve(m)
+	        end
+	    else
+			statusC = solve(m)
+	    end
+
+
+		if statusC==:Optimal
+			# temperature slack active
+			if getvalue(slackT)>1e-2
+				println("PEM coordinator: temp slack active")
+			end
+
+			#take random solution if multiple
+			solCount=Gurobi.get_sol_count(getrawsolver(m))
+			if solCount>1
+				println(solCount," multiple solutions found")
+				solNum=rand(1:solCount-1)
+				setparam!(getrawsolver(m),"SolutionNumber",solNum)
+				getparam(getrawsolver(m),"SolutionNumber")
+				sol=Gurobi.get_dblattrarray(getrawsolver(m),"Xn",1,N)
+			elseif solCount==1
+				sol=getvalue(u)[1,:]
+			else
+				sol=requiredCh
+			end
+			Rec=sol
+		else
+			println("Infeasible coordinator")
+			#return required EVs to charges
+			Rec=requiredCh
+		end
 	end
 
 
