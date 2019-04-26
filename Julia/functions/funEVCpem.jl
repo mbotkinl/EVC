@@ -1,26 +1,18 @@
 # run PEM
 
-function pemEVClocal(n,stepI,horzLen,packLen,evS,pemSol)
+function pemEVClocal(n,stepI,horzLen,packLen,evS,pemSol, startPacket)
 	epsilon=1e-3
 	#desiredSOC=1 # for now
 	desiredSOC=evS.Snmin[n] #this should be a ratio?
 	prevSOC= if stepI>1 pemSol.Sn[stepI-1,n] else evS.s0[n] end
 
-	# clean up this logic***
 	if stepI==1
 		existPack=false
 	elseif ((prevSOC-desiredSOC)>=-epsilon)
 		existPack=false
-	elseif (pemSol.Un[stepI-1,n]>0)
-		if stepI<=packLen
-			prevChar=stepI-1
-			existPack=true
-		elseif (pemSol.Un[stepI-(packLen),n]==0)
-			prevChar=sum(pemSol.Un[(stepI-1):(stepI-(packLen)),n])
-			existPack=true
-		else
-			existPack=false
-		end
+	elseif sum(startPacket[max(stepI-(packLen-1),1):stepI-1,n])>=1
+		existPack=true
+		prevChar = packLen-1 # this is not dynamic need to count how many timesteps back the "1" is in startpacket
 	else
 		existPack=false
 	end
@@ -115,17 +107,22 @@ function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 		Rec=requiredCh
 	end
 
+
+	newPackets = zeros(N)
 	#R>=1 and packRec get charged
 	for n=1:N
 		pemSol.Un[stepI,n]= if Rec[n]==1 evS.imax[n] else  0  end
 		prevSOC= if stepI>1 pemSol.Sn[stepI-1,n] else evS.s0[n] end
 		pemSol.Sn[stepI,n]=prevSOC+evS.ηP[n]*pemSol.Un[stepI,n]
+
+		newPackets[n] = if ((Req[n]>=0) && (Rec[n]==1)) 1 else 0 end
 	end
 
-	return nothing
+	return newPackets
 end
 
-function pemEVCstep(stepI,evS,pemSol,silent)
+function pemEVCstep(stepI,evS,pemSol,startPacket,silent)
+	#function pemEVCstep(stepI,evS,pemSol,silent)
 
 	Req=zeros(N)
 	horzLen=min(packLen,evS.K-stepI)
@@ -133,29 +130,30 @@ function pemEVCstep(stepI,evS,pemSol,silent)
 	#println(stepI)
 	#send requests
     for n=1:N
-		Req[n]=pemEVClocal(n,stepI,horzLen,packLen,evS,pemSol)
+		Req[n]=pemEVClocal(n,stepI,horzLen,packLen,evS,pemSol, startPacket)
 	end
 
-	pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
+	newPackets = pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 
 	# actual dynamics
 	prevT = if stepI>1 pemSol.Tactual[stepI-1] else evS.t0 end
 	pemSol.uSum[stepI] = round.(sum(pemSol.Un[stepI,n] for n=1:N),digits=8)
 	pemSol.Itotal[stepI] = round.(pemSol.uSum[stepI] + evS.iD_actual[stepI],digits=8)
 	pemSol.Tactual[stepI] = round.(evS.τP*prevT+evS.γP*pemSol.Itotal[stepI]^2+evS.ρP*evS.Tamb[stepI],digits=6)
-	return Req
+	return Req, newPackets
 end
 
 function pemEVC(evS::scenarioStruct,slack::Bool,silent::Bool)
 	pemSol=solutionStruct(K=evS.K,N=evS.N,S=evS.S)
 	Req=zeros(evS.K,N)
+	startPacket=zeros(evS.K,N)
 
 	Juno.progress() do id
 		for stepI=1:evS.K
 			@info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(evS.K)....\n" progress=stepI/evS.K _id=id
 			@printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI evS.K
 			try
-				Req[stepI,:]=pemEVCstep(stepI,evS,pemSol,silent)
+				Req[stepI,:], startPacket[stepI,:]=pemEVCstep(stepI,evS,pemSol,startPacket,silent);
 			catch e
 				@printf "error: %s" e
 				break
@@ -192,7 +190,7 @@ function pemHublocal(h,stepI,horzLen,packLen,hubS,pemSol)
 		if stepI<=packLen
 			prevChar=stepI-1
 			existPack=true
-		elseif (pemSol.U[stepI-(packLen),h]==0)
+		elseif (pemSol.U[stepI-(packLen),h]==0)  # this is not correct need to fix
 			prevChar=sum(pemSol.U[(stepI-1):(stepI-(packLen)),h])
 			existPack=true
 		else
