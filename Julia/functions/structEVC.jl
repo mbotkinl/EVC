@@ -289,6 +289,8 @@ end
     Lam::Array=zeros(K,1) #row are time
     convIt::Array=zeros(K,1) #row are time
     objVal::Array=zeros(1,1)
+    timeT::Array=zeros(K,1)
+    timeSolve::Array=zeros(K,1)
 
     E_depart::Array=zeros(K,H)
     E_arrive::Array=zeros(K,H)

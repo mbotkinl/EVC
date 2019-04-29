@@ -132,7 +132,7 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
     cSol.Tactual[stepI,1]=Tactual[1]
     cSol.lamCoupl[stepI,1]=lambdaCurr[1]
     cSol.lamTemp[stepI,1]=lambdaUpperT[1]
-    cSol.timeSolve[stepI,1]+=getsolvetime(centralModel)
+    cSol.timeSolve[stepI,1]=getsolvetime(centralModel)
     #cSol.objVal[1,1,stepI]=getobjectivevalue(centralModel)
 
     if stepI in saveLogInd
@@ -244,7 +244,7 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
     dLog.Sn[collect(evInd:N:N*(horzLen+1)),p]=round.(getvalue(sn),sigdigits=roundSigFigs) #solved state goes in next time slot
     dLog.Un[collect(evInd:N:N*(horzLen+1)),p]=round.(getvalue(un),sigdigits=roundSigFigs) #current go
     dLog.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
-    dLog.timeSolve[stepI,1]+=getsolvetime(evM)
+    dLog.timeSolve[stepI,1]=max(getsolvetime(evM),dLog.timeSolve[stepI,1])
     return nothing
 end
 
@@ -280,9 +280,9 @@ function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,itLa
 
         @assert statusC==:Optimal "Dual Ascent XFRM optimization not solved to optimality"
 
-         dLog.Tpred[:,p]=round.(getvalue(t),sigdigits=roundSigFigs)
-         dLog.Z[:,p]=round.(getvalue(z),sigdigits=roundSigFigs)
-         dLog.timeSolve[stepI,1]+=getsolvetime(coorM)
+        dLog.Tpred[:,p]=round.(getvalue(t),sigdigits=roundSigFigs)
+        dLog.Z[:,p]=round.(getvalue(z),sigdigits=roundSigFigs)
+        dLog.timeSolve[stepI,1]=max(getsolvetime(coorM),dLog.timeSolve[stepI,1])
 
         #grad of lagragian
         for k=1:horzLen+1
@@ -623,7 +623,7 @@ function localEVADMM(evInd::Int,p::Int,stepI::Int,evS,dLogadmm::itLogPWL,
     dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=round.(getvalue(sn),sigdigits=roundSigFigs)
     dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=round.(getvalue(u),sigdigits=roundSigFigs)
     dLogadmm.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
-    dLogadmm.timeSolve[stepI,1]+=getsolvetime(evM)
+    dLogadmm.timeSolve[stepI,1]=max(getsolvetime(evM),dLogadmm.timeSolve[stepI,1])
 
     return nothing
 end
@@ -664,7 +664,7 @@ function localXFRMADMM(p::Int,stepI::Int,evS,dLogadmm::itLogPWL,itLam,itVz,itρ,
 
     dLogadmm.Tpred[:,p]=round.(getvalue(t),sigdigits=roundSigFigs)
     dLogadmm.Z[:,p]=round.(getvalue(z),sigdigits=roundSigFigs)
-    dLogadmm.timeSolve[stepI,1]+=getsolvetime(tM)
+    dLogadmm.timeSolve[stepI,1]=max(getsolvetime(tM),dLogadmm.timeSolve[stepI,1])
 
     return nothing
 end
@@ -1020,7 +1020,7 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,stepI:stepI+horzLen].*uVal,sigdigits=roundSigFigs)
     dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,stepI:stepI+horzLen].*snVal .- 2*evS.Qsi[evInd,stepI:stepI+horzLen],sigdigits=roundSigFigs)
     #end
-    dLogalad.timeSolve[stepI,1]+=getsolvetime(evM)
+    dLogalad.timeSolve[stepI,1]=max(getsolvetime(evM),dLogalad.timeSolve[stepI,1])
 
     #use convex ALADIN approach
     #dLogalad.Gu[ind,p]=σU[evInd,1]*(evVu-uVal)-prevLam[:,1]
@@ -1091,7 +1091,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS,dLogalad:
         dLogalad.Gz[:,p].=0
         dLogalad.Gt[:,p].=0
     #end
-    dLogalad.timeSolve[stepI,1]+=getsolvetime(tM)
+    dLogalad.timeSolve[stepI,1]=max(getsolvetime(tM),dLogalad.timeSolve[stepI,1])
 
     #dLogalad.Gz[:,p]=σZ*(prevVz-zVal)-repeat(-prevLam[:,1],inner=S)
     #dLogalad.Gt[:,p]=σT*(prevVt-xtVal)

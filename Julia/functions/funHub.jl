@@ -101,7 +101,8 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     cSol.E_arrive[stepI,:]=eArrive_actual[1,:]
     cSol.E[stepI,:]=e0[:]+hubS.ηP[:].*nextU-(cSol.E_depart[stepI,:])+cSol.E_arrive[stepI,:]
     cSol.Tactual[stepI,1]=hubS.τP*t0+hubS.γP*(cSol.uSum[stepI,1]+hubS.iD_actual[stepI,1])^2+hubS.ρP*hubS.Tamb[stepI,1]
-	#
+	cSol.timeSolve[stepI,1]=getsolvetime(cModel)
+
 	# p1nl=plot(eRaw,xlabel="Time",ylabel="Energy",xlims=(1,horzLen+1),label="hub energy")
     # plot!(p1nl,eMax,label="hub max")
     # plot!(p1nl,eMax*.8,label="minimum departure")
@@ -141,7 +142,7 @@ function hubCentral(hubS::scenarioHubStruct,mode::String,silent::Bool)
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
             @printf "%s: time step %g of %g....\n" Dates.format(Dates.now(),"HH:MM:SS") stepI K
             try
-                runHubCentralStep(stepI,hubS,cSol,mode,silent)
+                cSol.timeT[stepI]=@elapsed runHubCentralStep(stepI,hubS,cSol,mode,silent)
             catch e
                 @printf "error: %s" e
                 break
@@ -197,6 +198,7 @@ function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog:
     dLog.U[:,hubInd,p]=round.(getvalue(u),sigdigits=roundSigFigs)
     dLog.E[:,hubInd,p]=round.(getvalue(e),sigdigits=roundSigFigs)
 	dLog.D[:,hubInd,p]=round.(getvalue(eΔ),sigdigits=roundSigFigs)
+	dLog.timeSolve[stepI,1]=max(getsolvetime(hubM),dLog.timeSolve[stepI,1])
 
     return nothing
 end
@@ -244,6 +246,7 @@ function localXFRMDual(p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogP
 
      dLog.Tpred[:,1,p]=round.(getvalue(t),sigdigits=roundSigFigs)
      dLog.Z[:,:,p]=round.(getvalue(z),sigdigits=roundSigFigs)
+	dLog.timeSolve[stepI,1]=max(getsolvetime(coorM),dLog.timeSolve[stepI,1])
 
     return nothing
 end
@@ -422,7 +425,7 @@ function hubDual(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
             @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
             try
-                runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
+                dSol.timeT[stepI]=@elapsed runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
                 @printf "convIt: %g\n" dSol.convIt[stepI,1]
             catch e
                 @printf "error: %s" e
@@ -485,6 +488,8 @@ function localEVADMM(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLoga
     dLogadmm.E[:,hubInd,p]=round.(eVal,sigdigits=roundSigFigs)
     dLogadmm.U[:,hubInd,p]=round.(uVal,sigdigits=roundSigFigs)
 	dLogadmm.D[:,hubInd,p]=round.(eΔVal,sigdigits=roundSigFigs)
+	dLogadmm.timeSolve[stepI,1]=max(getsolvetime(hubM),dLogadmm.timeSolve[stepI,1])
+
     return nothing
 end
 
@@ -539,6 +544,7 @@ function localXFRMADMM(p::Int,stepI::Int,hubS::scenarioHubStruct,dLogadmm::hubIt
 
     dLogadmm.Tpred[:,:,p]=round.(tVal,sigdigits=roundSigFigs)
     dLogadmm.Z[:,:,p]=round.(zVal,sigdigits=roundSigFigs)
+	dLogadmm.timeSolve[stepI,1]=max(getsolvetime(coorM),dLogadmm.timeSolve[stepI,1])
     return nothing
 end
 
@@ -745,7 +751,7 @@ function hubADMM(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
             @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
             try
-                runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
+                dSol.timeT[stepI]=@elapsed runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
                 @printf "convIt: %g\n" dSol.convIt[stepI,1]
             catch e
                 @printf "error: %s" e
@@ -835,6 +841,7 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     dLogalad.Gu[:,hubInd,p]=round.(2*hubS.Rh[hubInd]*uVal,sigdigits=roundSigFigs)
     dLogalad.Ge[:,hubInd,p]=round.(2*hubS.Qh[hubInd]*eVal.-2*hubS.Qh[hubInd]*eMax,sigdigits=roundSigFigs)
     dLogalad.GeΔ[:,hubInd,p].=-hubS.Oh[1,hubInd]
+	dLogalad.timeSolve[stepI,1]=max(getsolvetime(hubM),dLogalad.timeSolve[stepI,1])
     return nothing
 end
 
@@ -909,7 +916,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenari
     dLogalad.Z[:,:,p]=round.(zVal,sigdigits=roundSigFigs)
     dLogalad.Gz[:,:,p].=0
     dLogalad.Gt[:,:,p].=0
-
+	dLogalad.timeSolve[stepI,1]=max(getsolvetime(coorM),dLogalad.timeSolve[stepI,1])
     return nothing
 end
 
@@ -1011,6 +1018,7 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
     dLogalad.Ve[:,:,p]=round.(itVe[:,:,1]+α1*(dLogalad.E[:,:,p]-itVe[:,:,1])+α2*getvalue(dE),sigdigits=roundSigFigs)
     dLogalad.Vd[:,:,p]=round.(itVd[:,:,1]+α1*(dLogalad.Vd[:,:,p]-itVd[:,:,1])+α2*getvalue(dEΔ),sigdigits=roundSigFigs)
     dLogalad.Vt[:,:,p]=round.(itVt[:,:,1]+α1*(dLogalad.Tpred[:,:,p]-itVt[:,:,1])+α2*getvalue(dT),sigdigits=roundSigFigs)
+	dLogalad.timeSolve[stepI,1]+=getsolvetime(cM)
 
     #dCMalad.lamIt[p,1]=norm(dLogalad.Lam[:,p]-itLam[:,1],2)
     #dCMalad.lam[p,1]=norm(dLogalad.Lam[:,p]-cSol.lamCoupl[stepI:(horzLen+stepI)],2)
@@ -1296,7 +1304,7 @@ function hubALAD(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
             @printf "%s: time step %g of %g...." Dates.format(Dates.now(),"HH:MM:SS") stepI K
             try
-                runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
+                dSol.timeT[stepI]=@elapsed runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
                 @printf "convIt: %g\n" dSol.convIt[stepI,1]
             catch e
                 @printf "error: %s" e
