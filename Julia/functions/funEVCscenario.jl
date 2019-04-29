@@ -134,7 +134,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     Dload_minimum = num_homes*min_demand_house
 
     #dist = [range(0,stop=8,length=Int(round(K/2)));range(8,stop=0,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
-    dist = [range(-1,stop=10,length=Int(round(K/2)));range(-10,stop=-1,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
+    dist = [range(0,stop=10,length=Int(round(K/2)));range(-10,stop=-1,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
     d = Normal(0,3)
     inelasticDemand = pdf.(d,dist)
     FullinelasticDemand = (inelasticDemand.-minimum(inelasticDemand))/(maximum(inelasticDemand)-minimum(inelasticDemand))
@@ -160,10 +160,10 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     #Qi=round.(Qs*(10*rand(N,1) .+ 1),digits=3);
     #histogram(Qi[1:N]*100 ./Ri,nbins=100)
 
-    qrRatio=round.((2-0.1)*rand(Beta(1, 1),N,1) .+ 0.1,digits=2)
+    qrRatio=round.((500-0.002)*rand(Beta(0.5, 0.5),N,1) .+ 0.002,digits=2)
     #qrRatio=round.((300-.1)*rand(N,1) .+ .1,digits=5)
     #histogram(qrRatio,nbins=40)
-    Ri=1e6*ones(N,K)
+    Ri=1e1*ones(N,K)
     Qi=qrRatio.*Ri/100
 
     for n=1:N

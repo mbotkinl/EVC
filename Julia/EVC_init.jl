@@ -2,7 +2,7 @@
 # Micah Botkin-Levy
 
 println("Loading Packages...")
-runParallel=false   #run local EV problems in parallel
+runParallel=true   #run local EV problems in parallel
 
 using Distributed
 
@@ -40,7 +40,7 @@ path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_new\\"
 # Main algorithm parameters
 datafile="jld2"    # "jld2" for reading in scenario file, "n" for creating new scenario
 updateMethod="dualAscent" #dual decompostion method: "dualAscent" or "fastAscent"
-maxIt=1000           # max number of iteration per timestep
+maxIt=400           # max number of iteration per timestep
 dualChk = 5e-4      # stopping criteria for ||lam^p-lam^(p-1)||_2
 primChk = 5e-4      # stopping criteria for ||coupling constraint||_1
 saveLogInd=[1,2,71,141,210] # time step index: used for comparing hot start timesteps between central and decentralized methods
@@ -48,13 +48,13 @@ noTlimit=false      # false for coordinator, true for uncooridated (no temperatu
 forecastError=false # adds forecast to iD (see below, not fully implemented)
 relaxedMode=0       # controls convex relaxation (0=NL, 1=QCQP, 2=SOCP) for NL scripts (not fully implemented)
 slack=false         # adds slack to temperature constraint (not fully implemented)
-eqForm=true        # ALADIN equality vs inequality form
+eqForm=false        # ALADIN equality vs inequality form
 tempAugment=false   # add temperature augmentation objective term (not fully implemented)
 ψ=-0                # tempAugment weight for objective function
 
 # Parameters that control I/O
 drawFig=false      # draws output figures
-saveResults=false  # saves result file
+saveResults=true  # saves result file
 saveS=false        # saves scenario file
 loadResults=false  # loads results
 silent=true       # prevents output to console
