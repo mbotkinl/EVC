@@ -89,6 +89,7 @@ function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 			statusC = solve(m)
 	    end
 
+		pemSol.timeSolve[stepI,1]+=getsolvetime(m)
 
 		if statusC==:Optimal
 			# temperature slack active

@@ -272,6 +272,7 @@ end
     slackSn::Array=zeros(K,1)
     convIt::Array=zeros(K,1)
     timeT::Array=zeros(K,1)
+    timeSolve::Array=zeros(K,1)
 end
 
 @with_kw struct hubSolutionStruct
