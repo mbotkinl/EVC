@@ -174,7 +174,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     #     plot!(snAvgPlot,1:Klen,snAvgNoLim,label="Uncoordinated",seriescolor=allColors[P+1])
     # end
 
-    lamPlot=plot(1:Klen,cSol.lamCoupl/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",labels="Central",
+    lamPlot=plot(1:Klen,cSol.lamCoupl/1000,xlabel="Time",ylabel=raw"Lambda",labels="Central",
                    seriescolor=:black,linewidth=6,linealpha=cAlpha,xticks=xticks, title="c")
     plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors,linewidth=lWidth)
     if noLim !=nothing
@@ -475,7 +475,7 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
         plot!(loadPlot,1:Klen,(noLim["solution"].uSum+iD)/Ntf,label="",seriescolor=allColors[P+1])
     end
 
-    lamPlot=plot(1:Klen,cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",labels="Central",
+    lamPlot=plot(1:Klen,cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda",labels="Central",
                    seriescolor=:black,linewidth=8,linealpha=cAlpha,xticks=xticks,title="c")
     plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors,linewidth=lWidth)
     if noLim !=nothing
@@ -711,7 +711,7 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
     plot!(loadPlot,1:Klen,(iD)/Ntf*1000,label="Background Demand",line=(:dash))
 
 
-    lamPlot=plot(Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",labels=plotLabels,
+    lamPlot=plot(Lam/1000,xlabel="Time",ylabel=raw"Lambda",labels=plotLabels,
                    seriescolor=plotColors,xticks=xticks)
 
     #resPlot=plot(tempPlot,loadPlot,snSumPlot,lamPlot,layout=(4,1))
