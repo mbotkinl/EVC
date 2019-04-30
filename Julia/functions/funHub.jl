@@ -561,9 +561,6 @@ function runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,e
     global e0
     global t0
 
-    #other parameters
-	# ρDivRate=1
-	maxRho=1e7
     #solve decoupled
     if runParallel
         @sync @distributed for hubInd=1:H
@@ -643,8 +640,8 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
 			itLam=prevLam
 			itVu=prevVu
 			itVz=prevVz
-			#itρ=ρADMMp
-			itρ=max(min(maximum(prevLam),1e9),1e-3)
+			itρ=ρADMMp
+			#itρ=max(min(maximum(prevLam),maxRho),1e-3)
 		else
 			itLam=round.(dLogadmm.Lam[:,1,(p-1)],sigdigits=roundSigFigs)
 			itVu=round.(dLogadmm.Vu[:,:,(p-1)],sigdigits=roundSigFigs)
@@ -687,7 +684,7 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     # constPlotalad2=plot(dLogadmm.couplConst[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
 	#
     # lamPlotalad=plot(dLogadmm.Lam[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
-    # plot!(lamPlotalad,cSol.Lam,seriescolor=:black,linewidth=2,linealpha=0.8)
+    # #plot!(lamPlotalad,cSol.Lam,seriescolor=:black,linewidth=2,linealpha=0.8)
 	# plot!(lamPlotalad,lambdaCurr,seriescolor=:black,linewidth=2,linealpha=0.8)
 	#
     # fPlotalad=plot(dCMalad.obj[1:convIt,1],xlabel="Iteration",ylabel="obj function gap",xlims=(1,convIt),legend=false,yscale=:log10)
@@ -726,7 +723,7 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
             newVz=vcat(prevVz[2:horzLen+1,:],prevVz[horzLen+1,:]')
         end
     else
-        dSol.Lam[stepI,1]=dLogadmm.Lam[1,1,convIt-1]
+        dSol.Lam[stepI,1]=dLogadmm.Lam[1,1,convIt]
         if stepI+horzLen==hubS.K
             newLam=dLogadmm.Lam[2:horzLen+1,1,convIt-1]
             newVu=dLogadmm.Vu[2:horzLen+1,:,convIt-1]
@@ -1182,7 +1179,7 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
         end
         p+=1
     end
-	#
+
     # plot(dLogalad.U[:,:,convIt])
     # plot(dLogalad.E[:,:,convIt])
     # pd3alad=plot(hcat(dLogalad.Tactual[:,1,convIt],dLogalad.Tpred[:,1,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")

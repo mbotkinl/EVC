@@ -16,7 +16,7 @@ using Suppressor
 H=4
 maxIt=5000
 auxChk = 1e-2 #lamIt=0
-primChk = 1e-2 # Ax-B=0s
+primChk = 1e-1 # Ax-B=0s
 datafile="jld2"
 mode="PWL"
 silent=true
