@@ -1,6 +1,9 @@
 using Gurobi
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funHub.jl")
 fname = "central_H$(H)"
+if Tlimit==false
+	fname = fname*"_noLim"
+end
 
 if loadResults
 	println("Reading in Central Sim")
@@ -55,7 +58,7 @@ departPlot=plot(eD[:,h],label="Depart Actual Energy",seriestype=:bar,xlims=(220,
 				xlabel="Time",xticks=xticksAM,size=(1200,800))
 plot!(departPlot,eDmin[:,h],label="Depart Min Energy",seriestype=:scatter,markersize=12)
 plot!(departPlot,eDmax[:,h],label="Depart Max Energy",seriestype=:scatter,markersize=12)
-savefig(departPlot,path*"hubPlot_departE.png")
+#savefig(departPlot,path*"hubPlot_departE.png")
 
 
 t=zip(eDmin[:,h] .- eD[:,h],eDmin[:,h].+hubS.slackMax[:,h])
@@ -65,7 +68,7 @@ p2=plot(cSol.U,xlabel="",ylabel="Current (kA)",legend=false,xticks=xticks, xlims
 p3=plot(hcat(cSol.Tactual,cSol.Tpred),label=["Actual Temp" "PWL Temp"],xlabel="",ylabel="Temp (C)", xlims=(0,hubS.K))
 plot!(p3,hubS.Tmax*ones(hubS.K),label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 
-p4=plot(cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",legend=false,xticks=xticks, xlims=(0,hubS.K))
+p4=plot(cSol.Lam,xlabel="Time",ylabel=raw"Lambda",legend=false,xticks=xticks, xlims=(0,hubS.K))
 
 
 # epsilon=.01

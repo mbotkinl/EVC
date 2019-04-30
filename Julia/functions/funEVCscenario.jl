@@ -204,7 +204,7 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     b_kWh[(r_ind.>b_prob[1])[:],:] .= b_options[2]
     b_kWh[(r_ind.>b_prob[2])[:],:] .= b_options[3]
     b=b_kWh*3.6e6 # battery capacity (MJ)
-    imax = round.(((.7-.2)*rand(Beta(3, 2),Nh,H).+.2),digits=4) # kA, charging with 20-70 A
+    imax = round.(((1-.2)*rand(Beta(3, 2),Nh,H).+.2),digits=4) # kA, charging with 200-1000 A
 
     xfrmR  = 100e3/3                          # single phase transformer rating kVA
     Vac = 480                              # PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
@@ -240,20 +240,20 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     deltaI = ItotalMax/S
 
     #system information
-    t0=65
-    Tamb_amplitude = 30 #C
+    t0=Tmax-30
+    Tamb_amplitude = 18 #C
     # Disturbance scenario:
     Dload_error=0
     num_homes=1
-    peak_demand_house = 0 #W
-    min_demand_house = 40e6 #W
+    peak_demand_house = 45e6  #W
+    min_demand_house = 20e6 #W
     Dload_amplitude=num_homes*peak_demand_house #W
     Dload_minimum = num_homes*min_demand_house
     dist = [range(-1,stop=10,length=Int(round(K/2)));range(-10,stop=-1,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
     d = Normal(0,3)
     inelasticDemand = pdf.(d,dist)
     FullinelasticDemand = (inelasticDemand.-minimum(inelasticDemand))/(maximum(inelasticDemand)-minimum(inelasticDemand))
-    FullDload=reshape(Dload_amplitude*FullinelasticDemand.+Dload_minimum,(K,1));    # total non-EV demand (in W)
+    FullDload=reshape((Dload_amplitude-Dload_minimum)*FullinelasticDemand.+Dload_minimum ,(K,1));    # total non-EV demand (in W)
     iD_pred = round.(FullDload/Vac/1e3,digits=6)    #background demand current (kA)
     if Dload_error>0
         noisePerc= Dload_error/Dload_amplitude
@@ -261,7 +261,7 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     else
         iD_actual=iD_pred
     end
-    Tamb_raw  = round.(Tamb_amplitude*ones(K+1,1).-pdf.(d,range(-10,stop=10,length=K+1))*20,digits=6);
+    Tamb_raw  = round.(Tamb_amplitude*ones(K+1,1).-pdf.(d,range(-8,stop=8,length=K+1))*10,digits=6);
     Tamb = Tamb_raw.+alpha/beta
 
     # Qmag=1
@@ -272,10 +272,10 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     # Oh=(Omag*rand(1,H).+Omag/1e3)
 
 
-    qrRatio=round.((2-0.1)*rand(Beta(1, 1),1,H) .+ 0.1,digits=2)
-    orRatio=1000
+    qrRatio=round.((200-0.1)*rand(Beta(1, 1),1,H) .+ 0.1,digits=2)
+    orRatio=10
     #histogram(qrRatio,nbins=40)
-    Rh=1e3*ones(1,H)
+    Rh=1e1*ones(1,H)
     #Rh=1e6*ones(1,H)
     Qh=qrRatio.*Rh/10
     Oh=orRatio.*Rh
@@ -294,7 +294,7 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     K_depart_actual=K_depart_pred
     Sn_depart_min=round.(1 .- 0.20*rand(Nh,H),digits=4) #need 80-100%
     #Sn_depart_min=.8*ones(Nh,H)
-    Sn_arrive_pred=round.(0.20*rand(Nh,H),digits=4) #arrive with 0-20%
+    Sn_arrive_pred=round.((0.4-0.1)*rand(Nh,H) .+ 0.1 ,digits=4) #arrive with 0-20%
     #Sn_arrive_pred=.8*ones(Nh,H)
     Sn_arrive_actual=Sn_arrive_pred
     #EVcap=b./3.6e6 #kWh

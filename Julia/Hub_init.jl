@@ -31,7 +31,8 @@ runParallel=false
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4_100\\"
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4_new\\"
+# path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4_100\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\hub4_100_old\\"
 
 file="HubscenarioH$(H).jld2"
@@ -43,7 +44,7 @@ if datafile=="jld2"
 else #create scenario
 	println("Creating Hub Scenario...")
 	Nh=100
-	Tmax=120
+	Tmax=100
 	#Dload_amplitude=20
 
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
