@@ -244,7 +244,7 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
     dLog.Sn[collect(evInd:N:N*(horzLen+1)),p]=round.(getvalue(sn),sigdigits=roundSigFigs) #solved state goes in next time slot
     dLog.Un[collect(evInd:N:N*(horzLen+1)),p]=round.(getvalue(un),sigdigits=roundSigFigs) #current go
     dLog.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
-    dLog.timeSolve[stepI,1]=max(getsolvetime(evM),dLog.timeSolve[stepI,1])
+    dLog.timeSolve[1,p]=max(getsolvetime(evM),dLog.timeSolve[1,p])
     return nothing
 end
 
@@ -282,7 +282,7 @@ function localXFRMDual(p::Int,stepI::Int,evS::scenarioStruct,dLog::itLogPWL,itLa
 
         dLog.Tpred[:,p]=round.(getvalue(t),sigdigits=roundSigFigs)
         dLog.Z[:,p]=round.(getvalue(z),sigdigits=roundSigFigs)
-        dLog.timeSolve[stepI,1]=max(getsolvetime(coorM),dLog.timeSolve[stepI,1])
+        dLog.timeSolve[1,p]=max(getsolvetime(coorM),dLog.timeSolve[1,p])
 
         #grad of lagragian
         for k=1:horzLen+1
@@ -523,6 +523,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
     dSol.Itotal[stepI,1]=dLog.Itotal[1,convIt]
     dSol.Tactual[stepI,1]=dLog.Tactual[1,convIt]
     dSol.convIt[stepI,1]=convIt
+    dSol.timeSolve[stepI,1]=mean(dLog.timeSolve[1,1:convIt])
 
     # new states
     global t0=round.(dSol.Tactual[stepI,1],sigdigits=roundSigFigs)
@@ -623,7 +624,7 @@ function localEVADMM(evInd::Int,p::Int,stepI::Int,evS,dLogadmm::itLogPWL,
     dLogadmm.Sn[collect(evInd:N:length(dLogadmm.Sn[:,p])),p]=round.(getvalue(sn),sigdigits=roundSigFigs)
     dLogadmm.Un[collect(evInd:N:length(dLogadmm.Un[:,p])),p]=round.(getvalue(u),sigdigits=roundSigFigs)
     dLogadmm.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
-    dLogadmm.timeSolve[stepI,1]=max(getsolvetime(evM),dLogadmm.timeSolve[stepI,1])
+    dLogadmm.timeSolve[1,p]=max(getsolvetime(evM),dLogadmm.timeSolve[1,p])
 
     return nothing
 end
@@ -664,7 +665,7 @@ function localXFRMADMM(p::Int,stepI::Int,evS,dLogadmm::itLogPWL,itLam,itVz,itρ,
 
     dLogadmm.Tpred[:,p]=round.(getvalue(t),sigdigits=roundSigFigs)
     dLogadmm.Z[:,p]=round.(getvalue(z),sigdigits=roundSigFigs)
-    dLogadmm.timeSolve[stepI,1]=max(getsolvetime(tM),dLogadmm.timeSolve[stepI,1])
+    dLogadmm.timeSolve[1,p]=max(getsolvetime(tM),dLogadmm.timeSolve[1,p])
 
     return nothing
 end
@@ -876,6 +877,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS,dSol::solutionStruct,dCM,cSave:
     dSol.Itotal[stepI,1]=dLogadmm.Itotal[1,convIt]
     dSol.Tactual[stepI,1]=dLogadmm.Tactual[1,convIt]
     dSol.convIt[stepI,1]=convIt
+    dSol.timeSolve[stepI,1]=mean(dLogadmm.timeSolve[1,1:convIt])
 
     # new states
     global t0=dSol.Tactual[stepI,1]
@@ -1020,7 +1022,7 @@ function localEVALAD(evInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σS::Arr
     dLogalad.Gu[ind,p]=round.(2*evS.Ri[evInd,stepI:stepI+horzLen].*uVal,sigdigits=roundSigFigs)
     dLogalad.Gs[ind,p]=round.(2*evS.Qsi[evInd,stepI:stepI+horzLen].*snVal .- 2*evS.Qsi[evInd,stepI:stepI+horzLen],sigdigits=roundSigFigs)
     #end
-    dLogalad.timeSolve[stepI,1]=max(getsolvetime(evM),dLogalad.timeSolve[stepI,1])
+    dLogalad.timeSolve[1,p]=max(getsolvetime(evM),dLogalad.timeSolve[1,p])
 
     #use convex ALADIN approach
     #dLogalad.Gu[ind,p]=σU[evInd,1]*(evVu-uVal)-prevLam[:,1]
@@ -1091,7 +1093,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS,dLogalad:
         dLogalad.Gz[:,p].=0
         dLogalad.Gt[:,p].=0
     #end
-    dLogalad.timeSolve[stepI,1]=max(getsolvetime(tM),dLogalad.timeSolve[stepI,1])
+    dLogalad.timeSolve[1,p]=max(getsolvetime(tM),dLogalad.timeSolve[1,p])
 
     #dLogalad.Gz[:,p]=σZ*(prevVz-zVal)-repeat(-prevLam[:,1],inner=S)
     #dLogalad.Gt[:,p]=σT*(prevVt-xtVal)
@@ -1198,7 +1200,7 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,i
     dLogalad.Vz[:,p]=round.(itVz[:,1]+α1*(dLogalad.Z[:,p]-itVz[:,1])+α2*getvalue(dZ),sigdigits=roundSigFigs)
     dLogalad.Vs[:,p]=round.(itVs[:,1]+α1*(dLogalad.Sn[:,p]-itVs[:,1])+α2*getvalue(dSn),sigdigits=roundSigFigs)
     dLogalad.Vt[:,p]=round.(itVt[:,1]+α1*(dLogalad.Tpred[:,p]-itVt[:,1])+α2*getvalue(dT),sigdigits=roundSigFigs)
-    dLogalad.timeSolve[stepI,1]+=getsolvetime(cM)
+    dLogalad.timeSolve[1,p]+=getsolvetime(cM)
 
     # lamPlot=plot(dLogalad.Lam[:,p],label="ineq")
     # vtPlot=plot(dLogalad.Vt[:,p],label="ineq")
@@ -1490,6 +1492,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     dSol.Itotal[stepI,1]=dLogalad.Itotal[1,convIt]
     dSol.Tactual[stepI,1]=dLogalad.Tactual[1,convIt]
     dSol.convIt[stepI,1]=convIt
+    dSol.timeSolve[stepI,1]=mean(dLogalad.timeSolve[1,1:convIt])
 
     # new states
     global t0=round(dSol.Tactual[stepI,1],sigdigits=roundSigFigs)

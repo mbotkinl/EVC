@@ -161,7 +161,7 @@ end
     S::Int
     # objective value
     objVal::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
-
+    timeSolve::Array{Float64}=zeros(1,maxIt+1)
     #model variables
     Tpred::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
     Sn::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
@@ -355,4 +355,5 @@ end
     Ctl::Array{Float64,3}=zeros((horzLen+1),1,maxIt+1)  #row are time,   stacks are iteration
 
     itUpdate::Array{Float64,3}=zeros(1,1,maxIt+1)  #row are time,   stacks are iteration
+    timeSolve::Array{Float64}=zeros(1,maxIt+1)
 end

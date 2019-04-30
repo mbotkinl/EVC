@@ -198,7 +198,7 @@ function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog:
     dLog.U[:,hubInd,p]=round.(getvalue(u),sigdigits=roundSigFigs)
     dLog.E[:,hubInd,p]=round.(getvalue(e),sigdigits=roundSigFigs)
 	dLog.D[:,hubInd,p]=round.(getvalue(eΔ),sigdigits=roundSigFigs)
-	dLog.timeSolve[stepI,1]=max(getsolvetime(hubM),dLog.timeSolve[stepI,1])
+	dLog.timeSolve[1,p]=max(getsolvetime(hubM),dLog.timeSolve[1,p])
 
     return nothing
 end
@@ -244,9 +244,9 @@ function localXFRMDual(p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogP
 
     @assert statusC==:Optimal "Dual Ascent XFRM optimization not solved to optimality"
 
-     dLog.Tpred[:,1,p]=round.(getvalue(t),sigdigits=roundSigFigs)
-     dLog.Z[:,:,p]=round.(getvalue(z),sigdigits=roundSigFigs)
-	dLog.timeSolve[stepI,1]=max(getsolvetime(coorM),dLog.timeSolve[stepI,1])
+    dLog.Tpred[:,1,p]=round.(getvalue(t),sigdigits=roundSigFigs)
+    dLog.Z[:,:,p]=round.(getvalue(z),sigdigits=roundSigFigs)
+	dLog.timeSolve[1,p]=max(getsolvetime(coorM),dLog.timeSolve[1,p])
 
     return nothing
 end
@@ -390,6 +390,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     dSol.Itotal[stepI,1]=dLog.Itotal[1,1,convIt]
     dSol.Tactual[stepI,1]=dLog.Tactual[1,1,convIt]
     dSol.convIt[stepI,1]=convIt
+	dSol.timeSolve[stepI,1]=mean(dLog.timeSolve[1,1:convIt])
 
     # new states
     global t0=dSol.Tactual[stepI,1]
@@ -488,7 +489,7 @@ function localEVADMM(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLoga
     dLogadmm.E[:,hubInd,p]=round.(eVal,sigdigits=roundSigFigs)
     dLogadmm.U[:,hubInd,p]=round.(uVal,sigdigits=roundSigFigs)
 	dLogadmm.D[:,hubInd,p]=round.(eΔVal,sigdigits=roundSigFigs)
-	dLogadmm.timeSolve[stepI,1]=max(getsolvetime(hubM),dLogadmm.timeSolve[stepI,1])
+	dLogadmm.timeSolve[1,p]=max(getsolvetime(hubM),dLogadmm.timeSolve[1,p])
 
     return nothing
 end
@@ -544,7 +545,7 @@ function localXFRMADMM(p::Int,stepI::Int,hubS::scenarioHubStruct,dLogadmm::hubIt
 
     dLogadmm.Tpred[:,:,p]=round.(tVal,sigdigits=roundSigFigs)
     dLogadmm.Z[:,:,p]=round.(zVal,sigdigits=roundSigFigs)
-	dLogadmm.timeSolve[stepI,1]=max(getsolvetime(coorM),dLogadmm.timeSolve[stepI,1])
+	dLogadmm.timeSolve[1,p]=max(getsolvetime(coorM),dLogadmm.timeSolve[1,p])
     return nothing
 end
 
@@ -702,6 +703,7 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     dSol.Itotal[stepI,1]=dLogadmm.Itotal[1,1,convIt]
     dSol.Tactual[stepI,1]=dLogadmm.Tactual[1,1,convIt]
     dSol.convIt[stepI,1]=convIt
+	dSol.timeSolve[stepI,1]=mean(dLogadmm.timeSolve[1,1:convIt])
 
     # new states
     global t0=round.(dSol.Tactual[stepI,1],sigdigits=roundSigFigs)
@@ -841,7 +843,7 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     dLogalad.Gu[:,hubInd,p]=round.(2*hubS.Rh[hubInd]*uVal,sigdigits=roundSigFigs)
     dLogalad.Ge[:,hubInd,p]=round.(2*hubS.Qh[hubInd]*eVal.-2*hubS.Qh[hubInd]*eMax,sigdigits=roundSigFigs)
     dLogalad.GeΔ[:,hubInd,p].=-hubS.Oh[1,hubInd]
-	dLogalad.timeSolve[stepI,1]=max(getsolvetime(hubM),dLogalad.timeSolve[stepI,1])
+	dLogalad.timeSolve[1,p]=max(getsolvetime(hubM),dLogalad.timeSolve[1,p])
     return nothing
 end
 
@@ -916,7 +918,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenari
     dLogalad.Z[:,:,p]=round.(zVal,sigdigits=roundSigFigs)
     dLogalad.Gz[:,:,p].=0
     dLogalad.Gt[:,:,p].=0
-	dLogalad.timeSolve[stepI,1]=max(getsolvetime(coorM),dLogalad.timeSolve[stepI,1])
+	dLogalad.timeSolve[1,p]=max(getsolvetime(coorM),dLogalad.timeSolve[1,p])
     return nothing
 end
 
@@ -1018,7 +1020,7 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
     dLogalad.Ve[:,:,p]=round.(itVe[:,:,1]+α1*(dLogalad.E[:,:,p]-itVe[:,:,1])+α2*getvalue(dE),sigdigits=roundSigFigs)
     dLogalad.Vd[:,:,p]=round.(itVd[:,:,1]+α1*(dLogalad.Vd[:,:,p]-itVd[:,:,1])+α2*getvalue(dEΔ),sigdigits=roundSigFigs)
     dLogalad.Vt[:,:,p]=round.(itVt[:,:,1]+α1*(dLogalad.Tpred[:,:,p]-itVt[:,:,1])+α2*getvalue(dT),sigdigits=roundSigFigs)
-	dLogalad.timeSolve[stepI,1]+=getsolvetime(cM)
+	dLogalad.timeSolve[1,p]+=getsolvetime(cM)
 
     #dCMalad.lamIt[p,1]=norm(dLogalad.Lam[:,p]-itLam[:,1],2)
     #dCMalad.lam[p,1]=norm(dLogalad.Lam[:,p]-cSol.lamCoupl[stepI:(horzLen+stepI)],2)
@@ -1239,6 +1241,7 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     dSol.Itotal[stepI,1]=dLogalad.Itotal[1,1,convIt]
     dSol.Tactual[stepI,1]=dLogalad.Tactual[1,1,convIt]
     dSol.convIt[stepI,1]=convIt
+	dSol.timeSolve[stepI,1]=mean(dLogalad.timeSolve[1,1:convIt])
 
     # new states
     global t0=dSol.Tactual[stepI,1]
