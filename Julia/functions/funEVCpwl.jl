@@ -410,15 +410,15 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
         dCM.zInfNorm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],Inf)
     end
 
-    # if(itGap <= convChk )
-    if((couplGap<=primChk) && (itGap <= dualChk))
+    # if((couplGap<=primChk) && (itGap <= dualChk))
+    if(couplGap<=primChk)
         if !silent @printf "Converged after %g iterations\n" p end
         convIt=p
         return true
     else
         if !silent
-            @printf "lastGap  %e after %g iterations\n" itGap p
-            @printf "couplGap %e after %g iterations\n\n" couplGap p
+            #@printf "lastGap  %e after %g iterations\n" itGap p
+            @printf "couplGap %e after %g iterations\n" couplGap p
             #@printf "convGap %e after %g iterations\n\n" convGap p
             #@printf "snGap   %e after %g iterations\n" snGap p
             #@printf "unGap   %e after %g iterations\n" unGap p
@@ -787,8 +787,8 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,ro
         dCM.zInfNorm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],Inf)
     end
 
-    #if(constGap <= primChk  && cc <=dualChk)
-    if(constGap <= primChk  && itGap <=dualChk)
+    #if(constGap <= primChk  && itGap <=dualChk)
+    if(constGap <= primChk)
         if !silent @printf "Converged after %g iterations\n" p end
         convIt=p
         return true
@@ -796,8 +796,8 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,ro
         if !silent
             #@printf "convGap  %e after %g iterations\n" convGap p
             #@printf "dual residue  %e after %g iterations\n" cc p
-            @printf "lastGap  %e after %g iterations\n" itGap p
-            @printf "constGap %e after %g iterations\n\n" constGap p
+            #@printf "lastGap  %e after %g iterations\n" itGap p
+            @printf "constGap %e after %g iterations\n" constGap p
             #@printf "snGap    %e after %g iterations\n" snGap p
             #@printf "unGap    %e after %g iterations\n" unGap p
             #@printf("fGap     %e after %g iterations\n\n",fGap,p)

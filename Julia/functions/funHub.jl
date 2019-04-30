@@ -307,15 +307,17 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
     #check convergence
 	constGap=norm(dLog.couplConst[:,1,p],1)
 	itGap = norm(dLog.Lam[:,1,p]-itLam[:,1],2)
-    if((constGap<=primChk) && (itGap <= dualChk))
+    #if((constGap<=primChk) && (itGap <= dualChk))
+	if(constGap<=primChk)
+
         if !silent @printf "Converged after %g iterations\n" p end
 		@printf "Y"
         convIt=p
         return true
     else
         if !silent
-            @printf "itGap    %e after %g iterations\n" itGap p
-            @printf "constGap %e after %g iterations\n\n" constGap p
+            #@printf "itGap    %e after %g iterations\n" itGap p
+            @printf "constGap %e after %g iterations\n" constGap p
             #@printf "snGap   %e after %g iterations\n" snGap p
             #@printf "unGap   %e after %g iterations\n" unGap p
             #@printf("fGap    %e after %g iterations\n\n",fGap,p)
@@ -607,7 +609,8 @@ function runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,e
 	constGap=norm(dLogadmm.couplConst[:,1,p],1)
 	itGap = norm(dLogadmm.Lam[:,1,p]-itLam[:,1],2)
 	#cc=norm(hcat((itVu[:,:]-dLogadmm.Vu[:,:,p]),(itVz[:,:]-dLogadmm.Vz[:,:,p])),2)
-	if(constGap <= primChk  && itGap <=dualChk)
+	# if(constGap <= primChk  && itGap <=dualChk)
+	if(constGap <= primChk)
         if !silent @printf "Converged after %g iterations\n" p end
 		@printf "Y"
         convIt=p
@@ -615,7 +618,7 @@ function runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,e
         return true
     else
         if !silent
-            @printf "itGap  %e after %g iterations\n" itGap p
+            #@printf "itGap  %e after %g iterations\n" itGap p
             @printf "constGap   %e after %g iterations\n" constGap p
             #@printf "snGap      %e after %g iterations\n" snGap p
             #@printf("fGap       %e after %g iterations\n",fGap,p)
