@@ -687,7 +687,6 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,ro
 
     #ρDivRate=1.1
     #ρRate=1.5
-    maxRho=1e100
 
     #x minimization eq 7.66 in Bertsekas
     if runParallel
