@@ -210,7 +210,8 @@ function localEVDual(evInd::Int,p::Int,stepI::Int,evS::scenarioStruct,dLog::itLo
 
     target=zeros((horzLen+1),1)
     target[max(1,(evS.Kn[evInd,1]-(stepI-1))):1:length(target),1].=evS.Snmin[evInd,1]
-    evM=Model(solver = GurobiSolver(NumericFocus=3))
+    # evM=Model(solver = GurobiSolver(NumericFocus=3))
+    evM=Model(solver = GurobiSolver())
     @variable(evM,un[1:horzLen+1])
     @variable(evM,sn[1:horzLen+1])
     if slack @variable(evM,slackSn) end
@@ -310,14 +311,14 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
         #alpha0 = 0.1  #for A
         #alpha0 = 5e4 #for kA
         # alphaDivRate=2
-        minAlpha=1e-6
+        # minAlpha=1e-6
     else
         #alpha0 = 3e-3 #for A
         # alpha = 3e4 #for kA
         # alphaDivRate=4
         #alpha0 = 2e6 #for kA
         #alphaDivRate=2
-        minAlpha=1e-6
+        # minAlpha=1e-6
     end
     #solve subproblem for each EV
     if runParallel
@@ -413,6 +414,7 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
     # if((couplGap<=primChk) && (itGap <= dualChk))
     if(couplGap<=primChk)
         if !silent @printf "Converged after %g iterations\n" p end
+        @printf "Y"
         convIt=p
         return true
     else
@@ -430,6 +432,7 @@ function runEVDualIt(p,stepI,evS,itLam,dLog,dCM,dSol,cSave,roundSigFigs,silent)
 end
 
 function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
+
     K=evS.K
     N=evS.N
     S=evS.S
@@ -459,7 +462,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
         dCM.convIt[1,1,ind]=convIt
     end
 
-    # # # convergence plots
+    # # # # convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
     #                range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
@@ -505,7 +508,6 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
     #     z1=(v1 .- mean(v1))./std(v1)
     #     z2=(v2 .- mean(v2))./std(v2)
     #     testZ[i-1]=norm(z1-z2,2)
-    #
     # end
     # plot(testRel2,yscale=:log10,legend=false,xlabel="Iteration")
     # plot(testRelInf,yscale=:log10,legend=false,xlabel="Iteration")
@@ -789,6 +791,7 @@ function runEVADMMIt(p,stepI,evS,itLam,itVu,itVz,itρ,dLogadmm,dCM,dSol,cSave,ro
     #if(constGap <= primChk  && itGap <=dualChk)
     if(constGap <= primChk)
         if !silent @printf "Converged after %g iterations\n" p end
+        @printf "Y"
         convIt=p
         return true
     else

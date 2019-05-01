@@ -11,7 +11,6 @@ if loadResults
 	loadF=load(path*fname*".jld2")
 	dLog=loadF["solution"]
 	dCM=loadF["convMetrics"]
-	convIt=loadF["convIt"]
 else
 	#initialize
     t0=evS.t0
@@ -21,9 +20,11 @@ else
 	# alphaDivRate=2
 	# alpha0 = 1e5 #for kA
 
-	prevLam=5e5*ones(evS.K1+1,1)
+	prevLam=5e2*ones(evS.K1+1,1)
 	alphaDivRate=2
-	#alpha0 = 1e5 #for kA
+	alpha0 = 5e1 #for kA
+	minAlpha=1e-6
+	ρDUAL=0
 
 	#fastAscent
 	# prevLam=1e5*ones(evS.K1+1,1)
