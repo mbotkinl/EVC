@@ -1131,7 +1131,7 @@ function coordALAD(p::Int,stepI::Int,itμ,evS,itLam,itVu,itVs,itVz,itVt,itρ,
 
     #coupled QP
     cM = Model(solver = GurobiSolver(NumericFocus=3))
-    cM = Model(solver = GurobiSolver(Presolve=1))
+    #cM = Model(solver = GurobiSolver(Presolve=1))
     #cM = Model(solver = IpoptSolver())
     #cM = Model(solver = MosekSolver())
 
@@ -1196,8 +1196,8 @@ function coordALAD(p::Int,stepI::Int,itμ,evS,itLam,itVu,itVs,itVz,itVt,itρ,
     α3=1
     #α3=1/ceil(p/2)
 
-    dLogalad.Lam[:,p]=round.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),sigdigits=roundSigFigs)
-    #dLogalad.Lam[:,p]=max.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),0)
+    # dLogalad.Lam[:,p]=round.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),sigdigits=roundSigFigs)
+    dLogalad.Lam[:,p]=max.(round.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),sigdigits=roundSigFigs),0)
     dLogalad.Vu[:,p]=round.(itVu[:,1]+α1*(dLogalad.Un[:,p]-itVu[:,1])+α2*getvalue(dUn),sigdigits=roundSigFigs)
     dLogalad.Vz[:,p]=round.(itVz[:,1]+α1*(dLogalad.Z[:,p]-itVz[:,1])+α2*getvalue(dZ),sigdigits=roundSigFigs)
     dLogalad.Vs[:,p]=round.(itVs[:,1]+α1*(dLogalad.Sn[:,p]-itVs[:,1])+α2*getvalue(dSn),sigdigits=roundSigFigs)
@@ -1310,6 +1310,8 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,itμ,dLogalad,dC
     objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1] for n=1:N) +
                      sum((u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]       for n=1:N) for k=1:horzLen+1)
     dLogalad.objVal[1,p]=objFun(dLogalad.Sn[:,p],dLogalad.Un[:,p])
+    auxGap=norm(vcat(σU[1]*(itVu[:,1]-dLogalad.Un[:,p]),σZ*(itVz[:,1]-dLogalad.Z[:,p]),
+                 σT*(itVt[:,1]-dLogalad.Tpred[:,p]),σS[1]*(itVs[:,1]-dLogalad.Sn[:,p])),1)
 
     #only if saving
     if stepI in saveLogInd
@@ -1346,13 +1348,17 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,itμ,dLogalad,dC
         dCM.zInfNorm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],Inf)
     end
 
-    if  constGap<=primChk && itGap<=dualChk
-        @printf "Converged after %g iterations" p
+    # if  constGap<=primChk && itGap<=dualChk
+    if  constGap<=primChk && auxGap<=auxChk
+        if !silent @printf "Converged after %g iterations" p end
+        @printf "Y"
         convIt=p
         return true
     else
         if !silent
-            @printf "lamIt      %e after %g iterations\n" itGap p
+            #@printf "objItPerc  %e after %g iterations\n" itGap p
+            # @printf "lamIt      %e after %g iterations\n" itGap p
+            @printf "auxGap     %e after %g iterations\n" auxGap p
             @printf "constGap   %e after %g iterations\n\n" constGap p
         end
     end
@@ -1361,6 +1367,46 @@ end
 
 function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent)
     # Function for each MPC time step
+
+    # # working for eqForm for simple example
+    # # μALADp = 20
+    # # μRate=1.01
+    # # μALADmax=1e2
+    #
+    # # working for ineq form
+    # eqForm=false
+    # ρALADp = 1
+    # ρRate=1.1
+    # ρALADmax=1e4
+    # μALADp = 1e3
+    # μRate=1.15
+    # μALADmax=1e4
+    #
+    # #slow convergence for equality
+    # eqForm=true
+    # ρALADp = .1
+    # ρRate=1.1
+    # ρALADmax=1e1
+    # μALADp = .1
+    # μRate=1.1
+    # μALADmax=1e1
+    #
+    # # also ok
+    # eqForm=true
+    # ρALADp = 1
+    # ρRate=1.1
+    # ρALADmax=2e3
+    # μALADp = 15
+    # μRate=1.01
+    # μALADmax=1e3
+    #
+    # eqForm=true
+    # ρALADp = .001
+    # ρRate=1.1
+    # ρALADmax=2e3
+    # μALADp = 1
+    # μRate=1.1
+    # μALADmax=1e2
 
     K=evS.K
     N=evS.N
@@ -1406,8 +1452,8 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
         dCM.convIt[1,1,ind]=convIt
     end
 
-    # # these are plots I use to debug a single time step
-    # #print(round(now()-timeStart,Second))
+    # # # #these are plots I use to debug a single time step
+    # print(round(now()-timeStart,Second))
     # xPlot=zeros(horzLen+1,N)
     # uPlot=zeros(horzLen+1,N)
     # for ii= 1:N
@@ -1469,6 +1515,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     # constPlotalad1=plot(dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="1-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
     # constPlotalad2=plot(dCM.coupl2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
     # constPlotaladInf=plot(dCM.couplInfNorm[1:convIt,1],xlabel="Iteration",ylabel="Inf-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
+    # #savefig(uSumPlotalad,path*"uSumPlotalad"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
     #
     # # checkPlot2=plot(convItPlotalad1,constPlotalad1,convItPlotalad2,
     # #                 constPlotalad2,convItPlotaladInf,constPlotaladInf,layout=(3,2))
@@ -1478,16 +1525,6 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     # # checkPlot=plot(convItPlotalad,constPlotalad,fPlotalad,convPlotalad,layout=(2,2))
     # # pubPlot(checkPlot,thickscale=1,sizeWH=(600,400),dpi=60)
     # # savefig(checkPlot,path*"checkPlot"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
-    # testRel2 = zeros(convIt-1)
-    # testRelInf = zeros(convIt-1)
-    # for i in 2:convIt
-    #     v1=dLogalad.Lam[:,i]
-    #     v2=dLogalad.Lam[:,i-1]
-    #     testRel2[i-1] = norm(v1-v2,2)/norm(v2,2)
-    #     testRelInf[i-1] = norm(v1-v2,Inf)/norm(v2,Inf)
-    # end
-    # plot(testRel2,yscale=:log10,legend=false,xlabel="Iteration")
-    # plot(testRelInf,yscale=:log10,legend=false,xlabel="Iteration")
 
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLogalad.Tpred[1,convIt]
