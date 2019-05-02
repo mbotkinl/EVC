@@ -18,19 +18,43 @@ if loadResults
 else
 	t0=evS.t0
 	s0=evS.s0
-	prevLam=1e5*ones(evS.K1+1,1)
+	prevLam=5e2*ones(evS.K1+1,1)
     prevVt=evS.Tmax*ones(evS.K1+1,1)
     prevVz=.01*ones(evS.S*(evS.K1+1),1)
     prevVu=.01*ones(evS.N*(evS.K1+1),1)
     prevVs=.5*ones(evS.N*(evS.K1+1),1)
 
-	if eqForm
-		ρALADp = 1e6
-		ρRate=1.15
-	else
-		ρALADp = 1
-		ρRate=1.1
-	end
+	# prevLam=cSave.Lam[:,:,ind]
+	# prevVt=cSave.Tactual[:,:,ind]
+	# prevVz=cSave.Z[:,:,ind]
+	# prevVu=cSave.Un[:,:,ind]
+	# prevVs=cSave.S[:,:,ind]
+	# prevLam = lambdaCurr
+	# prevVt = tRaw
+	# prevVz = zRaw
+	# prevVu = uRaw
+	# prevVs = snRaw
+
+	# if eqForm
+	# 	ρALADp = 1e6
+	# 	ρRate=1.15
+	# else
+	# 	ρALADp = 1
+	# 	ρRate=1.1
+	# end
+
+	# ρALADp = 1
+	# ρRate=1.1
+	# μALADp = 1e3
+	# μRate=2
+
+
+    ρALADp = .001
+    ρRate=1.1
+    ρALADmax=1e4
+    μALADp = 1e2
+    μRate=1.5
+    μALADmax=1e9
 
 	roundSigFigs=30
 

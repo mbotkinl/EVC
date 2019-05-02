@@ -1102,7 +1102,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS,dLogalad:
     return nothing
 end
 
-function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,itVt,itρ,
+function coordALAD(p::Int,stepI::Int,itμ,evS,itLam,itVu,itVs,itVz,itVt,itρ,
     dLogalad::itLogPWL,roundSigFigs)
     # ALADIN coordinator problem
 
@@ -1127,7 +1127,6 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,i
         # Ht=1e-6
     #end
 
-    ρALADmax=1e6
     #μALADp=μALADp*p^2
 
     #coupled QP
@@ -1145,7 +1144,8 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,i
                    0.5*dSn[(k-1)*N+n,1]^2*Hs[n,k]+dLogalad.Gs[(k-1)*N+n,p]*dSn[(k-1)*N+n,1] for n=1:N) +
                sum(0.5*dZ[(k-1)*(S)+s,1]^2*Hz for s=1:S)+
                0.5*dT[k,1]^2*Ht   for k=1:(horzLen+1))
-    objExp=objExp+itLam[:,1]'*relaxS+μALADp/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
+    objExp=objExp+itLam[:,1]'*relaxS+itμ/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
+    #objExp=objExp+itμ/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
     objExp=objExp+dot(dLogalad.Gz[:,p],dZ)+dot(dLogalad.Gt[:,p],dT)
 
     @objective(cM,Min,objExp)
@@ -1218,12 +1218,12 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,evS,itLam,itVu,itVs,itVz,i
     end
 
     dLogalad.itUpdate[1,p]=min(itρ*ρRate,ρALADmax) #increase ρ every iteration
-    #μALADp=min(μALADp*μRate,μALADmax) #increase μ every iteration
+    dLogalad.itμUpdate[1,p]=min(itμ*μRate,μALADmax) #increase μ every iteration
     #ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dZ),getvalue(dSn),getvalue(dT)),Inf)
     return nothing
 end
 
-function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSol,cSave,eqForm,roundSigFigs,silent)
+function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,itμ,dLogalad,dCM,dSol,cSave,eqForm,roundSigFigs,silent)
     # Function for a single iteration of the ALADIN algorithm
 
     K=evS.K
@@ -1255,7 +1255,7 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
 
 
     #μALADp=5e3
-    μALADp=1e8
+    #μALADp=1e8
     # μRate=1
     # μALADmax=2e9
 
@@ -1302,7 +1302,7 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSo
     end
 
     # ALADIN coordination problem
-    coordALAD(p,stepI,μALADp,evS,itLam,itVu,itVs,itVz,itVt,itρ,dLogalad,roundSigFigs)
+    coordALAD(p,stepI,itμ,evS,itLam,itVu,itVs,itVz,itVt,itρ,dLogalad,roundSigFigs)
 
     #check for convergence
     constGap=norm(dLogalad.couplConst[:,p],1)
@@ -1369,11 +1369,12 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     dLogalad=itLogPWL(horzLen=horzLen,N=N,S=S)
     p=1
     timeStart=now()
-
+    # itμ = μALADp
     # keep iterating while not converged, under maximum number of iterations, and time left in timestep
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
-        #while (p<=maxIt)
-        #global p
+        # while (p<=maxIt)
+        # global p
+        # global itμ
         if p==1 #first iteration: hot start with previous timestep solutions
             itLam=prevLam
             itVu=prevVu
@@ -1381,6 +1382,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
             itVs=prevVs
             itVt=prevVt
             itρ=ρALADp
+            itμ=μALADp
         else   # use last iteration solutions
             itLam=round.(dLogalad.Lam[:,(p-1)],sigdigits=roundSigFigs)
             itVu=round.(dLogalad.Vu[:,(p-1)],sigdigits=roundSigFigs)
@@ -1388,8 +1390,11 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
             itVs=round.(dLogalad.Vs[:,(p-1)],sigdigits=roundSigFigs)
             itVt=round.(dLogalad.Vt[:,(p-1)],sigdigits=roundSigFigs)
             itρ=round.(dLogalad.itUpdate[1,(p-1)],sigdigits=roundSigFigs)
+            # itμ=round(min(itμ*μRate,μALADmax),sigdigits=4)
+            itμ=round(dLogalad.itμUpdate[1,(p-1)],sigdigits=4)
         end
-        cFlag=runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,dLogalad,dCM,dSol,cSave,eqForm,roundSigFigs,silent)
+        #println(itμ)
+        cFlag=runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,itμ,dLogalad,dCM,dSol,cSave,eqForm,roundSigFigs,silent)
         global convIt=p
         if cFlag
             break # if converged, end iterations

@@ -203,6 +203,7 @@ end
 
     #update dynamic (either rho or alpha)
     itUpdate::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
+    itμUpdate::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 end
 
 @with_kw struct itLogNL
