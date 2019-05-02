@@ -843,7 +843,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS,dSol::solutionStruct,dCM,cSave:
         dCM.convIt[1,1,ind]=convIt
     end
 
-    # # #convergence plots
+    # # # #convergence plots
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
     #                range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
@@ -867,7 +867,6 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS,dSol::solutionStruct,dCM,cSave:
     # convItPlotalad2=plot(dCM.lamIt2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Dual",xlims=(1,convIt),legend=false,yscale=:log10)
     # constPlotalad1=plot(dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="1-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
     # #savefig(lamPlotadmm,path*"lamPlotadmm"*".png")
-
 
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLogadmm.Tpred[1,convIt]
@@ -1415,12 +1414,10 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     dLogalad=itLogPWL(horzLen=horzLen,N=N,S=S)
     p=1
     timeStart=now()
-    # itμ = μALADp
     # keep iterating while not converged, under maximum number of iterations, and time left in timestep
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
         # while (p<=maxIt)
         # global p
-        # global itμ
         if p==1 #first iteration: hot start with previous timestep solutions
             itLam=prevLam
             itVu=prevVu
@@ -1560,19 +1557,19 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
             newVs=vcat(prevVs[(N+1):(N*(horzLen+1)),1],prevVs[((N*horzLen)+1):(N*(horzLen+1)),1])
         end
     else
-        dSol.lamCoupl[stepI,1]=dLogalad.Lam[1,convIt-1]
+        dSol.lamCoupl[stepI,1]=dLogalad.Lam[1,convIt]
         if stepI+horzLen==evS.K
-            newLam=dLogalad.Lam[2:horzLen+1,convIt-1]
-            newVu=dLogalad.Vu[(N+1):(N*(horzLen+1)),convIt-1]
-            newVz=dLogalad.Vz[(S+1):(S*(horzLen+1)),convIt-1]
-            newVt=dLogalad.Vt[2:horzLen+1,convIt-1]
-            newVs=dLogalad.Vs[(N+1):(N*(horzLen+1)),convIt-1]
+            newLam=dLogalad.Lam[2:horzLen+1,convIt]
+            newVu=dLogalad.Vu[(N+1):(N*(horzLen+1)),convIt]
+            newVz=dLogalad.Vz[(S+1):(S*(horzLen+1)),convIt]
+            newVt=dLogalad.Vt[2:horzLen+1,convIt]
+            newVs=dLogalad.Vs[(N+1):(N*(horzLen+1)),convIt]
         else
-            newLam=vcat(dLogalad.Lam[2:horzLen+1,convIt-1],dLogalad.Lam[horzLen+1,convIt-1])
-            newVu=vcat(dLogalad.Vu[(N+1):(N*(horzLen+1)),convIt-1],dLogalad.Vu[((N*horzLen)+1):(N*(horzLen+1)),convIt-1])
-            newVz=vcat(dLogalad.Vz[(S+1):(S*(horzLen+1)),convIt-1],dLogalad.Vz[((S*horzLen)+1):(S*(horzLen+1)),convIt-1])
-            newVt=vcat(dLogalad.Vt[2:horzLen+1,convIt-1],dLogalad.Vt[horzLen+1,convIt-1])
-            newVs=vcat(dLogalad.Vs[(N+1):(N*(horzLen+1)),convIt-1],dLogalad.Vs[((N*horzLen)+1):(N*(horzLen+1)),convIt-1])
+            newLam=vcat(dLogalad.Lam[2:horzLen+1,convIt-1],dLogalad.Lam[horzLen+1,convIt])
+            newVu=vcat(dLogalad.Vu[(N+1):(N*(horzLen+1)),convIt-1],dLogalad.Vu[((N*horzLen)+1):(N*(horzLen+1)),convIt])
+            newVz=vcat(dLogalad.Vz[(S+1):(S*(horzLen+1)),convIt-1],dLogalad.Vz[((S*horzLen)+1):(S*(horzLen+1)),convIt])
+            newVt=vcat(dLogalad.Vt[2:horzLen+1,convIt-1],dLogalad.Vt[horzLen+1,convIt])
+            newVs=vcat(dLogalad.Vs[(N+1):(N*(horzLen+1)),convIt-1],dLogalad.Vs[((N*horzLen)+1):(N*(horzLen+1)),convIt])
         end
     end
 
