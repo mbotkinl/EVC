@@ -292,7 +292,7 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
     dLog.itUpdate[1,1,p]=alphaP
     #alphaP= alphaP*alphaRate
 
-	#dLog.Lam[:,1,p]=round.(max.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],0),sigdigits=roundSigFigs)
+	# dLog.Lam[:,1,p]=round.(max.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],0),sigdigits=roundSigFigs)
     dLog.Lam[:,1,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],sigdigits=roundSigFigs)
 
     #calculate actual temperature from nonlinear model of XFRM
@@ -335,11 +335,11 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
 	p=1
     timeStart=now()
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*hubS.Ts))
-		#global p
+		# global p
 		if p==1
 			itLam=prevLam
 			#alpha0 =1 #for kA
-			global alpha0=max(min(maximum(prevLam)/20,1e6),1e-3)
+			global alpha0=max(min(maximum(prevLam)/100,1e6),1e-3)
 		else
 			itLam=round.(dLog.Lam[:,1,(p-1)],digits=8)
 		end
@@ -406,7 +406,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
             newLam=vcat(prevLam[2:horzLen+1,1],prevLam[horzLen+1,1])
         end
     else
-        dSol.Lam[stepI,1]=dLog.Lam[1,1,convIt-1]
+        dSol.Lam[stepI,1]=dLog.Lam[1,1,convIt]
         if stepI+horzLen==hubS.K
             newLam=dLog.Lam[2:horzLen+1,1,convIt-1]
         else
