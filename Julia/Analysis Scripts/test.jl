@@ -1,4 +1,20 @@
 
+
+p = plot([sin, cos], zeros(0), leg=false)
+for x = range(0, stop=10π, length=100)
+    push!(p, x, Float64[sin(x), cos(x)])
+	display(p)
+	sleep(1)
+end
+
+p = plot(2)
+for stepI = range(0, stop=10π, length=100)
+    push!(p, stepI, [cSol.lamCoupl[stepI], dSolalad.lamCoupl[stepI]])
+	display(p)
+	sleep(1)
+end
+
+
 function test()
     for i = 1:10
        global z

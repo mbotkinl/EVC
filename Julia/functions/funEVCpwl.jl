@@ -1597,6 +1597,7 @@ function pwlEValad(maxIt::Int,evS,cSave::centralLogStruct,slack::Bool,eqForm::Bo
     dCM=convMetricsStruct(maxIt=maxIt,logLength=length(saveLogInd))
     stepI=1
 
+    p = plot(2,label=["Central" "ALAD"])
     Juno.progress() do id
         for stepI=1:K
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)" progress=stepI/K _id=id
@@ -1608,6 +1609,9 @@ function pwlEValad(maxIt::Int,evS,cSave::centralLogStruct,slack::Bool,eqForm::Bo
                 @printf "error: %s" e
                 break
             end
+
+            push!(p, stepI, [cSol.lamCoupl[stepI], dSol.lamCoupl[stepI]])
+        	display(p)
         end
     end
 
