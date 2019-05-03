@@ -1113,8 +1113,8 @@ function runEVALADIt(p,stepI,hubS,itLam,itVu,itVz,itVe,itVd,itVt,itρ,dLogalad,d
 	itGap = norm(dLogalad.Lam[:,1,p]-itLam[:,1],2)
 	#dCM.coupl1Norm[p,1]=constGap
 	#dCM.lamIt2Norm[p,1]=itGap
-    # cc=norm(hcat(σU[1]*(itVu[:,:]-dLogalad.U[:,:,p]),σZ*(itVz[:,:]-dLogalad.Z[:,:,p]),
-    #              σT*(itVt[:,:]-dLogalad.Tpred[:,:,p]),σE[1]*(itVe[:,:]-dLogalad.E[:,:,p])),1)
+    auxGap=norm(hcat(σU[1]*(itVu[:,:]-dLogalad.U[:,:,p]),σZ*(itVz[:,:]-dLogalad.Z[:,:,p]),
+                 σT*(itVt[:,:]-dLogalad.Tpred[:,:,p]),σE[1]*(itVe[:,:]-dLogalad.E[:,:,p])),1)
     #cc=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
     # objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*hubS.Qsi[n,1] for n=1:N) +
     #                  sum((u[(k-1)*N+n,1])^2*hubS.Ri[n,1]       for n=1:N) for k=1:horzLen+1)
@@ -1127,14 +1127,14 @@ function runEVALADIt(p,stepI,hubS,itLam,itVu,itVz,itVe,itVd,itVt,itρ,dLogalad,d
     # dCMalad.un[p,1]=unGap
     # dCMalad.couplConst[p,1]=constGap
     #convCheck[p,1]=cc
-    if   constGap<=primChk && itGap<=dualChk
+    if  constGap<=primChk && auxGap<=auxChk
         if !silent @printf "Converged after %g iterations\n" p end
         convIt=p
         #break
         return true
     else
         if !silent
-            @printf "lamIt  %e after %g iterations\n" itGap p
+            @printf "auxGap     %e after %g iterations\n" auxGap p
             @printf "constGap   %e after %g iterations\n" constGap p
             #@printf "snGap      %e after %g iterations\n" snGap p
             #@printf("fGap       %e after %g iterations\n",fGap,p)
@@ -1153,8 +1153,7 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
 	timeStart=now()
 	p=1
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*hubS.Ts))
-		#global p
-        #@printf "%git" p
+		# global p
 		if p==1
 			itLam=prevLam
 			itVu=prevVu
@@ -1267,21 +1266,21 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
             newVd=vcat(prevVd[2:horzLen+1,:],prevVd[horzLen+1,:]')
         end
     else
-        dSol.Lam[stepI,1]=dLogalad.Lam[1,1,convIt-1]
+        dSol.Lam[stepI,1]=dLogalad.Lam[1,1,convIt]
         if stepI+horzLen==hubS.K
-            newLam=dLogalad.Lam[2:horzLen+1,1,convIt-1]
-            newVu=dLogalad.Vu[2:horzLen+1,:,convIt-1]
-            newVz=dLogalad.Vz[2:horzLen+1,:,convIt-1]
-            newVt=dLogalad.Vt[2:horzLen+1,1,convIt-1]
-            newVe=dLogalad.Ve[2:horzLen+1,:,convIt-1]
-            newVd=dLogalad.Vd[2:horzLen+1,:,convIt-1]
+            newLam=dLogalad.Lam[2:horzLen+1,1,convIt]
+            newVu=dLogalad.Vu[2:horzLen+1,:,convIt]
+            newVz=dLogalad.Vz[2:horzLen+1,:,convIt]
+            newVt=dLogalad.Vt[2:horzLen+1,1,convIt]
+            newVe=dLogalad.Ve[2:horzLen+1,:,convIt]
+            newVd=dLogalad.Vd[2:horzLen+1,:,convIt]
         else
-            newLam=vcat(dLogalad.Lam[2:horzLen+1,:,convIt-1],dLogalad.Lam[horzLen+1,:,convIt-1])
-            newVu=vcat(dLogalad.Vu[2:horzLen+1,:,convIt-1],dLogalad.Vu[horzLen+1,:,convIt-1]')
-            newVz=vcat(dLogalad.Vz[2:horzLen+1,:,convIt-1],dLogalad.Vz[horzLen+1,:,convIt-1]')
-            newVt=vcat(dLogalad.Vt[2:horzLen+1,:,convIt-1],dLogalad.Vt[horzLen+1,:,convIt-1])
-            newVe=vcat(dLogalad.Ve[2:horzLen+1,:,convIt-1],dLogalad.Ve[horzLen+1,:,convIt-1]')
-            newVd=vcat(dLogalad.Vd[2:horzLen+1,:,convIt-1],dLogalad.Vd[horzLen+1,:,convIt-1]')
+            newLam=vcat(dLogalad.Lam[2:horzLen+1,:,convIt],dLogalad.Lam[horzLen+1,:,convIt])
+            newVu=vcat(dLogalad.Vu[2:horzLen+1,:,convIt],dLogalad.Vu[horzLen+1,:,convIt]')
+            newVz=vcat(dLogalad.Vz[2:horzLen+1,:,convIt],dLogalad.Vz[horzLen+1,:,convIt]')
+            newVt=vcat(dLogalad.Vt[2:horzLen+1,:,convIt],dLogalad.Vt[horzLen+1,:,convIt])
+            newVe=vcat(dLogalad.Ve[2:horzLen+1,:,convIt],dLogalad.Ve[horzLen+1,:,convIt]')
+            newVd=vcat(dLogalad.Vd[2:horzLen+1,:,convIt],dLogalad.Vd[horzLen+1,:,convIt]')
         end
     end
 
@@ -1302,6 +1301,7 @@ function hubALAD(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
     dSol=hubSolutionStruct(K=K,H=H)
 	dCM=convMetricsStruct(maxIt=maxIt,logLength=1)
 
+	p = plot(2,label=["Central" "ALAD"])
     Juno.progress() do id
         for stepI=1:K
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
@@ -1313,6 +1313,8 @@ function hubALAD(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
                 @printf "error: %s" e
                 break
             end
+			push!(p, stepI, [cSol.Lam[stepI], dSol.Lam[stepI]])
+			display(p)
         end
     end
 

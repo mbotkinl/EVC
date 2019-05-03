@@ -11,7 +11,7 @@ if loadResults
 else
 	t0=hubS.t0
 	e0=hubS.e0
-	prevLam=1e3*ones(hubS.K1+1,1)
+	prevLam=5e3*ones(hubS.K1+1,1)
     prevVt=hubS.Tmax*ones(hubS.K1+1,1)
     prevVz=hubS.deltaI*ones((hubS.K1+1),hubS.S)
     prevVu=repeat(maximum(hubS.uMax,dims=1),outer=[(hubS.K1+1),1])

@@ -15,8 +15,8 @@ using Suppressor
 #especially stepI +k for iD and Tamb
 H=4
 maxIt=5000
-auxChk = 1e-2 #lamIt=0
-primChk = 1e-1 # Ax-B=0s
+auxChk = 1e-1 #lamIt=0
+primChk = 1e-2 # Ax-B=0s
 datafile="jld2"
 mode="PWL"
 silent=true
