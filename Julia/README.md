@@ -5,7 +5,7 @@ Masters project for electric vehicle charging
 
 ## General File/Folder Structure
 
-- Scripts are labeles by the problem (EVC or Hub) and formulation method (central, ADMM, ALAD, etc)
+- Scripts are labeled by the problem (EVC or Hub) and formulation method (central, ADMM, ALAD, etc)
 - Wrapper scripts are in the Julia directory
 - Wrappers call functions from the files in the Julia/functions directory
 - Other scripts used to create supplimental analysis plots are in "Analysis Scripts" directory
@@ -33,7 +33,7 @@ Gurobi
 
 ### Initialization 
 
-Run `EVC_init.jl` to load packages, set parameters, and load or create scenario. Setting `datafile="n"` will create new scenario and `datafile="jld2"` will read saved scenario file. 
+Run `EVC_init.jl` to load packages, set parameters, and load or create scenario. Setting `datafile="n"` will create new scenario and `datafile="jld2"` will read saved scenario file from `path` and `file`. 
 
 ### Create/Read Central Solution
 
