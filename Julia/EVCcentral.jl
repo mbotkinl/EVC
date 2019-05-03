@@ -47,7 +47,7 @@ plot!(p3,1:evS.K,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red),xtick
 if drawFig savefig(p3,path*"J_central_Temp.png") end
 
 p4b=plot(cSol.lamTemp,xlabel="Time",ylabel=raw"Lambda ($/K)",legend=false)
-p4=plot(cSol.lamCoupl/1000,xlabel="Time",ylabel=raw"Lambda ($/A)",legend=false,xticks=xticks)
+p4=plot(cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda",legend=false,xticks=xticks)
 if drawFig savefig(p4,path*"J_central_Lam.png") end
 
 

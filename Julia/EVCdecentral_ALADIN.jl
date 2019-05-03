@@ -48,7 +48,6 @@ else
 	# μALADp = 1e3
 	# μRate=2
 
-
     ρALADp = .001
     ρRate=1.1
     ρALADmax=1e4

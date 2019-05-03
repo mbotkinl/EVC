@@ -174,11 +174,11 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     #     plot!(snAvgPlot,1:Klen,snAvgNoLim,label="Uncoordinated",seriescolor=allColors[P+1])
     # end
 
-    lamPlot=plot(1:Klen,cSol.lamCoupl/1000,xlabel="Time",ylabel=raw"Lambda",labels="Central",
+    lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda",labels="Central",
                    seriescolor=:black,linewidth=6,linealpha=cAlpha,xticks=xticks, title="c")
-    plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors,linewidth=lWidth)
+    plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors,linewidth=lWidth)
     if noLim !=nothing
-        plot!(lamPlot,1:Klen,noLim["solution"].lamCoupl/1000,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=lWidth)
+        plot!(lamPlot,1:Klen,noLim["solution"].lamCoupl,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=lWidth)
     end
 
     # R plot***
@@ -269,6 +269,9 @@ function compareConvGraph_New(evS;ind=1)
     if saveF savefig(intConvPlot,path*pname) end
 
     #external
+    objPlot=plot(convDict["objPerc"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"|J^{(p)}-J^{*}|")
+    if saveF savefig(objPlot,path*"objPercConv") end
+
     un1Plot=plot(convDict["un1Norm"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"||u_n^{(p)}-u_n^{*}||_1")
     unInfPlot=plot(convDict["unInfNorm"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"||u_n^{(p)}-u_n^{*}||_{\infty}")
 end
@@ -475,9 +478,9 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
         plot!(loadPlot,1:Klen,(noLim["solution"].uSum+iD)/Ntf,label="",seriescolor=allColors[P+1])
     end
 
-    lamPlot=plot(1:Klen,cSol.Lam/1000,xlabel="Time",ylabel=raw"Lambda",labels="Central",
+    lamPlot=plot(1:Klen,cSol.Lam,xlabel="Time",ylabel=raw"Lambda",labels="Central",
                    seriescolor=:black,linewidth=8,linealpha=cAlpha,xticks=xticks,title="c")
-    plot!(lamPlot,Lam/1000,labels=plotLabels,seriescolor=plotColors,linewidth=lWidth)
+    plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors,linewidth=lWidth)
     if noLim !=nothing
         plot!(lamPlot,1:Klen,noLim["solution"].Lam,label="Uncoordinated",seriescolor=allColors[P+1])
     end
