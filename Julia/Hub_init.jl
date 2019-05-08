@@ -26,7 +26,7 @@ saveF=false
 loadResults=false
 saveResults=true
 eqForm=false
-Tlimit=true
+coordinated=true
 runParallel=false
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")

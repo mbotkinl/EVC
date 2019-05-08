@@ -30,7 +30,7 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     @objective(cModel,Min,sum(sum(hubS.Qh[h]*(e[k,h]-eMax[k,h])^2+hubS.Rh[h]*u[k,h]^2-hubS.Oh[h]*eΔ[k,h] for k=1:horzLen+1) for h=1:H))
 
     #transformer constraints
-    if Tlimit
+    if coordinated==true
         @constraint(cModel,upperTCon,t.<=hubS.Tmax)
     end
     @constraint(cModel,t.>=0)
@@ -55,9 +55,11 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
         @constraint(cModel,tempCon1,t[1,1]==hubS.τP*t0+hubS.γP*hubS.deltaI*sum((2*s-1)*z[1,s] for s=1:hubS.S)+hubS.ρP*hubS.Tamb[stepI,1])
         @constraint(cModel,tempCon2[k=1:horzLen],t[k+1,1]==hubS.τP*t[k,1]+hubS.γP*hubS.deltaI*sum((2*s-1)*z[k+1,s] for s=1:hubS.S)+hubS.ρP*hubS.Tamb[stepI+k,1])
         @constraint(cModel,z.>=0)
-        @constraint(cModel,z.<=hubS.deltaI)
-        #coupling constraint
-        @constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[k,h] for h=1:H)-hubS.iD_pred[stepI+(k-1)]+sum(z[k,s] for s=1:hubS.S))
+		if coordinated==true
+    		@constraint(cModel,z.<=hubS.deltaI)
+		end
+    	#coupling constraint
+    	@constraint(cModel,currCon[k=1:horzLen+1],0==-sum(u[k,h] for h=1:H)-hubS.iD_pred[stepI+(k-1)]+sum(z[k,s] for s=1:hubS.S))
     end
 
     #hub constraints

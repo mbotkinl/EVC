@@ -1,7 +1,7 @@
 using Gurobi
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funHub.jl")
 fname = "central_H$(H)"
-if Tlimit==false
+if coordinated==false
 	fname = fname*"_noLim"
 end
 
@@ -25,7 +25,6 @@ plotColors=allColors'
 p1=plot(cSol.E,xlabel="",ylabel="Energy (MWh)",seriestype=:line,labels=hubLabels,xticks=xticks, xlims=(0,hubS.K))
 plot!(hubS.eMax,label=hubLabels.*" Max",line=(:dash),seriescolor=plotColors)
 
-
 eD=copy(cSol.E_depart)
 eD[eD.==0].=NaN
 eDmin=copy(hubS.eDepart_min)
@@ -39,7 +38,7 @@ plot!(sumPlot,sum(eD,dims=2),label="Depart Energy",seriestype=:scatter,markersiz
 plot!(sumPlot,sum(eA,dims=2),label="Arrive Energy",seriestype=:scatter,markersize=10)
 plot!(twinx(),sum(cSol.U,dims=2),label="Hub Current",seriestype=:line,seriescolor=:red,legend=false,ylabel="Current (kA)",xticks=xticks)
 
-h=4
+h=3
 sumPlot=plot(cSol.E[:,h],xlabel="",ylabel="Energy (MWh)",label="Hub Energy",seriestype=:bar,xticks=xticks)
 plot!(sumPlot,eD[:,h],label="Depart Energy",seriestype=:scatter,markersize=10)
 plot!(sumPlot,eA[:,h],label="Arrive Energy",seriestype=:scatter,markersize=10)
@@ -53,7 +52,7 @@ endT=Time(10,0)
 XlabelsAM=vcat(collect(stT:Dates.Second(Int(round(hubS.Ts))):endT))
 xticksAM=(220:10:hubS.K,Dates.format.(XlabelsAM[1:10:61],"HH:MM"))
 
-Plots.scalefontsizes(1.2)
+# Plots.scalefontsizes(1.2)
 departPlot=plot(eD[:,h],label="Depart Actual Energy",seriestype=:bar,xlims=(220,hubS.K),ylabel="Energy (MWh)",
 				xlabel="Time",xticks=xticksAM,size=(1200,800))
 plot!(departPlot,eDmin[:,h],label="Depart Min Energy",seriestype=:scatter,markersize=12)
@@ -71,40 +70,16 @@ plot!(p3,hubS.Tmax*ones(hubS.K),label="XFRM Limit",line=(:dash,:red),xticks=xtic
 p4=plot(cSol.Lam,xlabel="Time",ylabel=raw"Lambda",legend=false,xticks=xticks, xlims=(0,hubS.K))
 
 
+aggU=plot((cSol.uSum+hubS.iD_actual)/Ntf*1000,label=["Central" "ADMM"],xlabel="Time",ylabel="Total Hub Current (kA)")
+plot!(aggU,hubS.iD_actual/Ntf*1000,label="Background Demand",line=(:dash),linewidth=2)
+
+
+p1
+# # test to make sure all hubs meet demand
 # epsilon=.01
 # compMin=cSol.E_depart.>=hubS.eDepart_min
-# all(compMin)
+# all(compMin) # this should be true
 # compDept=cSol.E_depart.-(hubS.eDepart_min.+hubS.slackMax)
 # testDept=abs.(compDept).<=epsilon
-# all(testDept)
+# all(testDept) # this can be false
 # t=findfirst(testDept.==false)
-
-
-#nolim plots
-# currComp=plot(hcat(cSol.uSum,noLim.uSum),label=["Central" "Uncoordinated"],xlabel="",ylabel="Current (kA)", xlims=(0,hubS.K),xticks=xticks)
-#
-# tempComp=plot(hcat(cSol.Tactual*1000,noLim.Tactual*1000),label=["Central" "Uncoordinated"],xlabel="",ylabel="Temp (K)", xlims=(0,hubS.K),xticks=xticks)
-# plot!(tempComp,hubS.Tmax*ones(hubS.K)*1000,label="XFRM Limit",line=(:dash,:red))
-#
-# compP=plot(currComp,tempComp,p4,layout=(3,1))
-# pubPlot(compP,thickscale=0.8,sizeWH=(1000,600),dpi=100)
-# savefig(compP,path*"centralPlot1.png")
-
-
-# h1=plot(p1,p2,p3,p4,layout=(4,1))
-# lowRes=true
-# if lowRes
-#     pubPlot(h1,thickscale=0.4,sizeWH=(400,300),dpi=40)
-# else
-#     pubPlot(h1,thickscale=0.8,sizeWH=(1000,600),dpi=100)
-# end
-# if saveF savefig(h1,path*"hubPlot1.png") end
-#
-# h2=plot(sumPlot,p3,p4,layout=(3,1))
-# lowRes=true
-# if lowRes
-#     pubPlot(h2,thickscale=0.4,sizeWH=(400,300),dpi=40)
-# else
-#     pubPlot(h2,thickscale=0.8,sizeWH=(800,600),dpi=100)
-# end
-# if saveF savefig(h2,path*"hubPlot2.png") end
