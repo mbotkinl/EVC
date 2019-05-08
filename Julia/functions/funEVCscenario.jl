@@ -198,15 +198,19 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     #model parameters
     a   = rand(1,H)*.1 .+ 0.8               # efficiency of collect hubs
     b_options = [100 200 600]
-    b_prob = [.4 .8]
+    b_prob = [0 .4 .8; 1 0 .7; 1 0 1;1 0 .5]   # distributions in each hub - hard coded for now
     r_ind = rand(Nh,1)
     b_kWh = b_options[1]*ones(Int,Nh,H)
-    b_kWh[(r_ind.>b_prob[1])[:],:] .= b_options[2]
-    b_kWh[(r_ind.>b_prob[2])[:],:] .= b_options[3]
+
+    for h=1:H
+        b_kWh[(r_ind.>b_prob[h,1])[:],h] .= b_options[1]
+        b_kWh[(r_ind.>b_prob[h,2])[:],h] .= b_options[2]
+        b_kWh[(r_ind.>b_prob[h,3])[:],h] .= b_options[3]
+    end
     b=b_kWh*3.6e6 # battery capacity (MJ)
     imax = round.(((1-.2)*rand(Beta(3, 2),Nh,H).+.2),digits=4) # kA, charging with 200-1000 A
 
-    xfrmR  = 100e3/3                          # single phase transformer rating kVA
+    xfrmR  = 120e3/3                          # single phase transformer rating kVA
     Vac = 480                              # PEV battery rms voltage --- V [used in PEV kW -> kA conversion]
     Vtf = 13.2e3                            # distr-level transformer rms voltage --- V [used in inelastic kW -> kA conv]
     Ntf   = Vtf/Vac                        # pole-top transformer turns ratio
@@ -245,11 +249,11 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     # Disturbance scenario:
     Dload_error=0
     num_homes=1
-    peak_demand_house = 45e6  #W
-    min_demand_house = 20e6 #W
+    peak_demand_house = 30e6  #W
+    min_demand_house =25e6 #W
     Dload_amplitude=num_homes*peak_demand_house #W
     Dload_minimum = num_homes*min_demand_house
-    dist = [range(-1,stop=10,length=Int(round(K/2)));range(-10,stop=-1,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
+    dist = [range(-1,stop=10,length=Int(round(K/2)));range(-10,stop=-1,length=Int(K-round(K/2)))]
     d = Normal(0,3)
     inelasticDemand = pdf.(d,dist)
     FullinelasticDemand = (inelasticDemand.-minimum(inelasticDemand))/(maximum(inelasticDemand)-minimum(inelasticDemand))
@@ -272,7 +276,7 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     # Oh=(Omag*rand(1,H).+Omag/1e3)
 
 
-    qrRatio=round.((200-0.1)*rand(Beta(1, 1),1,H) .+ 0.1,digits=2)
+    qrRatio=round.((200-0.1)*rand(Beta(0.6, 0.6),1,H) .+ 0.1,digits=2)
     orRatio=10
     #histogram(qrRatio,nbins=40)
     Rh=1e1*ones(1,H)
@@ -281,10 +285,18 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     Oh=orRatio.*Rh
     #action happens immediately afte interval before ends
     #hub information
-    arriveLast=round(Int,2*3600/Ts) #last arrival at 10PM
-    departFirst=round(Int,10*3600/Ts) #first departure at 6AM
-    K_arrive_pred=max.(rand(-Int(arriveLast/2):arriveLast,Nh,H),0) #arrive between 7PM and 10PM
-    K_depart_pred=rand(departFirst:K,Nh,H)
+    arriveInd = rand(1:7,H)
+    departInd = rand(8:11,H)
+    K_arrive_pred=zeros(Nh,H)
+    K_depart_pred=zeros(Nh,H)
+    for h=1:H
+        arriveLast=round(Int,arriveInd[h]*3600/Ts)
+        departFirst=round(Int,departInd[h]*3600/Ts)
+        # K_arrive_pred[:,h]=max.(rand(-Int(arriveLast/2):arriveLast,Nh),0) #arrive between 7PM and 10PM
+        # K_depart_pred[:,h]=rand(departFirst:K,Nh)
+        K_arrive_pred[:,h]=rand(BetaBinomial(Int(arriveLast*1.5),rand(1:8),rand(1:8)),Nh,1) .- Int(arriveLast/2)
+        K_depart_pred[:,h]=rand(BetaBinomial(K-departFirst,rand(1:8),rand(1:8)),Nh,1) .+ departFirst
+    end
     # K_arrive_pred=zeros(Nh,H)
     # K_arrive_pred[1:Int(Nh/2),1]=1:Int(Nh/2)
     # K_depart_pred=hcat(1:Nh)
@@ -300,8 +312,16 @@ function setupHubScenario(H,Nh;Tmax=.393,Dload_amplitude=0,saveS=false,path=pwd(
     #EVcap=b./3.6e6 #kWh
     EVcap=round.(b./3.6e6/1e3,digits=6) #MWh
     #e0=zeros(H) # no vehicles have arrived yet
-    e0=[sum(Sn_arrive_actual[n,h]*EVcap[n,h] for n in findall(x->x==0,K_arrive_actual[:,h])) for h=1:H]
-
+    # e0=[sum(Sn_arrive_actual[n,h]*EVcap[n,h] for n in findall(x->x==0,K_arrive_actual[:,h])) for h=1:4]
+    e0=zeros(H)
+    for h=1:H
+        ind= findall(x->x==0,K_arrive_actual[:,h])
+        if isempty(ind)
+            e0[h]=0
+        else
+            e0[h]=sum(Sn_arrive_actual[n,h]*EVcap[n,h] for n in ind)
+        end
+    end
     #prepare predicted values for optimization
     eMax=zeros(K,H)
     uMax=zeros(K,H)
