@@ -294,8 +294,8 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
     dLog.itUpdate[1,1,p]=alphaP
     #alphaP= alphaP*alphaRate
 
-	# dLog.Lam[:,1,p]=round.(max.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],0),sigdigits=roundSigFigs)
-    dLog.Lam[:,1,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],sigdigits=roundSigFigs)
+	dLog.Lam[:,1,p]=round.(max.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],0),sigdigits=roundSigFigs)
+    # dLog.Lam[:,1,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],sigdigits=roundSigFigs)
 
     #calculate actual temperature from nonlinear model of XFRM
     for k=1:horzLen+1
@@ -341,7 +341,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
 		if p==1
 			itLam=prevLam
 			#alpha0 =1 #for kA
-			global alpha0=max(min(maximum(prevLam)/100,1e6),1e-3)
+			global alpha0=max(min(maximum(prevLam)/200,1e6),1e-3)
 		else
 			itLam=round.(dLog.Lam[:,1,(p-1)],digits=8)
 		end
@@ -352,6 +352,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
         end
 		p+=1
     end
+
 
     # plot(dLog.U[:,:,convIt])
     # plot(dLog.E[:,:,convIt])
@@ -383,7 +384,6 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     # convPlot=plot(1:convIt,dCM.lam[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(2,convIt),legend=false,yscale=:log10)
     # constPlot=plot(1:convIt,dCM.couplConst[1:convIt,1],xlabel="Iteration",ylabel="curr constraint Gap",xlims=(2,convIt),legend=false,yscale=:log10)
 
-
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLog.Tpred[1,1,convIt]
     dSol.U[stepI,:]=dLog.U[1,1:H,convIt]
@@ -410,9 +410,9 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     else
         dSol.Lam[stepI,1]=dLog.Lam[1,1,convIt]
         if stepI+horzLen==hubS.K
-            newLam=dLog.Lam[2:horzLen+1,1,convIt-1]
+            newLam=dLog.Lam[2:horzLen+1,1,convIt]
         else
-            newLam=vcat(dLog.Lam[2:horzLen+1,1,convIt-1],dLog.Lam[horzLen+1,1,convIt-1])
+            newLam=vcat(dLog.Lam[2:horzLen+1,1,convIt],dLog.Lam[horzLen+1,1,convIt])
         end
     end
     global prevLam=newLam
@@ -425,6 +425,7 @@ function hubDual(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
     Nh=hubS.Nh
     dSol=hubSolutionStruct(K=K,H=H)
 
+	p = plot(2,label=["Central" "ALAD"])
     Juno.progress() do id
         for stepI=1:K
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
@@ -436,6 +437,8 @@ function hubDual(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
                 @printf "error: %s" e
                 break
             end
+			push!(p, stepI, [cSol.Lam[stepI], dSol.Lam[stepI]])
+			display(p)
         end
     end
 
