@@ -3,6 +3,8 @@ using DataFrames
 using FileIO
 using Dates
 using LaTeXStrings
+using MAT
+
 # using Gadfly
 # using Cairo #for png output
 # using Fontconfig
@@ -102,4 +104,29 @@ function checkDesiredStates(Sn,Kn,Snmin)
     end
 
     return flag
+end
+
+
+function writeMAT(path, evS)
+
+    namesS = fieldnames(scenarioStruct)
+    newDict = Dict()
+    for i = 1:length(namesS)
+        nameS = String(namesS[i])
+        # this is terrible but cant figure out how to convert
+        if nameS[1]=='ρ'
+            nameS="rho"
+        elseif nameS[1]=='γ'
+            nameS="gamma"
+        elseif nameS[1]=='η'
+            nameS="eta"
+        elseif nameS[1]=='τ'
+            nameS="tau"
+        elseif nameS[1]=='β'
+            nameS="beta"
+        end 
+        newDict[nameS] =getfield(evS,namesS[i])
+    end
+    matwrite(path*"scenarioEVC.mat", newDict)
+
 end
