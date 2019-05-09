@@ -425,7 +425,7 @@ function hubDual(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
     Nh=hubS.Nh
     dSol=hubSolutionStruct(K=K,H=H)
 
-	p = plot(2,label=["Central" "ALAD"])
+	p = plot(2,label=["Central" "Dual"])
     Juno.progress() do id
         for stepI=1:K
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
