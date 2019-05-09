@@ -9,7 +9,7 @@ if loadResults
 else
 	t0=hubS.t0
 	e0=hubS.e0
-	prevLam=5e3*ones(hubS.K1+1,1)
+	prevLam=8e3*ones(hubS.K1+1,1)
 	prevVz=-hubS.deltaI*ones((hubS.K1+1),hubS.S)
 	#prevVu=repeat(maximum(hubS.uMax,dims=1),outer=[(hubS.K1+1),1])
 	prevVu=.01*ones((hubS.K1+1),hubS.H)
@@ -29,11 +29,16 @@ else
 	# ρDivRate=1.01
 	# maxRho=1e10
 
-	ρADMMp = 8e3
-	ρDivRate=1
-	maxRho=1e10
+	# ρADMMp = 5e3
+	# ρDivRate=1.05
+	# maxRho=1e8
 
-	roundSigFigs=16
+	ρADMMp = 1e3
+	ρDivRate=1.001
+	maxRho=1e8
+
+
+	roundSigFigs=15
 
 
 	println("Running ADMM Hub Sim")

@@ -364,8 +364,8 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
     #                range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
 	#
-    # uSumPlotd=plot(dLog.uSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
-    # plot!(uSumPlotd,sum(uRaw,dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
+    # uSumPlotd=plot(dLog.uSum[1:4,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",legend=false)
+    # plot!(uSumPlotd,sum(uRaw,dims=2)[1:4],seriescolor=:black,linewidth=2,linealpha=0.8)
 	# plot!(uSumPlotd,cSol.uSum[stepI:stepI+horzLen],seriescolor=:black,linewidth=2,linealpha=0.8)
 	#
     # zSumPlotd=plot(dLog.zSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
@@ -585,6 +585,7 @@ function runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,e
 		dLogadmm.zSum[k,1,p]=sum(dLogadmm.Z[k,s,p] for s=1:S)
 		dLogadmm.couplConst[k,1,p]=dLogadmm.uSum[k,1,p] + hubS.iD_pred[stepI+(k-1),1] - dLogadmm.zSum[k,1,p]
         dLogadmm.Lam[k,1,p]=itLam[k,1]+itρ/(max(horzLen+1,H))*(dLogadmm.couplConst[k,1,p])
+		# dLogadmm.Lam[k,1,p]=max(itLam[k,1]+itρ/(max(horzLen+1,H))*(dLogadmm.couplConst[k,1,p]),0)
     end
 
     #calculate actual temperature from nonlinear model of XFRM
@@ -639,14 +640,14 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
 	timeStart=now()
 	p=1
 	while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*hubS.Ts))
-		#global p
+		# global p
         #@printf "%git" p
 		if p==1
 			itLam=prevLam
 			itVu=prevVu
 			itVz=prevVz
 			itρ=ρADMMp
-			#itρ=max(min(maximum(prevLam),maxRho),1e-3)
+			# itρ=max(min(maximum(prevLam)/100,maxRho),1e-3)
 		else
 			itLam=round.(dLogadmm.Lam[:,1,(p-1)],sigdigits=roundSigFigs)
 			itVu=round.(dLogadmm.Vu[:,:,(p-1)],sigdigits=roundSigFigs)
@@ -730,13 +731,13 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     else
         dSol.Lam[stepI,1]=dLogadmm.Lam[1,1,convIt]
         if stepI+horzLen==hubS.K
-            newLam=dLogadmm.Lam[2:horzLen+1,1,convIt-1]
-            newVu=dLogadmm.Vu[2:horzLen+1,:,convIt-1]
-            newVz=dLogadmm.Vz[2:horzLen+1,:,convIt-1]
+            newLam=dLogadmm.Lam[2:horzLen+1,1,convIt]
+            newVu=dLogadmm.Vu[2:horzLen+1,:,convIt]
+            newVz=dLogadmm.Vz[2:horzLen+1,:,convIt]
         else
-            newLam=vcat(dLogadmm.Lam[2:horzLen+1,:,convIt-1],dLogadmm.Lam[horzLen+1,:,convIt-1])
-            newVu=vcat(dLogadmm.Vu[2:horzLen+1,:,convIt-1],dLogadmm.Vu[horzLen+1,:,convIt-1]')
-            newVz=vcat(dLogadmm.Vz[2:horzLen+1,:,convIt-1],dLogadmm.Vz[horzLen+1,:,convIt-1]')
+            newLam=vcat(dLogadmm.Lam[2:horzLen+1,:,convIt],dLogadmm.Lam[horzLen+1,:,convIt])
+            newVu=vcat(dLogadmm.Vu[2:horzLen+1,:,convIt],dLogadmm.Vu[horzLen+1,:,convIt]')
+            newVz=vcat(dLogadmm.Vz[2:horzLen+1,:,convIt],dLogadmm.Vz[horzLen+1,:,convIt]')
         end
     end
 
@@ -753,6 +754,7 @@ function hubADMM(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
     K=hubS.K
     dSol=hubSolutionStruct(K=K,H=H)
 
+	p = plot(2,label=["Central" "ADMM"])
     Juno.progress() do id
         for stepI=1:K
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
@@ -764,6 +766,8 @@ function hubADMM(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
                 @printf "error: %s" e
                 break
             end
+			push!(p, stepI, [cSol.Lam[stepI], dSol.Lam[stepI]])
+			display(p)
         end
     end
 
