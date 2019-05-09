@@ -947,8 +947,7 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
     HeΔ=zeros(H)
     # Hz=1e-6
     # Ht=1e-6
-    ρRate=1.1
-    ρALADmax=1e6
+
 
     #coupled QP
     cM = Model(solver = GurobiSolver(NumericFocus=3))
@@ -1022,9 +1021,9 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
     α3=1
     #α3=1/ceil(p/2)
 
-    dLogalad.Lam[:,1,p]=round.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),sigdigits=roundSigFigs)
-    #dLogalad.Lam[:,p]=max.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),0)
-    dLogalad.Vu[:,:,p]=round.(itVu[:,:,1]+α1*(dLogalad.U[:,:,p]-itVu[:,:,1])+α2*getvalue(dU),sigdigits=roundSigFigs)
+    # dLogalad.Lam[:,1,p]=round.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),sigdigits=roundSigFigs)
+    dLogalad.Lam[:,1,p]=round.(max.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),0),sigdigits=roundSigFigs)
+    # dLogalad.Vu[:,:,p]=round.(itVu[:,:,1]+α1*(dLogalad.U[:,:,p]-itVu[:,:,1])+α2*getvalue(dU),sigdigits=roundSigFigs)
     dLogalad.Vz[:,:,p]=round.(itVz[:,:,1]+α1*(dLogalad.Z[:,:,p]-itVz[:,:,1])+α2*getvalue(dZ),sigdigits=roundSigFigs)
     dLogalad.Ve[:,:,p]=round.(itVe[:,:,1]+α1*(dLogalad.E[:,:,p]-itVe[:,:,1])+α2*getvalue(dE),sigdigits=roundSigFigs)
     dLogalad.Vd[:,:,p]=round.(itVd[:,:,1]+α1*(dLogalad.Vd[:,:,p]-itVd[:,:,1])+α2*getvalue(dEΔ),sigdigits=roundSigFigs)
@@ -1038,7 +1037,7 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
     #     @printf "convLamGap %e after %g iterations\n\n" dCMalad.lam[p,1] p
     # end
 
-    dLogalad.itUpdate[1,1,p]=min(ρALADp*ρRate,ρALADmax) #increase ρ every iteration
+    dLogalad.itUpdate[1,1,p]=min(itρ*ρRate,ρALADmax) #increase ρ every iteration
     #μALADp=min(μALADp*μRate,μALADmax) #increase μ every iteration
     #ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dZ),getvalue(dSn),getvalue(dT)),Inf)
     return nothing
@@ -1154,6 +1153,7 @@ function runEVALADIt(p,stepI,hubS,itLam,itVu,itVz,itVe,itVd,itVt,itρ,dLogalad,d
 end
 
 function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
+
     K=hubS.K
     S=hubS.S
     horzLen=min(hubS.K1,K-stepI)
@@ -1172,13 +1172,13 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
 			itVt=prevVt
 			itρ=ρALADp
 		else
-			itLam=round.(dLogalad.Lam[:,1,(p-1)],digits=8)
-			itVu=round.(dLogalad.Vu[:,:,(p-1)],digits=8)
-			itVz=round.(dLogalad.Vz[:,:,(p-1)],digits=8)
-			itVd=round.(dLogalad.Vd[:,:,(p-1)],digits=6)
-			itVe=round.(dLogalad.Ve[:,:,(p-1)],digits=6)
-			itVt=round.(dLogalad.Vt[:,1,(p-1)],digits=6)
-			itρ=round.(dLogalad.itUpdate[1,1,(p-1)],digits=2)
+			itLam=round.(dLogalad.Lam[:,1,(p-1)],sigdigits=roundSigFigs)
+			itVu=round.(dLogalad.Vu[:,:,(p-1)],sigdigits=roundSigFigs)
+			itVz=round.(dLogalad.Vz[:,:,(p-1)],sigdigits=roundSigFigs)
+			itVd=round.(dLogalad.Vd[:,:,(p-1)],sigdigits=roundSigFigs)
+			itVe=round.(dLogalad.Ve[:,:,(p-1)],sigdigits=roundSigFigs)
+			itVt=round.(dLogalad.Vt[:,1,(p-1)],sigdigits=roundSigFigs)
+			itρ=round.(dLogalad.itUpdate[1,1,(p-1)],sigdigits=roundSigFigs)
 		end
         cFlag=runEVALADIt(p,stepI,hubS,itLam,itVu,itVz,itVe,itVd,itVt,itρ,dLogalad,dSol,cSol,mode,eqForm,silent)
 		global convIt=p
@@ -1202,15 +1202,14 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     #     CList=colorant"red";
     # end
     # uSumPlotalad=plot(dLogalad.uSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Current Sum (kA)",xlims=(0,horzLen+1),legend=false)
-    # plot!(uSumPlotalad,cSol.uSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+	# plot!(uSumPlotalad,sum(uRaw,dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
 	#
     # zSumPlotalad=plot(dLogalad.zSum[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Z sum",xlims=(0,horzLen+1),legend=false)
-    # plot!(zSumPlotalad,cSol.zSum,seriescolor=:black,linewidth=2,linealpha=0.8)
+	# plot!(zSumPlotalad,sum(zRaw,dims=2),seriescolor=:black,linewidth=2,linealpha=0.8)
 	#
     # constPlotalad2=plot(dLogalad.couplConst[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="curr constraint diff",xlims=(0,horzLen+1),legend=false)
 	#
     # lamPlotalad=plot(dLogalad.Lam[:,1,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",xlims=(0,horzLen+1),legend=false)
-    # plot!(lamPlotalad,cSol.Lam,seriescolor=:black,linewidth=2,linealpha=0.8)
 	# plot!(lamPlotalad,lambdaCurr,seriescolor=:black,linewidth=2,linealpha=0.8)
 	#
     # activeSet=zeros(convIt,1)
