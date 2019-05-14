@@ -1,3 +1,4 @@
+# Micah Botkin-Levy
 # helper functions for EVC code
 using DataFrames
 using FileIO
@@ -5,11 +6,8 @@ using Dates
 using LaTeXStrings
 using MAT
 
-# using Gadfly
-# using Cairo #for png output
-# using Fontconfig
-
 function rebuildEVS(evS)
+    # legacy function to reconstruct scenario structure
 
     a=zeros(N,1)
     b_kWh=zeros(N,1)
@@ -37,33 +35,37 @@ function rebuildEVS(evS)
 end
 
 function mapLin(oldVal,oldMin,oldMax,newMin,newMax)
+    # mapping value from old range to new range: useful for PEM relative SoC mapping
     return (((oldVal .- oldMin) * (newMax .- newMin)) ./ (oldMax .- oldMin)) .+ newMin
 end
 
 function saveRun(path::String, filename::String, time::Float64, solution; cSave=centralLogStruct(logLength=1,horzLen=1,N=1,S=1),
     convMetrics=convMetricsStruct(maxIt=1,logLength=1))
-
+    # saves output (run time, solution, central save matrix, and convMetrics) of simulation
     saveFile=path*filename*".jld2"
     save(saveFile,"runTime", time, "solution", solution,"centralLog",cSave,"convMetrics", convMetrics)
 end
 
 function clips()
+    # pastes clipboard as string
     t=clipboard()
     return t[2:length(t)-1]
 end
 
 function clipr()
+    # loads file from clipboard
     t=clipboard()
     loadF=load(t[2:length(t)-1])
-
     return loadF
 end
 
 function pubPlot(p;upscale=8,thickscale=2,dpi=300,sizeWH=(800,600))
+    # auto figure scaling
     plot!(p,size=(sizeWH[1]*upscale,sizeWH[2]*upscale),thickness_scaling=thickscale*upscale,dpi=dpi)
 end
 
 function renameLabel(label)
+    # renames file names to plot friendly names (used in funEVCvis.jl)
     if occursin("PEM",label)
         new="PEM"
     elseif occursin("ADMM",label)
@@ -83,6 +85,7 @@ function renameLabel(label)
 end
 
 function checkDesiredStates(Sn,Kn,Snmin)
+    # checks simulations scenario to make sure vehicles have required minimum SoC by desired time step
     epsilon=1e-2
     flag=true
     N=length(Kn)
@@ -106,9 +109,8 @@ function checkDesiredStates(Sn,Kn,Snmin)
     return flag
 end
 
-
 function writeMAT(path, evS)
-
+    # export scenario as matlab file
     namesS = fieldnames(scenarioStruct)
     newDict = Dict()
     for i = 1:length(namesS)
@@ -124,9 +126,8 @@ function writeMAT(path, evS)
             nameS="tau"
         elseif nameS[1]=='β'
             nameS="beta"
-        end 
+        end
         newDict[nameS] =getfield(evS,namesS[i])
     end
     matwrite(path*"scenarioEVC.mat", newDict)
-
 end
