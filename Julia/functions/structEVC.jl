@@ -1,7 +1,7 @@
 
 
-#scenarios
-struct scenarioStruct
+#### scenario stucts
+struct scenarioStruct # EVC scenario structure
     N::Int
     Ts::Float64
 
@@ -17,11 +17,10 @@ struct scenarioStruct
 
     #limits
     Tmax::Float64
-    imin::Array{Float64,2} #switch these to 1 dim array/vectors
+    imin::Array{Float64,2} #switch these to 1 dim array/vectors??
     imax::Array{Float64,2}
     a::Array{Float64,2}
     b_kWh::Array{Int,2}
-
 
     #Discretization Paramters
     ηP::Array{Float64,2}
@@ -106,7 +105,8 @@ struct scenarioHubStruct
     slackMax::Array{Float64,2}
 end
 
-#debug info
+### debug info structs
+# struct used to look at convergence over iterations
 @with_kw struct convMetricsStruct
     maxIt::Int
     logLength::Int
@@ -134,10 +134,9 @@ end
     z1Norm::Array=zeros(maxIt,logLength)
     z2Norm::Array=zeros(maxIt,logLength)
     zInfNorm::Array=zeros(maxIt,logLength)
-
-    #add RMSE??
 end
 
+# save open loop solution to compare with distributed at designated time steps
 @with_kw struct centralLogStruct
     logLength::Int
     horzLen::Int
@@ -145,23 +144,21 @@ end
     S::Int
     Obj::Array{Float64,3}=zeros(1,1,logLength)
     Un::Array{Float64,3}=zeros(horzLen+1,N,logLength) #row are time, column are EV, stack is iteration
-    #Sn::Array{Float64,3}=zeros(horzLen+1,N,logLength) #row are time, column are EV, stack is iteration
     Lam::Array{Float64,3}=zeros(horzLen+1,1,logLength)
     Tactual::Array{Float64,3}=zeros(horzLen+1,1,logLength)
-    #Tpred::Array{Float64,3}=zeros(horzLen+1,1,logLength)
-    #uSum::Array{Float64,3}=zeros(horzLen+1,1,logLength)
-    #zSum::Array{Float64,3}=zeros(horzLen+1,1,logLength)
-    #Itotal::Array{Float64,3}=zeros(horzLen+1,1,logLength)
     Z::Array{Float64,3}=zeros(horzLen+1,S,logLength)
 end
 
+# track solutions of distributed methods over iterations
 @with_kw struct itLogPWL
     horzLen::Int
     N::Int
     S::Int
+
     # objective value
     objVal::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
     timeSolve::Array{Float64}=zeros(1,maxIt+1)
+
     #model variables
     Tpred::Array{Float64}=zeros((horzLen+1),maxIt+1) #rows are time
     Sn::SharedArray{Float64}=zeros(N*(horzLen+1),maxIt+1)
@@ -206,9 +203,11 @@ end
     itμUpdate::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 end
 
+# track solutions of NL distributed methods over iterations
 @with_kw struct itLogNL
     horzLen::Int
     N::Int
+
     # objective value
     objVal::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 
@@ -254,64 +253,7 @@ end
     itUpdate::Array{Float64}=zeros(1,maxIt+1) #columns are iteration
 end
 
-#solutions
-@with_kw struct solutionStruct
-    K::Int
-    N::Int
-    S::Int
-    Tpred::Array=zeros(K,1)
-    Sn::Array=zeros(K,N)
-    Un::Array=zeros(K,N)
-    Z::Array=zeros(K,S) #for PWL only
-    Itotal::Array=zeros(K,1)
-    objVal::Array=zeros(1,1)
-    lamTemp::Array=zeros(K,1)
-    lamCoupl::Array=zeros(K,1)
-    uSum::Array=zeros(K,1)
-    zSum::Array=zeros(K,1)
-    Tactual::Array=zeros(K,1)
-    slackSn::Array=zeros(K,1)
-    convIt::Array=zeros(K,1)
-    timeT::Array=zeros(K,1)
-    timeSolve::Array=zeros(K,1)
-end
-
-@with_kw struct hubSolutionStruct
-    K::Int
-    H::Int
-    E::Array=zeros(K,H) #row are time, column are hub
-    U::Array=zeros(K,H) #row are time, column are hub
-    D::Array=zeros(K,H) #row are time, column are hub
-    Itotal::Array=zeros(K,1) #row are time
-    Tpred::Array=zeros(K,1) #row are time
-    Tactual::Array=zeros(K,1) #row are time
-    uSum::Array=zeros(K,1) #row are time
-    zSum::Array=zeros(K,1) #row are time
-    Lam::Array=zeros(K,1) #row are time
-    convIt::Array=zeros(K,1) #row are time
-    objVal::Array=zeros(1,1)
-    timeT::Array=zeros(K,1)
-    timeSolve::Array=zeros(K,1)
-
-    E_depart::Array=zeros(K,H)
-    E_arrive::Array=zeros(K,H)
-end
-#
-# @with_kw struct hubItAux
-#     horzLen::Int
-#     H::Int
-#     S::Int
-#     K::Int
-#     T0::Array=zeros(K,1)  #row are time, column are hub
-#     E0::Array=zeros(K,H)  #row are time, column are hub
-#     Ve::Array=zeros(horzLen+1,H,maxIt+1) #row are time, column are hub, stack is iteration
-#     Vu::Array=zeros(horzLen+1,H,maxIt+1) #row are time, column are hub, stack is iteration
-#     Vz::Array=zeros(horzLen+1,S,maxIt+1) #row are time, column are segment, stack is iteration
-#     Vt::Array=zeros(horzLen+1,1,maxIt+1) #row are time, stack is iteration
-#     VΔ::Array=zeros(horzLen+1,H,maxIt+1) #row are time, stack is iteration
-#     Lam::Array=zeros(horzLen+1,1,maxIt+1) #row are time, stack is iteration
-# end
-
+# track solutions of Hub distributed methods over iterations
 @with_kw struct hubItLogPWL
     horzLen::Int
     H::Int
@@ -357,4 +299,47 @@ end
 
     itUpdate::Array{Float64,3}=zeros(1,1,maxIt+1)  #row are time,   stacks are iteration
     timeSolve::Array{Float64}=zeros(1,maxIt+1)
+end
+
+### MPC simulation solution structs
+@with_kw struct solutionStruct
+    K::Int
+    N::Int
+    S::Int
+    Tpred::Array=zeros(K,1)
+    Sn::Array=zeros(K,N)
+    Un::Array=zeros(K,N)
+    Z::Array=zeros(K,S) #for PWL only
+    Itotal::Array=zeros(K,1)
+    objVal::Array=zeros(1,1)
+    lamTemp::Array=zeros(K,1)
+    lamCoupl::Array=zeros(K,1)
+    uSum::Array=zeros(K,1)
+    zSum::Array=zeros(K,1)
+    Tactual::Array=zeros(K,1)
+    slackSn::Array=zeros(K,1)
+    convIt::Array=zeros(K,1)
+    timeT::Array=zeros(K,1)
+    timeSolve::Array=zeros(K,1)
+end
+
+@with_kw struct hubSolutionStruct
+    K::Int
+    H::Int
+    E::Array=zeros(K,H) #row are time, column are hub
+    U::Array=zeros(K,H) #row are time, column are hub
+    D::Array=zeros(K,H) #row are time, column are hub
+    Itotal::Array=zeros(K,1) #row are time
+    Tpred::Array=zeros(K,1) #row are time
+    Tactual::Array=zeros(K,1) #row are time
+    uSum::Array=zeros(K,1) #row are time
+    zSum::Array=zeros(K,1) #row are time
+    Lam::Array=zeros(K,1) #row are time
+    convIt::Array=zeros(K,1) #row are time
+    objVal::Array=zeros(1,1)
+    timeT::Array=zeros(K,1)
+    timeSolve::Array=zeros(K,1)
+
+    E_depart::Array=zeros(K,H)
+    E_arrive::Array=zeros(K,H)
 end
