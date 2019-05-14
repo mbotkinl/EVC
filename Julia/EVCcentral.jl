@@ -11,7 +11,6 @@ else
 end
 
 fname = "central_N$(N)"
-
 if noTlimit
 	fname = fname*"_noLim"
 end
@@ -42,7 +41,7 @@ if drawFig savefig(p1,path*"J_central_SoC.png") end
 p2=plot(cSol.Un,xlabel="Time",ylabel="PEV Current (kA)",legend=false,xlims=(1,evS.K))
 if drawFig savefig(p2,path*"J_central_Curr.png") end
 
-p3=plot(hcat(cSol.Tpred,cSol.Tactual),label=["Pred Temp" "Actual Temp"],xlabel="Time",ylabel="Temp (K)")
+p3=plot(hcat(cSol.Tpred,cSol.Tactual),label=["Pred Temp" "Actual Temp"],xlabel="Time",ylabel="Temp (C)")
 plot!(p3,1:evS.K,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red),xticks=xticks)
 if drawFig savefig(p3,path*"J_central_Temp.png") end
 

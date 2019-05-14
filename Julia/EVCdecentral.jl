@@ -1,6 +1,3 @@
-
-
-
 #Micah Botkin-Levy
 #4/10/18
 @everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
@@ -9,7 +6,7 @@ fname = "d_$(updateMethod)_N$(N)"
 if loadResults
 	println("Reading in Dual Decomp Sim")
 	loadF=load(path*fname*".jld2")
-	dLog=loadF["solution"]
+	dSol=loadF["solution"]
 	dCM=loadF["convMetrics"]
 else
 	#initialize
@@ -68,6 +65,3 @@ aggU=plot(hcat(cSol.uSum,dSol.uSum),label=["Central" "Decentral"],
 			xlims=(0,evS.K),xlabel="Time",ylabel="PEV Current (kA)")
 
 checkDesiredStates(dSol.Sn,evS.Kn,evS.Snmin)
-
-
-#draw(PNG(path*"aggPlot_fast.png", 13inch, 8inch), aggU)

@@ -7,7 +7,6 @@
 #current constraint is coupling
 
 @everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
-#include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 fname = "dADMM_N$(N)"
 
 if loadResults
@@ -68,12 +67,9 @@ pd4admm=plot(hcat(cSol.lamCoupl,dSoladmm.lamCoupl),xlabel="Time",ylabel=raw"Lamb
              xlims=(0,evS.K),labels=["Central" "ADMM"])
 if drawFig savefig(pd4admm,path*"J_decentral_ADMM_Lam.png") end
 
-
-
 #compare central and decentral current agg
 aggU=plot(hcat(cSol.uSum,dSoladmm.uSum),label=["Central" "ADMM"],
 			xlims=(0,evS.K),xlabel="Time",ylabel="PEV Current (kA)")
 if drawFig savefig(aggU,path*"J_decentral_ADMM_currSum.png") end
-
 
 checkDesiredStates(dSoladmm.Sn,evS.Kn,evS.Snmin)
