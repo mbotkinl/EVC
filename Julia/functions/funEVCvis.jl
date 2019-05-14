@@ -1,44 +1,37 @@
+#Micah Botkin-Levy
+# Visualization and Summary Functions
+# Note: these are not fully implemented or dynamic and mostly I was running the code inside instead of calling the functions
 
 using Plots.PlotMeasures
-#run comparison
+
+#get path where .jld2 simulation files live
 #path = clips()
 path=path*"ForVis\\"
-
 path=path*"PWL\\"
 
+# read in the simulation files
 cRun,runs, noLim=readRuns(path);
-lowRes=true
-saveF=false
+lowRes=true # affect figure resolution
+saveF=false # save figures
 
 #resPlot=compareRunsGraph(runs, cRun, noLim, saveResults,lowRes)
 #cTable=compareRunsTable(runs,evS)
 
-# for NL/PWL compare
+# for NL/PWL or two central simulations compare
 cRun,runs, noLim=readRuns(path,true);
 nl_pwlCompare(evS, runs,savefig,lowRes)
 
-# @time runALADit(1)
-#@time testALAD(1)
-
-# Profile.clear()
-# runALADit(1)
-# @profile runALADit(1)
-# Juno.profiler()
-
-
-# Profile.clear()
-# testDual(1)
-# @profile testDual(1)
-# Juno.profiler()
-
-
-function readRuns(path,multiCentral=false)
+function readRuns(path,multiCentral=false, ignorePEM=false)
+    # reads in simulation files in path and stores central, no lim central, and any distributed simulations it can find
     files = filter(x->occursin(".jld2",x), readdir(path))
-    #evFile = filter(x->occursin("scenario",x), files)
     files = filter(x->occursin("_",x), files) # avoid evScenario
 
-    # pemRun = filter(x->occursin("PEM",x), files)
-    # files=setdiff(files,pemRun)
+    # ignore PEM
+    if ignorePEM
+        pemRun = filter(x->occursin("PEM",x), files)
+        files=setdiff(files,pemRun)
+    end
+
     noLimFile = filter(x->occursin("noLim",x), files)
     if multiCentral
         cFile=[]
@@ -61,20 +54,15 @@ function readRuns(path,multiCentral=false)
         noLim=Nothing
     end
 
-    # if length(evFile)>0
-    #     evS=load(path*evFile[1])["evScenario"]
-    # else
-    #     evS=Nothing
-    # end
-
     runs=Dict{String,Any}()
     for ii=1:length(dFiles)
         runs[dFiles[ii]]=load(path*dFiles[ii])
     end
-    return cRun, runs, noLim#, evS
+    return cRun, runs, noLim
 end
 
 function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
+    # Compare solutions of simulations
     runNames=collect(keys(runs))
     cSol=cRun["solution"]
     numIt=size(runs[runNames[1]]["convMetrics"].coupl1Norm)[1]
@@ -109,20 +97,16 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     end
 
     plotLabels=copy(permutedims(runNames))
-
     for i=1:length(plotLabels)
         plotLabels[i]=renameLabel(plotLabels[i])
     end
-
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
 
-    Plots.scalefontsizes(1.2)
-
-
-
+    Plots.scalefontsizes(1.2) # careful about running this multiple times
     cAlpha=0.25
     lWidth=1.5
+
     #Time plots
     tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linealpha=cAlpha,
                     xlabel="",ylabel="Temp (C)",xticks=xticks,linewidth=8, title="a")
@@ -143,7 +127,6 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     loadPlot=plot(1:Klen,(cSol.uSum+iD)/Ntf*1000,xlabel="",ylabel="Current (A)",labels="",
                   seriescolor=:black,linewidth=6,linealpha=cAlpha,xticks=xticks, title="b")
     plot!(loadPlot,1:Klen,iD/Ntf*1000,label="Background Demand",line=(:dash),linewidth=2)
-    #plot!(loadPlot,1:Klen,evS.ItotalMax/Ntf*1000*ones(Klen),label="Current Limit",line=(:dash,:red),linewidth=3)
     plot!(loadPlot,(uSum.+iD)/Ntf*1000,labels="",seriescolor=plotColors,linewidth=lWidth)
     if noLim !=nothing
         plot!(loadPlot,1:Klen,(noLim["solution"].uSum+iD)/Ntf*1000,label="",seriescolor=allColors[P+1],linewidth=lWidth)
@@ -164,16 +147,6 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
         plot!(snSumPlot,sum(noLim["solution"].Sn,dims=2),label="",seriescolor=allColors[P+1])
     end
 
-
-    # snAvgCentral=[mean(cSol.Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# mean across N
-    # snAvgPlot=plot(1:Klen,snAvgCentral,xlabel="",ylabel="Avg.SOC",xlims=(0,Klen),labels=plotLabels,
-    #                seriescolor=:black,linewidth=4,linealpha=0.25,xticks=xticks)
-    # plot!(snAvgPlot,snAvg,labels=plotLabels,seriescolor=plotColors)
-    # if noLim !=nothing
-    #     snAvgNoLim=[mean(noLim["solution"].Sn[N*(k-1)+n,1] for n=1:N) for k in 1:Klen]# sum up across N
-    #     plot!(snAvgPlot,1:Klen,snAvgNoLim,label="Uncoordinated",seriescolor=allColors[P+1])
-    # end
-
     lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda",labels="Central",
                    seriescolor=:black,linewidth=6,linealpha=cAlpha,xticks=xticks, title="c")
     plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors,linewidth=lWidth)
@@ -193,8 +166,6 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     end
     Rmax=plot(Rmax,xlabel="Time",ylabel="R Max",xlims=(0,Klen),labels=plotLabels,seriescolor=plotColors,legend=false)
 
-
-    #resPlot=plot(tempPlot,loadPlot,snSumPlot,lamPlot,layout=(4,1))
     resPlot=plot(tempPlot,loadPlot,lamPlot,layout=(3,1))
     if lowRes
         pubPlot(resPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
@@ -204,7 +175,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 
     if saveF savefig(resPlot,path*"resPlot.png") end
 
-
+    # number of iterations per time step
     convItPlot=plot(convIt,xlabel="Time",ylabel="Number of Iterations",xlims=(0,Klen),xticks=xticks,labels=plotLabels,linewidth=2)
     savefig(convItPlot,path*"itPlot.png")
 
@@ -212,6 +183,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 end
 
 function compareConvGraph_New(evS;ind=1)
+    # compare convergence metrics over iterations for a single time step
     runNames=collect(keys(runs))
     K=evS.K
     N=evS.N
@@ -241,14 +213,12 @@ function compareConvGraph_New(evS;ind=1)
 
     plotLabels=copy(permutedims(runNames))
 
-    #
     # plotLabels=["NL" "PWL"]
     #plotLabels=["Equality ALADIN" "Inequlity ALADIN"]
 
     for i=1:length(plotLabels)
         plotLabels[i]=renameLabel(plotLabels[i])
     end
-
 
     Plots.scalefontsizes(1.2)
 
@@ -277,6 +247,7 @@ function compareConvGraph_New(evS;ind=1)
 end
 
 function compareConvGraph()
+    # legacy convegence graphs
     runNames=collect(keys(runs))
     cSol=cRun["solution"]
     numIt=size(runs[runNames[1]]["convMetrics"].lam)[1]
@@ -350,8 +321,8 @@ function compareConvGraph()
 end
 
 function compareRunsTable(runs,evS)
-    # compareTable = DataFrame(name=String[],time=Float64[],cLamDiff=Float64[],lamDiff=Float64[],
-    # cObjDiff=Float64[],objDiff=Float64[])
+    # Creates table of performance and convergence metrics
+
     Klen=evS.K
 
     compareSpeedTable = DataFrame(name=String[],timeTotal=Float64[],avgTimePerTs=Float64[],avgtimePerIt=Float64[],avgconvIt=Float64[],maxConvIt=Float64[])
@@ -416,11 +387,12 @@ function compareRunsTable(runs,evS)
         push!(comparePerfTable,stats)
     end
 
-
     return compareSpeedTable, comparePerfTable
 end
 
 function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
+    # compares solutions of hub simulations
+
     runNames=collect(keys(runs))
     cSol=cRun["solution"]
     Klen=size(cSol.Tactual)[1]
@@ -453,10 +425,7 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
 
-
     Plots.scalefontsizes(1.2)
-
-
 
     cAlpha=0.25
     lWidth=1.5
@@ -494,7 +463,6 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 
     if saveF savefig(resPlot,path*"hubPlot.png") end
 
-
     convItPlot=plot(convIt,xlabel="Time",ylabel="Number of Iterations",xticks=xticks,labels=plotLabels,linewidth=2,yscale=:log10)
     if lowRes
         pubPlot(convItPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
@@ -508,6 +476,9 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 end
 
 function calcPrivacy(N,K1,S)
+    # calculating communication bandwidth requirements for EVC problem
+
+    # number of iterations
     aladMaxIt=10
     admmMaxIt=100
     dualMaxIt=1000
@@ -553,13 +524,11 @@ function calcPrivacy(N,K1,S)
     aladIt+=K1*S*bpf+K1*bpf # aux variable to transformer
     alad=aladIt*aladMaxIt
 
-
     # per iteration total data
     aladIt/1e6 #megabit
     dualIt/1e9 #gigabit
     admmIt/1e6 #megabit
     pemIt/1e3 #kilobit
-
 
     # total time step per EV
     aladEV/1e3 #kilobit
@@ -635,7 +604,6 @@ function pwlSegPlot()
     ylabel!("e[k]")
     xlims!(segP,(0,25))
 
-
     segP2=plot(x,x.^2,label=L"i^2",linewidth=2,widen=true,legend=:topleft)
     plot!(segP2,x,segs,label="PWL Approx",xlabel="Current (kA)",linewidth=2)
     scatter!(segP2,solX[1:indT],solY[1:indT],label="Before Overload",markersize=mSize1,markerstrokewidth=0,
@@ -643,11 +611,8 @@ function pwlSegPlot()
     ylims!(segP2,(380,500))
     xlims!(segP2,(19.7,22))
 
-
     segPlots=plot(segP,segP2,layout=(1,2),size=(1200,800))
     savefig(segPlots,path*"pwlSegPlot.png")
-
-
 
     #check one spot
     i=3
@@ -663,6 +628,7 @@ function pwlSegPlot()
 end
 
 function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
+    # compares two central simulations
     runNames=collect(keys(runs))
     Klen=evS.K
     P=length(runNames)
@@ -702,7 +668,6 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
 
     Plots.scalefontsizes(1.2)
 
-
     #Time plots
     tempPlot=plot(T,label="",seriescolor=plotColors,
                     xlabel="",ylabel="Temp (C)",xticks=xticks)
@@ -733,6 +698,7 @@ function nl_pwlCompare(evS, runs, saveF::Bool, lowRes::Bool)
 end
 
 function forecastError()
+    # compare perfect forecast and forecast error simulations
 
     #plotLabels
     plotLabels=["Perfect Forecast" "Forecast Error"]
@@ -747,8 +713,9 @@ function forecastError()
 end
 
 function scenarioPlots(evS)
+    # Visualizing scenario setup
 
-    #back calculate
+    #back calculate (not needed anymore)
     # b_options=[40 60 75 100]
     # ratio = evS.ηP/(evS.Ts*240*1000)*3.6e6
     # b_close=round.(0.85 ./ ratio)
@@ -758,6 +725,7 @@ function scenarioPlots(evS)
     #     #println(i)
     #     b_kWh[i]=Int(b_options[abs.(b_close[i].-b_options).<=7][1])
     # end
+
     b_kWh=evS.b_kWh
 
     # b_hist=histogram(b_kWh,nbins=20,legend=false,xlabel="EV Battery Size (kWh)",ylabel= "Number of EVs")
@@ -777,7 +745,6 @@ function scenarioPlots(evS)
     XlabelsAM=vcat(collect(stT:Dates.Second(round(evS.Ts)):endT))
     xticksAM=(6.5:0.5:10,Dates.format.(XlabelsAM[1:10:71],"HH:MM"))
 
-
     minSoCPlot=histogram2d(departTime,evS.Snmin,nbins=12,xlabel="Time",ylabel="Minimum Departure SoC",
         colorbar_title="Number of EVs",title="(b)",xticks=xticksAM)
     evPlot=plot(s0Plot,minSoCPlot,layout=(1,2),thickness_scaling=1.5,dpi=100,size=(1000,400))
@@ -785,8 +752,6 @@ function scenarioPlots(evS)
 
     num_homes =1000
     idPlot=plot(evS.iD_actual*240/num_homes,xticks=xticks,widen=false,legend=false,ylabel="Demand (kW)",title="(a)")
-    #mean(iD_pred*240/num_homes)
-    #maximum(iD_pred*240/num_homes)
     tambPlot=plot(evS.Tamb_raw,xticks=xticks,legend=false,xlabel="Time",ylabel="Temperature (C)",widen=false,title="(b)")
     backgroundPlot=plot(idPlot,tambPlot,layout=(2,1))
     pubPlot(backgroundPlot,thickscale=1.4,sizeWH=(800,400),dpi=100)
@@ -812,4 +777,20 @@ function othergraphs()
                     xlabel="Time",xticks=xticks,xlims=(0,evS.K))
     pubPlot(dualComp,thickscale=1.5,sizeWH=(800,400),dpi=100)
     savefig(dualComp,path*"dualCompPlot.png")
+end
+
+function profiling()
+    # @time runALADit(1)
+    #@time testALAD(1)
+
+    # Profile.clear()
+    # runALADit(1)
+    # @profile runALADit(1)
+    # Juno.profiler()
+
+
+    # Profile.clear()
+    # testDual(1)
+    # @profile testDual(1)
+    # Juno.profiler()
 end
