@@ -1,4 +1,6 @@
-#test hub model
+# Wrapper Code to load scenario and most packages to run HUb code
+# Micah Botkin-Levy
+
 using JuMP
 using Statistics
 using Plots;pyplot()
@@ -7,27 +9,27 @@ using Parameters
 using SharedArrays
 using Distributed
 using LinearAlgebra
-#using Ipopt
 using Gurobi
 using Suppressor
 
-# check all indexing????
-#especially stepI +k for iD and Tamb
-H=4
-maxIt=5000
-auxChk = 1e3 #lamIt=0
-primChk = 1e-1 # Ax-B=0s
-datafile="jld2"
-mode="PWL"
-silent=true
-solverSilent=true
-saveS=false
-saveF=false
-loadResults=false
-saveResults=true
-eqForm=false
-coordinated=true
-runParallel=false
+H=4                  # number of hubs
+maxIt=5000           # maximum number of iterations per time step
+auxChk = 1e3         # auxillary gap check for ALADIN
+primChk = 1e-1       # coupling constraint gap check
+datafile="jld2"      # "jld2" for reading in scenario file, "n" for creating new scenario
+mode="PWL"           # PWL, NL, relax1 (not fully implemented)
+eqForm=false         # ALADIN equality vs inequality form
+coordinated=true     # true for tempature coordinated, false for coordinated (no temperature limit)
+runParallel=false    # run local EV problems in parallel
+
+# Parameters that control I/O
+silent=true          # prevents output to console
+solverSilent=true    # prevents feedback from JuMP solver
+saveS=false          # saves scenario file
+saveF=false          # draws output figures
+loadResults=false    # loads results
+saveResults=true     # saves result file
+
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVChelpers.jl")
 
@@ -45,15 +47,13 @@ else #create scenario
 	println("Creating Hub Scenario...")
 	Nh=100
 	Tmax=100
-	#Dload_amplitude=20
-
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCscenario.jl")
     if saveS using FileIO end
 	using Distributions
 	hubS=setupHubScenario(H,Nh,Tmax=Tmax,saveS=saveS,path=path)
 end
 
-
+# xticks for graphing
 stT1=Time(20,0)
 endT1=Time(23,59)
 stT2=Time(0,0)
