@@ -1,3 +1,6 @@
+# Run file for hub central simulation
+# Micah Botkin-Levy
+
 using Gurobi
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funHub.jl")
 fname = "central_H$(H)"
@@ -46,21 +49,15 @@ plot!(twinx(),cSol.U[:,h],label="Hub Current",seriestype=:line,seriescolor=:red,
 
 #departPlot=plot(eD[:,h],label="Depart Actual Energy",seriestype=:bar,xlims=(200,hubS.K),yerror=eDmin[:,h] .- eD[:,h])
 
-
 stT=Time(7,00)
 endT=Time(10,0)
 XlabelsAM=vcat(collect(stT:Dates.Second(Int(round(hubS.Ts))):endT))
 xticksAM=(220:10:hubS.K,Dates.format.(XlabelsAM[1:10:61],"HH:MM"))
 
-# Plots.scalefontsizes(1.2)
 departPlot=plot(eD[:,h],label="Depart Actual Energy",seriestype=:bar,xlims=(220,hubS.K),ylabel="Energy (MWh)",
 				xlabel="Time",xticks=xticksAM,size=(1200,800))
 plot!(departPlot,eDmin[:,h],label="Depart Min Energy",seriestype=:scatter,markersize=12)
 plot!(departPlot,eDmax[:,h],label="Depart Max Energy",seriestype=:scatter,markersize=12)
-#savefig(departPlot,path*"hubPlot_departE.png")
-
-
-t=zip(eDmin[:,h] .- eD[:,h],eDmin[:,h].+hubS.slackMax[:,h])
 
 p2=plot(cSol.U,xlabel="",ylabel="Current (kA)",legend=false,xticks=xticks, xlims=(0,hubS.K))
 
@@ -69,12 +66,9 @@ plot!(p3,hubS.Tmax*ones(hubS.K),label="XFRM Limit",line=(:dash,:red),xticks=xtic
 
 p4=plot(cSol.Lam,xlabel="Time",ylabel=raw"Lambda",legend=false,xticks=xticks, xlims=(0,hubS.K))
 
-
 aggU=plot((cSol.uSum+hubS.iD_actual)/Ntf*1000,label=["Central" "ADMM"],xlabel="Time",ylabel="Total Hub Current (kA)")
 plot!(aggU,hubS.iD_actual/Ntf*1000,label="Background Demand",line=(:dash),linewidth=2)
 
-
-p1
 # # test to make sure all hubs meet demand
 # epsilon=.01
 # compMin=cSol.E_depart.>=hubS.eDepart_min

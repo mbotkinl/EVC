@@ -1,3 +1,6 @@
+# Run file for PEM Hub simulation
+# Micah Botkin-Levy
+
 using Distributions
 using Gurobi
 
@@ -26,8 +29,6 @@ end
 println("plotting....")
 
 hubLabels=permutedims(["Hub $(h)" for h=1:hubS.H])
-# allColors=get_color_palette(:auto, plot_color(:white), H)
-# plotColors=allColors'
 
 Plots.scalefontsizes(1.2)
 

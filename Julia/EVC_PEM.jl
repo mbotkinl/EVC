@@ -1,3 +1,6 @@
+# Run file for PEM EVC simulation
+# Micah Botkin-Levy
+
 using Distributions
 using Gurobi
 
@@ -41,7 +44,6 @@ reqPlot=plot(requests,xlims=(0,evS.K),xlabel="Time",ylabel="Number of Requests")
 aggUpem=plot(hcat(cSol.uSum,pemSol.uSum),label=["Central" "PEM"],
 			xlims=(0,evS.K),xlabel="Time",ylabel="PEV Current (kA)")
 if drawFig savefig(aggUpem,path*"J_PEM_uSum.png") end
-
 
 checkDesiredStates(pemSol.Sn,evS.Kn,evS.Snmin)
 checkDesiredStates(pemSol.Sn,Int.(280*ones(N)),ones(N))
