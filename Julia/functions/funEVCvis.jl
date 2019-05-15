@@ -793,4 +793,14 @@ function profiling()
     # testDual(1)
     # @profile testDual(1)
     # Juno.profiler()
+
+
+
+    # using Profile
+    # Profile.clear()
+    # runEVCCentralStep(stepI,evS,cSol,silent)
+    # cSol=centralSolutionStruct(horzLen=horzLen,K=K,N=N,S=S)
+    # @profile  runEVCCentralStep(stepI,evS,cSol,silent)
+    # Juno.profiler()
+
 end
