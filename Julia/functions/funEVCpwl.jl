@@ -1026,6 +1026,8 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,evS,dLogalad:
     @constraint(tM,lowerTCon,t.>=0)
     @constraint(tM,pwlKappaMin,z.>=0)
     @constraint(tM,pwlKappaMax,z.<=deltaI)
+
+    # solve and check if optimal
     if solverSilent
         @suppress_out begin
             statusTM = solve(tM)
@@ -1073,6 +1075,7 @@ function coordALAD(p::Int,stepI::Int,itμ,evS,itLam,itVu,itVs,itVz,itVt,itρ,
     deltaI=evS.deltaI
     horzLen=min(evS.K1,evS.K-stepI)
 
+    # Hessian objective function
     Hu=2*evS.Ri[:,stepI:stepI+horzLen]
     Hs=2*evS.Qsi[:,stepI:stepI+horzLen]
     Hz=0
@@ -1080,25 +1083,28 @@ function coordALAD(p::Int,stepI::Int,itμ,evS,itLam,itVu,itVs,itVz,itVt,itρ,
 
     #coupled QP
     cM = Model(solver = GurobiSolver(NumericFocus=3))
-
     @variable(cM,dUn[1:(N)*(horzLen+1)])
     @variable(cM,dSn[1:(N)*(horzLen+1)])
     @variable(cM,dZ[1:(S)*(horzLen+1)])
     @variable(cM,dT[1:(horzLen+1)])
     @variable(cM,relaxS[1:(horzLen+1)])
+
+    # objective function
     objExp=sum(sum(0.5*dUn[(k-1)*N+n,1]^2*Hu[n,k]+dLogalad.Gu[(k-1)*N+n,p]*dUn[(k-1)*N+n,1] +
                    0.5*dSn[(k-1)*N+n,1]^2*Hs[n,k]+dLogalad.Gs[(k-1)*N+n,p]*dSn[(k-1)*N+n,1] for n=1:N) +
                sum(0.5*dZ[(k-1)*(S)+s,1]^2*Hz for s=1:S)+
                0.5*dT[k,1]^2*Ht   for k=1:(horzLen+1))
     objExp=objExp+itLam[:,1]'*relaxS+itμ/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
     objExp=objExp+dot(dLogalad.Gz[:,p],dZ)+dot(dLogalad.Gt[:,p],dT)
-
     @objective(cM,Min,objExp)
+
+    # coupling constraint
     Unp=round.(dLogalad.Un[:,p],sigdigits=roundSigFigs)
     Zp=round.(dLogalad.Z[:,p],sigdigits=roundSigFigs)
     @constraint(cM,currCon[k=1:horzLen+1],sum(Unp[(k-1)*(N)+n,1]+dUn[(k-1)*(N)+n,1] for n=1:N)-
                                           sum(Zp[(k-1)*(S)+s,1]+dZ[(k-1)*(S)+s,1] for s=1:S)==
                                           -evS.iD_pred[stepI+(k-1)]+relaxS[k,1])
+
     #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
     @constraint(cM,stateCon1[n=1:N],dSn[n,1]==evS.ηP[n,1]*dUn[n,1])
     @constraint(cM,stateCon2[k=1:horzLen,n=1:N],dSn[n+(k)*(N),1]==dSn[n+(k-1)*(N),1]+evS.ηP[n,1]*dUn[n+(k)*(N),1])
@@ -1126,6 +1132,7 @@ function coordALAD(p::Int,stepI::Int,itμ,evS,itLam,itVu,itVs,itVz,itVt,itρ,
         @constraint(cM,dLogalad.Ctl[:,p].*dT.<=0)
     end
 
+    # solve and check if optimal
     if solverSilent
         @suppress_out begin
             statusM = solve(cM)
@@ -1164,6 +1171,7 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,itμ,dLogalad,dC
     global s0
     global t0
 
+    # scaling parameter
     σZ=1.0/2.5
     σT=1/200
     σU=ones(N,1)/.05
@@ -1280,7 +1288,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     S=evS.S
     horzLen=min(evS.K1,K-stepI)
     dLogalad=itLogPWL(horzLen=horzLen,N=N,S=S)
-    p=1
+    p=1 # iteration index
     timeStart=now()
     # keep iterating while not converged, under maximum number of iterations, and time left in timestep
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))

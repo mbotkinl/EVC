@@ -1,15 +1,18 @@
-# hub functions
+# Functions to run Hub Simulations
+# Micah Botkin-Levy
 
-
-#Central
+### CENTRAL
 function runHubCentralStep(stepI,hubS,cSol,mode,silent)
+	# run single time step open loop central optimization problem
 
+	# initialize
     global t0
     global e0
     H=hubS.H
     K=hubS.K
     horzLen=min(hubS.K1,K-stepI)
 
+	# prepare predicted values
     eMax=hubS.eMax[stepI:(stepI+horzLen),:]
     uMax=hubS.uMax[stepI:(stepI+horzLen),:]
     eDepart_min=hubS.eDepart_min[stepI:(stepI+horzLen),:]
@@ -17,10 +20,8 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     eArrive_actual=hubS.eArrive_actual[stepI:(stepI+horzLen),:]
     slackMax=hubS.slackMax[stepI:(stepI+horzLen),:]
 
-    #cModel = Model(solver = IpoptSolver())
-    #cModel = Model(solver = GurobiSolver(OutputFlag=0,QCPDual=1))
+	# create model
     cModel = Model(solver = GurobiSolver(NumericFocus=3))
-
     @variable(cModel,u[1:(horzLen+1),1:H])
     @variable(cModel,t[1:(horzLen+1)])
     @variable(cModel,e[1:(horzLen+1),1:H])
@@ -67,7 +68,6 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     @constraint(cModel,stateCon[k=1:horzLen,h=1:H],e[k+1,h]==e[k,h]+hubS.ηP[h]*u[k+1,h]-(eDepart_min[k+1,h]+eΔ[k+1,h])+eArrive_pred[k+1,h])
     @constraint(cModel,e.>=0)
     @constraint(cModel,eMaxCon[k=1:horzLen+1,h=1:H],e[k,h]<=eMax[k,h])
-    #@constraint(cModel,uMaxCon,u.<=uMax)
     @constraint(cModel,u.>=0)
     @constraint(cModel,eΔ.<=slackMax)
     @constraint(cModel,eΔ.>=0)
@@ -79,9 +79,9 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     else
 		status = solve(cModel)
     end
-
     @assert status==:Optimal "Central Hub optimization not solved to optimality"
 
+	# opt solutions
     eRaw=getvalue(e)
     uRaw=getvalue(u)
     tRaw=getvalue(t)
@@ -105,28 +105,6 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
     cSol.Tactual[stepI,1]=hubS.τP*t0+hubS.γP*(cSol.uSum[stepI,1]+hubS.iD_actual[stepI,1])^2+hubS.ρP*hubS.Tamb[stepI,1]
 	cSol.timeSolve[stepI,1]=getsolvetime(cModel)
 
-	# p1nl=plot(eRaw,xlabel="Time",ylabel="Energy",xlims=(1,horzLen+1),label="hub energy")
-    # plot!(p1nl,eMax,label="hub max")
-    # plot!(p1nl,eMax*.8,label="minimum departure")
-	#
-    # p2nl=plot(uRaw,xlabel="Time",ylabel="Hub Current (kA)",legend=false,xlims=(1,horzLen+1))
-    # plot!(p2nl,uMax)
-	#
-    # p3nl=plot(1:horzLen+1,tRaw,label="XFRM Temp",xlims=(1,horzLen+1),xlabel="Time",ylabel="Temp (C)")
-    # plot!(p3nl,1:horzLen+1,hubS.Tmax*ones(horzLen+1),label="XFRM Limit",line=(:dash,:red))
-	#
-    # p4nl=plot(1:horzLen+1,lambdaCurr,label="Time",ylabel=raw"Lambda ($/kA)",xlims=(1,horzLen+1),legend=false)
-	#
-    # plot(sum(eMax,dims=2),label="max")
-    # plot!(sum(eRaw,dims=2),label="e")
-	# h=1
-    # plot(eDepart_min[:,h],label="min",xlims=(200,horzLen+1))
-    # plot!(eDepart_min[:,h]+extraE[:,h],label="actual")
-    # plot!(eDepart_min[:,h]+slackMax[:,h],label="max")
-	#
-	# aggU=plot(hcat(sum(uRaw,dims=2),sum(uRaw,dims=2) .+ hubS.iD_actual[1:horzLen+1],hubS.iD_actual[1:horzLen+1]),label=["Central" "Total" "iD"],xlims=(0,horzLen+1),xlabel="Time",ylabel="Current (kA)")
-	# plot!(aggU,1:hubS.K,hubS.ItotalMax*ones(hubS.K),label="XFRM Limit",line=(:dash,:red))
-
     # new states
     t0=cSol.Tactual[stepI,1]
     e0=cSol.E[stepI,:]
@@ -135,10 +113,13 @@ function runHubCentralStep(stepI,hubS,cSol,mode,silent)
 end
 
 function hubCentral(hubS::scenarioHubStruct,mode::String,silent::Bool)
+	# MPC wrapper for hub central simulation
+
     H=hubS.H
     K=hubS.K
     cSol=hubSolutionStruct(K=K,H=H)
 
+	# loop over timesteps
     Juno.progress() do id
         for stepI=1:K
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
@@ -152,17 +133,20 @@ function hubCentral(hubS::scenarioHubStruct,mode::String,silent::Bool)
         end
     end
 
+	# total objective value
 	objFun(e,u,d)=sum(sum((e[k,h]-hubS.eMax[k,h])^2*hubS.Qh[1,h]+(u[k,h])^2*hubS.Rh[1,h]-hubS.Oh[h]*d[k,h] for h=1:H) for k=1:K)
     cSol.objVal[1,1]=objFun(cSol.E,cSol.U,cSol.D)
 
     return cSol
 end
 
+### DUAL
+function localHubDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogPWL,itLam,e0,solverSilent)
+	# local decoupled problem for single Hub
 
-#Dual Ascent
-function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogPWL,itLam,e0,solverSilent)
     horzLen=min(hubS.K1,hubS.K-stepI)
 
+	# predicted values
     eMax=hubS.eMax[stepI:(stepI+horzLen),hubInd]
     uMax=hubS.uMax[stepI:(stepI+horzLen),hubInd]
     eDepart_min=hubS.eDepart_min[stepI:(stepI+horzLen),hubInd]
@@ -170,10 +154,13 @@ function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog:
     eArrive_actual=hubS.eArrive_actual[stepI:(stepI+horzLen),hubInd]
     slackMax=hubS.slackMax[stepI:(stepI+horzLen),hubInd]
 
+	# create model
     hubM=Model(solver = GurobiSolver(NumericFocus=3))
     @variable(hubM,u[1:horzLen+1])
     @variable(hubM,e[1:horzLen+1])
     @variable(hubM,eΔ[1:(horzLen+1)])
+
+	#objective function
     objExp=sum((e[k,1]-eMax[k,1])^2*hubS.Qh[1,hubInd]+(u[k,1])^2*hubS.Rh[1,hubInd]-hubS.Oh[1,hubInd]*eΔ[k,1]+itLam[k,1]*u[k,1] for k=1:horzLen+1)
     @objective(hubM,Min,objExp)
 
@@ -194,21 +181,22 @@ function localEVDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog:
     else
 		statusM = solve(hubM)
     end
-
     @assert statusM==:Optimal "Hub optimization not solved to optimality"
 
+	# save primal solutions
     dLog.U[:,hubInd,p]=round.(getvalue(u),sigdigits=roundSigFigs)
     dLog.E[:,hubInd,p]=round.(getvalue(e),sigdigits=roundSigFigs)
 	dLog.D[:,hubInd,p]=round.(getvalue(eΔ),sigdigits=roundSigFigs)
 	dLog.timeSolve[1,p]=max(getsolvetime(hubM),dLog.timeSolve[1,p])
-
     return nothing
 end
 
 function localXFRMDual(p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogPWL,mode::String,itLam,t0,solverSilent)
+	# local decoupled problem for transformer
     S=hubS.S
     horzLen=min(hubS.K1,hubS.K-stepI)
 
+	# create model
     coorM=Model(solver = GurobiSolver(NumericFocus=3))
     @variable(coorM,t[1:(horzLen+1)])
     @constraint(coorM,upperTCon,t.<=hubS.Tmax)
@@ -243,42 +231,42 @@ function localXFRMDual(p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogP
     else
 		statusC = solve(coorM)
     end
-
     @assert statusC==:Optimal "Dual Ascent XFRM optimization not solved to optimality"
 
+	# save primal solutions
     dLog.Tpred[:,1,p]=round.(getvalue(t),sigdigits=roundSigFigs)
     dLog.Z[:,:,p]=round.(getvalue(z),sigdigits=roundSigFigs)
 	dLog.timeSolve[1,p]=max(getsolvetime(coorM),dLog.timeSolve[1,p])
-
     return nothing
 end
 
 function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
+	# wrapper for single iteration dual decomposition algorithm
 
+	# get current states
     global t0
     global e0
-    #global prevLam
 
     H=hubS.H
     K=hubS.K
     S=hubS.S
     horzLen=min(hubS.K1,K-stepI)
 
-    minAlpha=1e-9
-	alphaDivRate=20
+    minAlpha=1e-9 # minimum step size
+	alphaDivRate=20 # controls step size over iterations
 
-
-    #solve subproblem for each EV
+    #solve subproblem for each Hub
 	if runParallel
 		@sync @distributed for hubInd=1:H
-			localEVDual(hubInd,p,stepI,hubS,dLog,itLam,e0,solverSilent)
+			localHubDual(hubInd,p,stepI,hubS,dLog,itLam,e0,solverSilent)
 		end
 	else
 		for hubInd=1:H
-			localEVDual(hubInd,p,stepI,hubS,dLog,itLam,e0,solverSilent)
+			localHubDual(hubInd,p,stepI,hubS,dLog,itLam,e0,solverSilent)
 		end
 	end
 
+	# solve subproblem for transformer
     localXFRMDual(p,stepI,hubS,dLog,mode,itLam,t0,solverSilent)
 
     #grad of lagragian
@@ -287,13 +275,10 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
         dLog.zSum[k,1,p]=sum(dLog.Z[k,s,p] for s=1:S)
         dLog.couplConst[k,1,p]=dLog.uSum[k,1,p]+ hubS.iD_pred[stepI+(k-1),1] - dLog.zSum[k,1,p]
     end
-    #dCM.couplConst[p,1]=norm(dLog.couplConst[:,p],2)
 
     #update lambda
     alphaP= max(alpha0/ceil(p/alphaDivRate),minAlpha)
     dLog.itUpdate[1,1,p]=alphaP
-    #alphaP= alphaP*alphaRate
-
 	dLog.Lam[:,1,p]=round.(max.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],0),sigdigits=roundSigFigs)
     # dLog.Lam[:,1,p]=round.(itLam[:,1]+alphaP*dLog.couplConst[:,1,p],sigdigits=roundSigFigs)
 
@@ -309,38 +294,32 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
     #check convergence
 	constGap=norm(dLog.couplConst[:,1,p],1)
 	itGap = norm(dLog.Lam[:,1,p]-itLam[:,1],2)
-    #if((constGap<=primChk) && (itGap <= dualChk))
 	if(constGap<=primChk)
-
         if !silent @printf "Converged after %g iterations\n" p end
 		@printf "Y"
         convIt=p
         return true
     else
         if !silent
-            #@printf "itGap    %e after %g iterations\n" itGap p
             @printf "constGap %e after %g iterations\n" constGap p
-            #@printf "snGap   %e after %g iterations\n" snGap p
-            #@printf "unGap   %e after %g iterations\n" unGap p
-            #@printf("fGap    %e after %g iterations\n\n",fGap,p)
         end
-        #prevLam=dLog.Lam[:,1,p]
         return false
     end
 end
 
 function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
+	# wrapper for single time step of dual decomposition hub algorithm
+
     K=hubS.K
     S=hubS.S
     horzLen=min(hubS.K1,K-stepI)
     dLog=hubItLogPWL(horzLen=horzLen,H=hubS.H,S=hubS.S)
-	p=1
+	p=1 # iteration index
     timeStart=now()
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*hubS.Ts))
-		# global p
+		# global p # used for debugging
 		if p==1
 			itLam=prevLam
-			#alpha0 =1 #for kA
 			global alpha0=max(min(maximum(prevLam)/200,1e6),1e-3)
 		else
 			itLam=round.(dLog.Lam[:,1,(p-1)],digits=8)
@@ -353,7 +332,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
 		p+=1
     end
 
-
+	# plots for debugging
     # plot(dLog.U[:,:,convIt])
     # plot(dLog.E[:,:,convIt])
     # pd3alad=plot(hcat(dLog.Tactual[:,1,convIt],dLog.Tpred[:,1,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")
@@ -400,6 +379,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
     global t0=dSol.Tactual[stepI,1]
     global e0=dSol.E[stepI,:]
 
+	# hot start next time step
     if convIt==1
         dSol.Lam[stepI,1]=prevLam[1,1]
         if stepI+horzLen==hubS.K
@@ -420,12 +400,13 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
 end
 
 function hubDual(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode::String,silent::Bool)
+	# MPC wrapper for hub dual decomposition simulation
     H=hubS.H
     K=hubS.K
     Nh=hubS.Nh
     dSol=hubSolutionStruct(K=K,H=H)
 
-	p = plot(2,label=["Central" "Dual"])
+	p = plot(2,label=["Central" "Dual"]) # plot that updates each MPC time step
     Juno.progress() do id
         for stepI=1:K
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
@@ -442,17 +423,19 @@ function hubDual(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
         end
     end
 
+	# total objective value
 	objFun(e,u,d)=sum(sum((e[k,h]-hubS.eMax[k,h])^2*hubS.Qh[1,h]+(u[k,h])^2*hubS.Rh[1,h]-hubS.Oh[h]*d[k,h] for h=1:H) for k=1:K)
     dSol.objVal[1,1]=objFun(dSol.E,dSol.U,dSol.D)
 
     return dSol
 end
 
-#ADMM
-function localEVADMM(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLogadmm::hubItLogPWL,itLam,itVu,e0,itρ,solverSilent)
-
+### ADMM
+function localHubADMM(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLogadmm::hubItLogPWL,itLam,itVu,e0,itρ,solverSilent)
+	# local decoupled problem for each
     horzLen=min(hubS.K1,hubS.K-stepI)
 
+	# predicted values
     eMax=hubS.eMax[stepI:(stepI+horzLen),hubInd]
     uMax=hubS.uMax[stepI:(stepI+horzLen),hubInd]
     eDepart_min=hubS.eDepart_min[stepI:(stepI+horzLen),hubInd]
@@ -460,13 +443,15 @@ function localEVADMM(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLoga
     eArrive_actual=hubS.eArrive_actual[stepI:(stepI+horzLen),hubInd]
     slackMax=hubS.slackMax[stepI:(stepI+horzLen),hubInd]
 
+	#Create model and variables
     hubM=Model(solver = GurobiSolver())
     @variable(hubM,u[1:horzLen+1])
     @variable(hubM,e[1:horzLen+1])
     @variable(hubM,eΔ[1:(horzLen+1)])
+
+	#objective function
     objExp=sum((e[k,1]-eMax[k,1])^2*hubS.Qh[1,hubInd]+(u[k,1])^2*hubS.Rh[1,hubInd]-hubS.Oh[1,hubInd]*eΔ[k,1]+
                             itLam[k,1]*(u[k,1]-itVu[k,hubInd])+itρ/2*(u[k,1]-itVu[k,hubInd])^2 for k=1:horzLen+1)
-
     @objective(hubM,Min,objExp)
 
     #hub constraints
@@ -474,11 +459,11 @@ function localEVADMM(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLoga
     @constraint(hubM,stateCon[k=1:horzLen],e[k+1,1]==e[k,1]+hubS.ηP[1,hubInd]*u[k+1]-(eDepart_min[k+1]+eΔ[k+1])+eArrive_pred[k+1])
     @constraint(hubM,e.>=0)
     @constraint(hubM,eMaxCon,e.<=eMax)
-    #@constraint(hubM,uMaxCon,u.<=uMax)
     @constraint(hubM,u.>=0)
     @constraint(hubM,eΔ.<=slackMax)
     @constraint(hubM,eΔ.>=0)
 
+	# solve and check if optimal
 	if solverSilent
         @suppress_out begin
 			statusM = solve(hubM)
@@ -486,23 +471,19 @@ function localEVADMM(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLoga
     else
 		statusM = solve(hubM)
     end
-
     @assert statusM==:Optimal "Hub optimization not solved to optimality"
 
-    uVal=getvalue(u)
-    eVal=getvalue(e)
-    eΔVal=getvalue(eΔ)
-
-    dLogadmm.E[:,hubInd,p]=round.(eVal,sigdigits=roundSigFigs)
-    dLogadmm.U[:,hubInd,p]=round.(uVal,sigdigits=roundSigFigs)
-	dLogadmm.D[:,hubInd,p]=round.(eΔVal,sigdigits=roundSigFigs)
+	# save primal solutions
+    dLogadmm.E[:,hubInd,p]=round.(getvalue(e),sigdigits=roundSigFigs)
+    dLogadmm.U[:,hubInd,p]=round.(getvalue(u),sigdigits=roundSigFigs)
+	dLogadmm.D[:,hubInd,p]=round.(getvalue(eΔ),sigdigits=roundSigFigs)
 	dLogadmm.timeSolve[1,p]=max(getsolvetime(hubM),dLogadmm.timeSolve[1,p])
-
     return nothing
 end
 
 function localXFRMADMM(p::Int,stepI::Int,hubS::scenarioHubStruct,dLogadmm::hubItLogPWL,mode::String,
 	t0,itLam,itVz,itρ,solverSilent)
+	# local decoupled transformer problem
 
     S=hubS.S
     horzLen=min(hubS.K1,hubS.K-stepI)
@@ -513,6 +494,7 @@ function localXFRMADMM(p::Int,stepI::Int,hubS::scenarioHubStruct,dLogadmm::hubIt
     @constraint(coorM,upperTCon,t.<=hubS.Tmax)
     @constraint(coorM,t.>=0)
     if mode=="NL"
+		# # Note: not finished
         # @variable(coorM,itotal[1:(horzLen+1)])
         # @objective(coorM,Min,sum(itLam[k,1]*itotal[k] for k=1:(horzLen+1)))
         # @constraint(coorM,itotal.<=hubS.ItotalMax)
@@ -520,6 +502,7 @@ function localXFRMADMM(p::Int,stepI::Int,hubS::scenarioHubStruct,dLogadmm::hubIt
         # @NLconstraint(coorM,tempCon1,t[1,1]==hubS.τP*t0+hubS.γP*(itotal[1])^2+hubS.ρP*hubS.Tamb[stepI,1])
         # @NLconstraint(coorM,tempCon2[k=1:horzLen],t[k+1,1]==hubS.τP*t[k,1]+hubS.γP*(itotal[k+1])^2+hubS.ρP*hubS.Tamb[stepI+k,1])
     elseif mode=="relax1"
+		# # Note: not finished
         # @variable(coorM,itotal[1:(horzLen+1)])
         # @objective(coorM,Min,sum(itLam[k,1]*itotal[k] for k=1:(horzLen+1)))
         # @constraint(coorM,itotal.<=hubS.ItotalMax)
@@ -537,6 +520,7 @@ function localXFRMADMM(p::Int,stepI::Int,hubS::scenarioHubStruct,dLogadmm::hubIt
         @constraint(coorM,z.<=hubS.deltaI)
     end
 
+	# solve and check if optimal
 	if solverSilent
         @suppress_out begin
 			statusC = solve(coorM)
@@ -544,19 +528,17 @@ function localXFRMADMM(p::Int,stepI::Int,hubS::scenarioHubStruct,dLogadmm::hubIt
     else
 		statusC = solve(coorM)
     end
-
     @assert statusC==:Optimal "Dual Ascent XFRM optimization not solved to optimality"
 
-    zVal=getvalue(z)
-    tVal=getvalue(t)
-
-    dLogadmm.Tpred[:,:,p]=round.(tVal,sigdigits=roundSigFigs)
-    dLogadmm.Z[:,:,p]=round.(zVal,sigdigits=roundSigFigs)
+	# save primal solutions
+    dLogadmm.Tpred[:,:,p]=round.(getvalue(t),sigdigits=roundSigFigs)
+    dLogadmm.Z[:,:,p]=round.(getvalue(z),sigdigits=roundSigFigs)
 	dLogadmm.timeSolve[1,p]=max(getsolvetime(coorM),dLogadmm.timeSolve[1,p])
     return nothing
 end
 
 function runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,eqForm,silent)
+	# wrapper for single iteration ADMM Hub algorithm
     H=hubS.H
     K=hubS.K
     S=hubS.S
@@ -566,17 +548,18 @@ function runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,e
     global e0
     global t0
 
-    #solve decoupled
+    #solve decoupled hub problem
     if runParallel
         @sync @distributed for hubInd=1:H
-			localEVADMM(hubInd,p,stepI,hubS,dLogadmm,itLam,itVu,e0,itρ,solverSilent)
+			localHubADMM(hubInd,p,stepI,hubS,dLogadmm,itLam,itVu,e0,itρ,solverSilent)
 		end
     else
         for hubInd=1:H
-			localEVADMM(hubInd,p,stepI,hubS,dLogadmm,itLam,itVu,e0,itρ,solverSilent)
+			localHubADMM(hubInd,p,stepI,hubS,dLogadmm,itLam,itVu,e0,itρ,solverSilent)
 		end
     end
 
+	# solve decoupled transformer problem
 	localXFRMADMM(p,stepI,hubS,dLogadmm,mode,t0,itLam,itVz,itρ,solverSilent)
 
 	#lambda update eq 7.68
@@ -604,44 +587,35 @@ function runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,e
 	end
 
 	#update rho
-	#ρADMMp = ρADMM/ceil(p/ρDivRate)
 	dLogadmm.itUpdate[1,1,p]= min(itρ*ρDivRate,maxRho)
 
 
     #check for convergence
 	constGap=norm(dLogadmm.couplConst[:,1,p],1)
 	itGap = norm(dLogadmm.Lam[:,1,p]-itLam[:,1],2)
-	#cc=norm(hcat((itVu[:,:]-dLogadmm.Vu[:,:,p]),(itVz[:,:]-dLogadmm.Vz[:,:,p])),2)
-	# if(constGap <= primChk  && itGap <=dualChk)
 	if(constGap <= primChk)
         if !silent @printf "Converged after %g iterations\n" p end
 		@printf "Y"
         convIt=p
-        #break
         return true
     else
         if !silent
-            #@printf "itGap  %e after %g iterations\n" itGap p
             @printf "constGap   %e after %g iterations\n" constGap p
-            #@printf "snGap      %e after %g iterations\n" snGap p
-            #@printf("fGap       %e after %g iterations\n",fGap,p)
         end
     end
-
     return false
 end
 
 function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
+	# wrapper for single time step of ADMM Hub
     K=hubS.K
     S=hubS.S
     horzLen=min(hubS.K1,K-stepI)
-    #ogρ=ρALADp #save to reset later
     dLogadmm=hubItLogPWL(horzLen=horzLen,H=hubS.H,S=hubS.S)
 	timeStart=now()
 	p=1
 	while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*hubS.Ts))
-		# global p
-        #@printf "%git" p
+		# global p # use for debugging
 		if p==1
 			itLam=prevLam
 			itVu=prevVu
@@ -654,8 +628,6 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
 			itVz=round.(dLogadmm.Vz[:,:,(p-1)],sigdigits=roundSigFigs)
 			itρ=round.(dLogadmm.itUpdate[1,1,(p-1)],sigdigits=roundSigFigs)
 		end
-		#@printf "itρ: %f\n" itρ
-
         cFlag=runEVADMMIt(p,stepI,hubS,itLam,itVu,itVz,itρ,dLogadmm,dSol,cSol,mode,eqForm,silent)
         global convIt=p
         if cFlag
@@ -664,6 +636,7 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
 		p+=1
     end
 
+	# # debugging plots
     # plot(dLogadmm.U[:,:,convIt])
     # plot(dLogadmm.E[:,:,convIt])
     # pd3alad=plot(hcat(dLogadmm.Tactual[:,1,convIt],dLogadmm.Tpred[:,1,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")
@@ -715,8 +688,7 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     global t0=round.(dSol.Tactual[stepI,1],sigdigits=roundSigFigs)
     global e0=round.(dSol.E[stepI,:],sigdigits=roundSigFigs)
 
-    #function getAttr()
-    #clean this up
+	# hot start next time step
     if convIt==1
         dSol.Lam[stepI,1]=prevLam[1,1]
         if stepI+horzLen==hubS.K
@@ -744,17 +716,16 @@ function runHubADMMStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     global prevLam=round.(newLam,sigdigits=roundSigFigs)
     global prevVu=round.(newVu,sigdigits=roundSigFigs)
     global prevVz=round.(newVz,sigdigits=roundSigFigs)
-    #global ρALADp=ogρ
-
     return nothing
 end
 
 function hubADMM(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode::String,silent::Bool)
+	# MPC wrapper for Hub ADMM simulation
     H=hubS.H
     K=hubS.K
     dSol=hubSolutionStruct(K=K,H=H)
 
-	p = plot(2,label=["Central" "ADMM"])
+	p = plot(2,label=["Central" "ADMM"]) # plot that updates each MPC time step
     Juno.progress() do id
         for stepI=1:K
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
@@ -771,21 +742,25 @@ function hubADMM(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
         end
     end
 
+	# total objective value
 	objFun(e,u,d)=sum(sum((e[k,h]-hubS.eMax[k,h])^2*hubS.Qh[1,h]+(u[k,h])^2*hubS.Rh[1,h]-hubS.Oh[h]*d[k,h] for h=1:H) for k=1:K)
     dSol.objVal[1,1]=objFun(dSol.E,dSol.U,dSol.D)
 
     return dSol
 end
 
-#ALADIN
-function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Array{Float64,2},σD::Array{Float64,2},
+### ALADIN
+function localHubALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Array{Float64,2},σD::Array{Float64,2},
 	hubS::scenarioHubStruct,dLogalad::hubItLogPWL,itLam,itVu,itVe,itVd,e0,itρ,solverSilent)
+	# local decoupled problem for each hub
 
     horzLen=min(hubS.K1,hubS.K-stepI)
 
+	# tolerance for determining active constraints
     tolU=1e-6
     tolE=1e-6
 
+	# prepare prediced values
     eMax=hubS.eMax[stepI:(stepI+horzLen),hubInd]
     uMax=hubS.uMax[stepI:(stepI+horzLen),hubInd]
     eDepart_min=hubS.eDepart_min[stepI:(stepI+horzLen),hubInd]
@@ -793,10 +768,13 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     eArrive_actual=hubS.eArrive_actual[stepI:(stepI+horzLen),hubInd]
     slackMax=hubS.slackMax[stepI:(stepI+horzLen),hubInd]
 
+	# create model and variables
     hubM=Model(solver = GurobiSolver(NumericFocus=3))
     @variable(hubM,u[1:horzLen+1])
     @variable(hubM,e[1:horzLen+1])
     @variable(hubM,eΔ[1:(horzLen+1)])
+
+	# objective function
     objExp=sum((e[k,1]-eMax[k,1])^2*hubS.Qh[1,hubInd]+(u[k,1])^2*hubS.Rh[1,hubInd]-hubS.Oh[1,hubInd]*eΔ[k,1]+
                             itLam[k,1]*(u[k,1])+
                             ρALADp/2*(u[k,1]-itVu[k,hubInd])*σU[hubInd,1]*(u[k,1]-itVu[k,hubInd])+
@@ -810,11 +788,11 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     @constraint(hubM,stateCon[k=1:horzLen],e[k+1,1]==e[k,1]+hubS.ηP[1,hubInd]*u[k+1]-(eDepart_min[k+1]+eΔ[k+1])+eArrive_pred[k+1])
     @constraint(hubM,e.>=0)
     @constraint(hubM,eMaxCon,e.<=eMax)
-    #@constraint(hubM,uMaxCon,u.<=uMax)
     @constraint(hubM,u.>=0)
     @constraint(hubM,eΔ.<=slackMax)
     @constraint(hubM,eΔ.>=0)
 
+	# solve and check if optimal
 	if solverSilent
         @suppress_out begin
 			statusM = solve(hubM)
@@ -822,33 +800,36 @@ function localEVALAD(hubInd::Int,p::Int,stepI::Int,σU::Array{Float64,2},σE::Ar
     else
 		statusM = solve(hubM)
     end
-
     @assert statusM==:Optimal "Hub optimization not solved to optimality"
 
     uVal=getvalue(u)
     eVal=getvalue(e)
     eΔVal=getvalue(eΔ)
 
+	#upper and lower bounds Jacobian approximates (C_i) for Hub current
     cValMax=abs.(uVal.-uMax).<tolU
     cValMin=abs.(uVal.-0).<tolU
     dLogalad.Cuu[:,hubInd,p]=1cValMax
     dLogalad.Cul[:,hubInd,p]=-1cValMin
 
+	#upper and lower bounds Jacobian approximates (C_i) for Hub energy
     cValMax=abs.(eVal.-eMax).<tolE
     cValMin=abs.(eVal.-0).<tolE
     dLogalad.Ceu[:,hubInd,p]=1cValMax
     dLogalad.Cel[:,hubInd,p]=-1cValMin
 
+	#upper and lower bounds Jacobian approximates (C_i) for HUb deltaE
     cValMax=abs.(eΔVal.-slackMax).<tolE
     cValMin=abs.(eΔVal.-0).<tolE
     dLogalad.Cdu[:,hubInd,p]=1cValMax
     dLogalad.Cdl[:,hubInd,p]=-1cValMin
 
-    #dLogalad.slackSn[evInd]= if slack getvalue(slackSn) else 0 end
+	# save primal solutions
     dLogalad.E[:,hubInd,p]=round.(eVal,sigdigits=roundSigFigs)
     dLogalad.U[:,hubInd,p]=round.(uVal,sigdigits=roundSigFigs)
 	dLogalad.D[:,hubInd,p]=round.(eΔVal,sigdigits=roundSigFigs)
 
+	#save gradient information
     dLogalad.Gu[:,hubInd,p]=round.(2*hubS.Rh[hubInd]*uVal,sigdigits=roundSigFigs)
     dLogalad.Ge[:,hubInd,p]=round.(2*hubS.Qh[hubInd]*eVal.-2*hubS.Qh[hubInd]*eMax,sigdigits=roundSigFigs)
     dLogalad.GeΔ[:,hubInd,p].=-hubS.Oh[1,hubInd]
@@ -858,9 +839,12 @@ end
 
 function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenarioHubStruct,dLogalad::hubItLogPWL,
 	mode::String,itLam,itVz,itVt,itρ)
+	# local transformer ALADIN problem
+
     S=hubS.S
     horzLen=min(hubS.K1,hubS.K-stepI)
 
+	# tolerance for determining active constraints
     tolT=1e-3
     tolZ=1e-4
 
@@ -870,6 +854,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenari
     @constraint(coorM,upperTCon,t.<=hubS.Tmax)
     @constraint(coorM,t.>=0)
     if mode=="NL"
+		# # Note: not finished
         # @variable(coorM,itotal[1:(horzLen+1)])
         # @objective(coorM,Min,sum(itLam[k,1]*itotal[k] for k=1:(horzLen+1)))
         # @constraint(coorM,itotal.<=hubS.ItotalMax)
@@ -877,6 +862,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenari
         # @NLconstraint(coorM,tempCon1,t[1,1]==hubS.τP*t0+hubS.γP*(itotal[1])^2+hubS.ρP*hubS.Tamb[stepI,1])
         # @NLconstraint(coorM,tempCon2[k=1:horzLen],t[k+1,1]==hubS.τP*t[k,1]+hubS.γP*(itotal[k+1])^2+hubS.ρP*hubS.Tamb[stepI+k,1])
     elseif mode=="relax1"
+		# # Note: not finished
         # @variable(coorM,itotal[1:(horzLen+1)])
         # @objective(coorM,Min,sum(itLam[k,1]*itotal[k] for k=1:(horzLen+1)))
         # @constraint(coorM,itotal.<=hubS.ItotalMax)
@@ -895,6 +881,7 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenari
         @constraint(coorM,z.<=hubS.deltaI)
     end
 
+	# solve and check if optimal
 	if solverSilent
         @suppress_out begin
 			statusC = solve(coorM)
@@ -902,29 +889,29 @@ function localXFRMALAD(p::Int,stepI::Int,σZ::Float64,σT::Float64,hubS::scenari
     else
 		statusC = solve(coorM)
     end
-
     @assert statusC==:Optimal "Dual Ascent XFRM optimization not solved to optimality"
 
-    #kappaMax=-getdual(pwlKappaMax)
-    #kappaMin=-getdual(pwlKappaMin)
-    #tMax=-getdual(upperTCon)
-    #tMin=-getdual(lowerTCon)
-    #lambdaTemp=[-getdual(tempCon1);-getdual(tempCon2)]
+
     zVal=getvalue(z)
     tVal=getvalue(t)
 
+	#upper and lower bounds Jacobian approximates (C_i) for transformer PWL current
     cValMax=abs.(zVal.-hubS.deltaI).<tolZ
     cValMin=abs.(zVal.-0).<tolZ
     dLogalad.Czu[:,:,p]=1cValMax
     dLogalad.Czl[:,:,p]=-1cValMin
 
+	#upper and lower bounds Jacobian approximates (C_i) for transformer temperature
     cValMax=abs.(tVal.-hubS.Tmax).<tolT
     cValMin=abs.(tVal.-0).<tolT
     dLogalad.Ctu[:,:,p]=1cValMax
     dLogalad.Ctl[:,:,p]=-1cValMin
 
+	# save primal solutions
     dLogalad.Tpred[:,:,p]=round.(tVal,sigdigits=roundSigFigs)
     dLogalad.Z[:,:,p]=round.(zVal,sigdigits=roundSigFigs)
+
+	# transformer variables do not show up in objective function
     dLogalad.Gz[:,:,p].=0
     dLogalad.Gt[:,:,p].=0
 	dLogalad.timeSolve[1,p]=max(getsolvetime(coorM),dLogalad.timeSolve[1,p])
@@ -933,21 +920,18 @@ end
 
 function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dLogalad::hubItLogPWL,
 	itLam,itVu,itVe,itVd,itVz,itVt,itρ)
+	# ALADIN coordinator problem
 
     H=hubS.H
     S=hubS.S
     horzLen=min(hubS.K1,hubS.K-stepI)
 
+	# Hessian objective function
     Hu=2*hubS.Rh
     He=2*hubS.Qh
-    # Hu=2*hubS.Ri *((1.5-2.5)*rand()+2.5)
-    # Hs=2*hubS.Qsi *((1.5-2.5)*rand()+2.5)
     Hz=0
     Ht=0
     HeΔ=zeros(H)
-    # Hz=1e-6
-    # Ht=1e-6
-
 
     #coupled QP
     cM = Model(solver = GurobiSolver(NumericFocus=3))
@@ -958,6 +942,7 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
     @variable(cM,dT[1:(horzLen+1)])
     @variable(cM,relaxS[1:(horzLen+1)])
 
+	# objective function
     objExp=sum(sum(0.5*dU[k,h]^2*Hu[h]+dLogalad.Gu[k,h,p]*dU[k,h] +
                    0.5*dE[k,h]^2*He[h]+dLogalad.Ge[k,h,p]*dE[k,h] +
                    0.5*dEΔ[k,h]^2*HeΔ[h]+dLogalad.GeΔ[k,h,p]*dEΔ[k,h] for h=1:H) +
@@ -965,15 +950,16 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
                0.5*dT[k,1]^2*Ht   for k=1:(horzLen+1))
     objExp=objExp+itLam[:,1]'*relaxS+μALADp/2*sum(relaxS[k,1]^2 for k=1:horzLen+1)
     objExp=objExp+dot(dLogalad.Gz[:,:,p],dZ)+dot(dLogalad.Gt[:,1,p],dT)
-
     @objective(cM,Min,objExp)
 
+	# coupling constraint
     Up=round.(dLogalad.U[:,:,p],digits=6)
     Zp=round.(dLogalad.Z[:,:,p],digits=6)
     @constraint(cM,currCon[k=1:horzLen+1],sum(Up[k,h]+dU[k,h] for h=1:H)-
                                           sum(Zp[k,s]+dZ[k,s] for s=1:S)==
                                           -hubS.iD_pred[stepI+(k-1)]+relaxS[k,1])
-    #local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
+
+	#local equality constraints C*(X+deltaX)=0 is same as C*deltaX=0 since we already know CX=0
     @constraint(cM,stateCon1[h=1:H],dE[1,h]==hubS.ηP[h]*dU[1,h]-dEΔ[1,h])
     @constraint(cM,stateCon2[k=1:horzLen,h=1:H],dE[k+1,h]==dE[k,h]+hubS.ηP[h]*dU[k+1,h]-dEΔ[k+1,h])
     @constraint(cM,tempCon1,dT[1,1]==hubS.γP*hubS.deltaI*sum((2*s-1)*dZ[1,s] for s=1:S))
@@ -1004,6 +990,7 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
         @constraint(cM,dLogalad.Ctl[:,:,p].*dT.<=0)
     end
 
+	# solve and check if optimal
 	if solverSilent
         @suppress_out begin
 			statusM = solve(cM)
@@ -1014,37 +1001,25 @@ function coordALAD(p::Int,stepI::Int,μALADp::Float64,hubS::scenarioHubStruct,dL
 
     @assert statusM==:Optimal "ALAD Central QP optimization not solved to optimality"
 
-    #update step
-    # Lam[:,p+1]=-getdual(currCon)
+	#update dual multipliers and auxillary variable step
     α1=1
     α2=1
     α3=1
-    #α3=1/ceil(p/2)
-
     # dLogalad.Lam[:,1,p]=round.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),sigdigits=roundSigFigs)
     dLogalad.Lam[:,1,p]=round.(max.(itLam[:,1]+α3*(-getdual(currCon)-itLam[:,1]),0),sigdigits=roundSigFigs)
-    # dLogalad.Vu[:,:,p]=round.(itVu[:,:,1]+α1*(dLogalad.U[:,:,p]-itVu[:,:,1])+α2*getvalue(dU),sigdigits=roundSigFigs)
     dLogalad.Vz[:,:,p]=round.(itVz[:,:,1]+α1*(dLogalad.Z[:,:,p]-itVz[:,:,1])+α2*getvalue(dZ),sigdigits=roundSigFigs)
     dLogalad.Ve[:,:,p]=round.(itVe[:,:,1]+α1*(dLogalad.E[:,:,p]-itVe[:,:,1])+α2*getvalue(dE),sigdigits=roundSigFigs)
     dLogalad.Vd[:,:,p]=round.(itVd[:,:,1]+α1*(dLogalad.Vd[:,:,p]-itVd[:,:,1])+α2*getvalue(dEΔ),sigdigits=roundSigFigs)
     dLogalad.Vt[:,:,p]=round.(itVt[:,:,1]+α1*(dLogalad.Tpred[:,:,p]-itVt[:,:,1])+α2*getvalue(dT),sigdigits=roundSigFigs)
 	dLogalad.timeSolve[1,p]+=getsolvetime(cM)
-
-    #dCMalad.lamIt[p,1]=norm(dLogalad.Lam[:,p]-itLam[:,1],2)
-    #dCMalad.lam[p,1]=norm(dLogalad.Lam[:,p]-cSol.lamCoupl[stepI:(horzLen+stepI)],2)
-    # if !silent
-    #     @printf "lastGap    %e after %g iterations\n" dCMalad.lamIt[p,1] p
-    #     @printf "convLamGap %e after %g iterations\n\n" dCMalad.lam[p,1] p
-    # end
-
     dLogalad.itUpdate[1,1,p]=min(itρ*ρRate,ρALADmax) #increase ρ every iteration
-    #μALADp=min(μALADp*μRate,μALADmax) #increase μ every iteration
-    #ΔY[1,p]=norm(vcat(getvalue(dUn),getvalue(dZ),getvalue(dSn),getvalue(dT)),Inf)
     return nothing
 end
 
 function runEVALADIt(p,stepI,hubS,itLam,itVu,itVz,itVe,itVd,itVt,itρ,dLogalad,dSol,cSol,mode,eqForm,silent)
-    H=hubS.H
+	# Function for a single iteration of the ALADIN algorithm
+
+	H=hubS.H
     K=hubS.K
     S=hubS.S
     horzLen=min(hubS.K1,K-stepI)
@@ -1052,51 +1027,27 @@ function runEVALADIt(p,stepI,hubS,itLam,itVu,itVz,itVe,itVd,itVt,itρ,dLogalad,d
     #initialize with current states
     global e0
     global t0
-    # global prevLam
-    # global prevVu
-    # global prevVz
-    # global prevVt
-    # global prevVe
-    # global prevVd
-    # global ρALADp
 
-    #other parameters
-    epsilon = 1e-2
-
-    #ALADIN tuning
-    # if eqForm
-    #     #println("Running Eq ALADIN")
-    #     scalingF=1.0
-    # else
-    #     #println("Running ineq ALADIN")
-    #     scalingF=1e-2
-    # end
-    # σZ=scalingF*10
-    # σT=scalingF
-    # σU=ones(H,1)*scalingF*10
-    # σE=ones(H,1)*scalingF
-    # σD=ones(H,1)*scalingF*10
+	# scaling parameters
 	σZ=1/8
     σT=1/200
     σU=ones(H,1)/50
     σE=ones(H,1)
     σD=ones(H,1)*5
     μALADp=1e8
-    # μALAD=1e8
-    # μRate=1
-    # μALADmax=2e9
 
     #solve decoupled
     if runParallel
         @sync @distributed for hubInd=1:H
-			localEVALAD(hubInd,p,stepI,σU,σE,σD,hubS,dLogalad,itLam,itVu,itVe,itVd,e0,itρ,solverSilent)
+			localHubALAD(hubInd,p,stepI,σU,σE,σD,hubS,dLogalad,itLam,itVu,itVe,itVd,e0,itρ,solverSilent)
 		end
     else
         for hubInd=1:H
-			localEVALAD(hubInd,p,stepI,σU,σE,σD,hubS,dLogalad,itLam,itVu,itVe,itVd,e0,itρ,solverSilent)
+			localHubALAD(hubInd,p,stepI,σU,σE,σD,hubS,dLogalad,itLam,itVu,itVe,itVd,e0,itρ,solverSilent)
 		end
     end
 
+	# solve local transformer problem
     localXFRMALAD(p,stepI,σZ,σT,hubS,dLogalad,mode,itLam,itVz,itVt,itρ)
 
     for k=1:horzLen+1
@@ -1114,27 +1065,14 @@ function runEVALADIt(p,stepI,hubS,itLam,itVu,itVz,itVe,itVd,itVt,itρ,dLogalad,d
         dLogalad.Tactual[k+1,1,p]=hubS.τP*dLogalad.Tactual[k,1,p]+hubS.γP*dLogalad.Itotal[k,1,p]^2+hubS.ρP*hubS.Tamb[stepI+k,1]  #fix for mpc
     end
 
+	# ALADIN coordination problem
 	coordALAD(p,stepI,μALADp,hubS,dLogalad,itLam,itVu,itVe,itVd,itVz,itVt,itρ)
 
     #check for convergence
     constGap=norm(dLogalad.couplConst[:,1,p],1)
 	itGap = norm(dLogalad.Lam[:,1,p]-itLam[:,1],2)
-	#dCM.coupl1Norm[p,1]=constGap
-	#dCM.lamIt2Norm[p,1]=itGap
     auxGap=norm(hcat(σU[1]*(itVu[:,:]-dLogalad.U[:,:,p]),σZ*(itVz[:,:]-dLogalad.Z[:,:,p]),
                  σT*(itVt[:,:]-dLogalad.Tpred[:,:,p]),σE[1]*(itVe[:,:]-dLogalad.E[:,:,p])),1)
-    #cc=ρALAD*norm(vcat(repeat(σU,horzLen+1,1).*(Vu[:,p]-Un[:,p+1]),σZ*(Vz[:,p]-Z[:,p+1])),1)
-    # objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*hubS.Qsi[n,1] for n=1:N) +
-    #                  sum((u[(k-1)*N+n,1])^2*hubS.Ri[n,1]       for n=1:N) for k=1:horzLen+1)
-    # dLogalad.objVal[1,p]=objFun(dLogalad.Sn[:,p],dLogalad.Un[:,p])
-    #fGap= abs(dLogalad.objVal[1,p]-cSol.objVal[1,1])
-    # snGap=norm((dLogalad.Sn[:,p]-cSol.Sn),2)
-    # unGap=norm((dLogalad.Un[:,p]-cSol.Un),2)
-    #dCMalad.obj[p,1]=fGap
-    # dCMalad.sn[p,1]=snGap
-    # dCMalad.un[p,1]=unGap
-    # dCMalad.couplConst[p,1]=constGap
-    #convCheck[p,1]=cc
     if  constGap<=primChk && auxGap<=auxChk
         if !silent @printf "Converged after %g iterations\n" p end
         convIt=p
@@ -1144,25 +1082,23 @@ function runEVALADIt(p,stepI,hubS,itLam,itVu,itVz,itVe,itVd,itVt,itρ,dLogalad,d
         if !silent
             @printf "auxGap     %e after %g iterations\n" auxGap p
             @printf "constGap   %e after %g iterations\n" constGap p
-            #@printf "snGap      %e after %g iterations\n" snGap p
-            #@printf("fGap       %e after %g iterations\n",fGap,p)
         end
     end
-
     return false
 end
 
 function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
+	# Function for each MPC time step
 
     K=hubS.K
     S=hubS.S
     horzLen=min(hubS.K1,K-stepI)
-    #ogρ=ρALADp #save to reset later
     dLogalad=hubItLogPWL(horzLen=horzLen,H=hubS.H,S=hubS.S)
 	timeStart=now()
-	p=1
+	p=1 # iteration index
+	# keep iterating while not converged, under maximum number of iterations, and time left in timestep
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*hubS.Ts))
-		# global p
+		# global p # use for debugging
 		if p==1
 			itLam=prevLam
 			itVu=prevVu
@@ -1188,6 +1124,7 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
         p+=1
     end
 
+	# # debugging plots
     # plot(dLogalad.U[:,:,convIt])
     # plot(dLogalad.E[:,:,convIt])
     # pd3alad=plot(hcat(dLogalad.Tactual[:,1,convIt],dLogalad.Tpred[:,1,convIt])*1000,label=["Actual Temp" "PWL Temp"],xlims=(0,hubS.K),xlabel="Time",ylabel="Temp (K)")
@@ -1254,8 +1191,8 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     global t0=dSol.Tactual[stepI,1]
     global e0=dSol.E[stepI,:]
 
-    #function getAttr()
-    #clean this up
+	# prepare solutions for next time step
+    #TODO: clean this up
     if convIt==1
         dSol.Lam[stepI,1]=prevLam[1,1]
         if stepI+horzLen==hubS.K
@@ -1298,18 +1235,17 @@ function runHubALADStep(stepI,maxIt,hubS,dSol,cSol,mode,eqForm,silent)
     global prevVt=newVt
     global prevVe=newVe
     global prevVd=newVd
-    #global ρALADp=ogρ
-
     return nothing
 end
 
 function hubALAD(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode::String,eqForm::Bool,silent::Bool)
-    H=hubS.H
+	# wrapper function for MPC Hub ALADIN
+	H=hubS.H
     K=hubS.K
     dSol=hubSolutionStruct(K=K,H=H)
 	dCM=convMetricsStruct(maxIt=maxIt,logLength=1)
 
-	p = plot(2,label=["Central" "ALAD"])
+	p = plot(2,label=["Central" "ALAD"]) # plot that updates every time step
     Juno.progress() do id
         for stepI=1:K
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
@@ -1326,6 +1262,7 @@ function hubALAD(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
         end
     end
 
+	# total MPC objective value
 	objFun(e,u,d)=sum(sum((e[k,h]-hubS.eMax[k,h])^2*hubS.Qh[1,h]+(u[k,h])^2*hubS.Rh[1,h]-hubS.Oh[h]*d[k,h] for h=1:H) for k=1:K)
     dSol.objVal[1,1]=objFun(dSol.E,dSol.U,dSol.D)
 
