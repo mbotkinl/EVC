@@ -17,10 +17,11 @@ else
 	# alphaDivRate=2
 	# alpha0 = 1e5 #for kA
 
-	prevLam=5e2*ones(evS.K1+1,1)
+	prevLam=150*ones(evS.K1+1,1)
 	alphaDivRate=2
-	alpha0 = 5e1 #for kA
+	# alpha0 = 5e1 #for kA
 	minAlpha=1e-6
+	maxAlpha=1e3
 	ρDUAL=0
 
 	#fastAscent
