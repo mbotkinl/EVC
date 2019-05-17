@@ -10,7 +10,7 @@ S=evS.S
 
 packLen=2 #number of time steps
 mttr=evS.Ts*packLen #300
-setSOC=0.1
+setSOC=0.15
 
 include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpem.jl")
 

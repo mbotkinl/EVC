@@ -32,7 +32,7 @@ N=100 # number of EVs
 
 # path to working directory
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\test\\"
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_new\\"
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_new2\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_largeQ\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\PWL\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_K\\"
