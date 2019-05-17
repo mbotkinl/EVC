@@ -51,7 +51,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
 
     # Constraint parameters:
     imin = zeros(N,1)                                # enable v2g with imin<0
-    b_nom = (b_kWh .- min(b_options))/(max(b_options)-min(b_options))
+    b_nom = (b_kWh .- minimum(b_options))/(maximum(b_options)-minimum(b_options))
     shift=2
     i_nom = min.(max.((b_nom .+ rand(Beta(4,3),N,1)/shift .- 1/(2*shift)),0),1)
     imax =round.(((80-28)*i_nom.+28)/1000,digits=6)  # kA, charging with 28-80 A
@@ -66,8 +66,8 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     Kn = convert(Array{Int,2},round.(K*FullChargeTime_relative))   # time step for final state of charge
 
     # Disturbance scenario
-    peak_demand_house = 4500 #W
-    min_demand_house = 3500 #W
+    peak_demand_house = 4200 #W
+    min_demand_house = 3200 #W
     Dload_amplitude=num_homes*peak_demand_house
     Dload_minimum = num_homes*min_demand_house
     dist = [range(0,stop=10,length=Int(round(K/2)));range(-10,stop=-1,length=Int(K-round(K/2)))] # let demand per household be peaking at 8PM and 8 PM
@@ -83,7 +83,7 @@ function setupScenario(N;Tmax=100,num_homes=0,Dload_error=0,saveS=false,path=pwd
     Tamb = Tamb_raw.+alpha/beta    # adding constant dynamic from Hines paper
 
     # penalty matrix
-    qrRatio=round.((500-0.002)*rand(Beta(0.5, 0.5),N,1) .+ 0.002,digits=2)
+    qrRatio=round.((500-0.005)*rand(Beta(0.5, 0.5),N,1) .+ 0.005,digits=2)
     Ri=1e1*ones(N,K)
     Qi=qrRatio.*Ri/100
 
