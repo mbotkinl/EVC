@@ -785,7 +785,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS,dSol::solutionStruct,dCM,cSave:
     p=1
     timeStart=now()
     while (p<=maxIt && round(now()-timeStart,Second)<=Dates.Second(9/10*evS.Ts))
-        #global p # use this debugging
+        # global p # use this debugging
         if p==1
             itLam=prevLam
             itVu=prevVu
@@ -832,7 +832,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS,dSol::solutionStruct,dCM,cSave:
     # convPlotalad=plot(dCM.lam2Norm[1:convIt,1],xlabel="Iteration",ylabel="central lambda gap",xlims=(1,convIt),legend=false,yscale=:log10)
     # convItPlotalad2=plot(dCM.lamIt2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm Dual",xlims=(1,convIt),legend=false,yscale=:log10)
     # constPlotalad1=plot(dCM.coupl1Norm[1:convIt,1],xlabel="Iteration",ylabel="1-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
-    # #savefig(lamPlotadmm,path*"lamPlotadmm"*".png")
+    # savefig(lamPlotadmm,path*"lamPlotadmm"*".png")
 
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLogadmm.Tpred[1,convIt]
@@ -850,7 +850,7 @@ function runEVADMMStep(stepI::Int,maxIt::Int,evS,dSol::solutionStruct,dCM,cSave:
     global t0=dSol.Tactual[stepI,1]
     global s0=dSol.Sn[stepI,:]
 
-    # hot start next time step
+    # hot start next time steps
     if convIt==1
         dSol.lamCoupl[stepI,1]=prevLam[1,1]
         if stepI+horzLen==evS.K

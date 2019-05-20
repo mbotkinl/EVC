@@ -18,7 +18,7 @@ else
 	#initialize
     t0=evS.t0
     s0=evS.s0
-	prevLam=5e2*ones(evS.K1+1,1)
+	prevLam=150*ones(evS.K1+1,1)
 	#prevLam=0*ones(evS.K1+1,1)
 	prevVz=-evS.deltaI/2*ones(evS.S*(evS.K1+1),1)
 	prevVu=.02*ones(evS.N*(evS.K1+1),1)
@@ -38,8 +38,8 @@ else
 	# ρADMMp = 2e5
 	# ρDivRate=1.02
 
-	ρADMMp = 2e3
-	ρDivRate=1.01
+	ρADMMp = 7e2
+	ρDivRate=1.001
 	maxRho=1e9
 
 	roundSigFigs=30
@@ -63,8 +63,7 @@ pd3admm=plot(hcat(dSoladmm.Tactual[:,1],dSoladmm.Tpred[:,1]),label=["Actual Temp
 plot!(pd3admm,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(pd3admm,path*"J_decentral_ADMM_Temp.png") end
 
-pd4admm=plot(hcat(cSol.lamCoupl,dSoladmm.lamCoupl),xlabel="Time",ylabel=raw"Lambda",
-             xlims=(0,evS.K),labels=["Central" "ADMM"])
+pd4admm=plot(hcat(cSol.lamCoupl[1:4],dSoladmm.lamCoupl[1:4]),xlabel="Time",ylabel=raw"Lambda",labels=["Central" "ADMM"])
 if drawFig savefig(pd4admm,path*"J_decentral_ADMM_Lam.png") end
 
 #compare central and decentral current agg
