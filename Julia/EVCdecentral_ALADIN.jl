@@ -18,7 +18,7 @@ if loadResults
 else
 	t0=evS.t0
 	s0=evS.s0
-	prevLam=5e2*ones(evS.K1+1,1)
+	prevLam=150*ones(evS.K1+1,1)
     prevVt=evS.Tmax*ones(evS.K1+1,1)
     prevVz=.01*ones(evS.S*(evS.K1+1),1)
     prevVu=.01*ones(evS.N*(evS.K1+1),1)
@@ -48,12 +48,19 @@ else
 	# μALADp = 1e3
 	# μRate=2
 
-    ρALADp = .001
-    ρRate=1.1
-    ρALADmax=1e4
-    μALADp = 1e2
-    μRate=1.5
-    μALADmax=1e9
+    # ρALADp = .001
+    # ρRate=1.15
+    # ρALADmax=1e4
+    # μALADp = 1e2
+    # μRate=1.5
+    # μALADmax=1e9
+
+	ρALADp = .01
+	ρRate=1.15
+	ρALADmax=1e4
+	μALADp = 1e1
+	μRate=1.5
+	μALADmax=1e9
 
 	roundSigFigs=30
 
