@@ -52,12 +52,6 @@ plot!(pd3,1:evS.K,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
 if updateMethod=="dualAscent" plot!(pd3,1:evS.K,dSol.Tpred[:,1]*1000,label="PWL Temp") end
 if drawFig savefig(pd3,path*"J_"*updateMethod*"_Temp.png") end
 
-if updateMethod=="fastAscent"
-	lamLabel=raw"Lambda ($/K)"
-else
-	lamLabel=raw"Lambda ($/kA)"
-end
-
 pd4=plot(hcat(cSol.lamCoupl,dSol.lamCoupl[:,1]),xlabel="Time",xlims=(0,evS.K),labels=["Central" "Dual"])
 if drawFig savefig(pd4,path*"J_"*updateMethod*"_Lam.png") end
 
