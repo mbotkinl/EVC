@@ -431,7 +431,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
         # global p # use this for debugging
         if p==1
             itLam=prevLam
-            global alpha0=max(min(maximum(prevLam)/20,maxAlpha),minAlpha) # needs to be a little higher
+            global alpha0=max(min(maximum(prevLam)/3,maxAlpha),minAlpha) 
         else
             itLam=round.(dLog.Lam[:,(p-1)],sigdigits=roundSigFigs)
         end
