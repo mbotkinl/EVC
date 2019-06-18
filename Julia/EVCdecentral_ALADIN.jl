@@ -55,11 +55,19 @@ else
     # μRate=1.5
     # μALADmax=1e9
 
+	# from 5/20
+	# ρALADp = .01
+	# ρRate=1.15
+	# ρALADmax=1e4
+	# μALADp = 1e1
+	# μRate=1.5
+	# μALADmax=1e9
+
 	ρALADp = .01
-	ρRate=1.15
+	ρRate=1.1
 	ρALADmax=1e4
 	μALADp = 1e1
-	μRate=1.5
+	μRate=1.4
 	μALADmax=1e9
 
 	roundSigFigs=30

@@ -431,7 +431,7 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
         # global p # use this for debugging
         if p==1
             itLam=prevLam
-            global alpha0=max(min(maximum(prevLam)/3,maxAlpha),minAlpha) 
+            global alpha0=max(min(maximum(prevLam)/2,maxAlpha),minAlpha)
         else
             itLam=round.(dLog.Lam[:,(p-1)],sigdigits=roundSigFigs)
         end
@@ -446,8 +446,8 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
         ind=findall(x->x==stepI,saveLogInd)[1]
         dCM.convIt[1,1,ind]=convIt
     end
-
-    # # # # # convergence plots used for debugging a single time step
+    #
+    # # # # # # convergence plots used for debugging a single time step
     # halfCI=Int(floor(convIt/2))
     # CList=reshape([range(colorant"blue", stop=colorant"yellow",length=halfCI);
     #                range(colorant"yellow", stop=colorant"red",length=convIt-halfCI)], 1, convIt);
@@ -462,6 +462,9 @@ function runEVDualStep(stepI,maxIt,evS,dSol,dCM,cSave,roundSigFigs,silent)
     #
     # lamPlotd=plot(dLog.Lam[1:4,convIt-10:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",legend=false)
     # plot!(lamPlotd,cSave.Lam[1:4,:,ind],seriescolor=:black,linewidth=2,linealpha=0.8)
+    #
+    # lamPlotd=plot(dLog.Lam[:,1:convIt],seriescolor=CList,xlabel="Time",ylabel="Lambda",legend=false)
+    # plot!(lamPlotd,cSave.Lam[:,:,ind],seriescolor=:black,linewidth=2,linealpha=0.8)
     # plot!(lamPlotd,cSol.lamCoupl[stepI:stepI+horzLen],seriescolor=:black,linewidth=2,linealpha=0.8)
     # plot!(lamPlotd,lambdaCurr,seriescolor=:black,linewidth=2,linealpha=0.8)
     #
@@ -1387,15 +1390,15 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     # constPlotalad2=plot(dCM.coupl2Norm[1:convIt,1],xlabel="Iteration",ylabel="2-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
     # constPlotaladInf=plot(dCM.couplInfNorm[1:convIt,1],xlabel="Iteration",ylabel="Inf-Norm coupl",xlims=(1,convIt),legend=false,yscale=:log10)
     # #savefig(uSumPlotalad,path*"uSumPlotalad"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
+
+    # checkPlot2=plot(convItPlotalad1,constPlotalad1,convItPlotalad2,
+    #                 constPlotalad2,convItPlotaladInf,constPlotaladInf,layout=(3,2))
+    # pubPlot(checkPlot2,thickscale=1,sizeWH=(600,400),dpi=60)
+    # savefig(checkPlot2,path*"checkPlot2"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
     #
-    # # checkPlot2=plot(convItPlotalad1,constPlotalad1,convItPlotalad2,
-    # #                 constPlotalad2,convItPlotaladInf,constPlotaladInf,layout=(3,2))
-    # # pubPlot(checkPlot2,thickscale=1,sizeWH=(600,400),dpi=60)
-    # # savefig(checkPlot2,path*"checkPlot2"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
-    # #
-    # # checkPlot=plot(convItPlotalad,constPlotalad,fPlotalad,convPlotalad,layout=(2,2))
-    # # pubPlot(checkPlot,thickscale=1,sizeWH=(600,400),dpi=60)
-    # # savefig(checkPlot,path*"checkPlot"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
+    # checkPlot=plot(convItPlotalad,constPlotalad,fPlotalad,convPlotalad,layout=(2,2))
+    # pubPlot(checkPlot,thickscale=1,sizeWH=(600,400),dpi=60)
+    # savefig(checkPlot,path*"checkPlot"*Dates.format(Dates.now(),"_HHMMSS_") *".png")
 
     #save current state and update for next timeSteps
     dSol.Tpred[stepI,1]=dLogalad.Tpred[1,convIt]
