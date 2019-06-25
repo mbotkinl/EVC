@@ -1442,7 +1442,7 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
             newVs=vcat(prevVs[(N+1):(N*(horzLen+1)),1],prevVs[((N*horzLen)+1):(N*(horzLen+1)),1])
         end
     else
-        dSol.lamCoupl[stepI,1]=dLogalad.Lam[1,convIt]
+        dSol.lamCoupl[stepI,1]=dLogalad.Lam[1,convIt-1]
         if stepI+horzLen==evS.K
             newLam=dLogalad.Lam[2:horzLen+1,convIt]
             newVu=dLogalad.Vu[(N+1):(N*(horzLen+1)),convIt]
