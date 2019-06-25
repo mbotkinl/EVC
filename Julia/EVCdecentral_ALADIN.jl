@@ -15,6 +15,18 @@ if loadResults
 	loadF=load(path*fname*".jld2")
 	dSolalad=loadF["solution"]
 	dCMalad=loadF["convMetrics"]
+
+	#
+	# stepI=200
+	# horzLen=min(evS.K1,evS.K-stepI)
+	# t0=dSolalad.Tactual[stepI-1]
+	# s0=dSolalad.Sn[stepI-1,:]
+	# prevLam=dSolalad.lamCoupl[stepI-horzLen-1:stepI-1]
+    # prevVt=dSolalad.Tactual[stepI-horzLen-1:stepI-1]
+    # prevVz=collect(Iterators.flatten(dSolalad.Z[stepI-horzLen-1:stepI-1, :]'))
+    # prevVu=collect(Iterators.flatten(dSolalad.Un[stepI-horzLen-1:stepI-1, :]'))
+    # prevVs=collect(Iterators.flatten(dSolalad.Sn[stepI-horzLen-1:stepI-1, :]'))
+
 else
 	t0=evS.t0
 	s0=evS.s0

@@ -1222,52 +1222,56 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,itμ,dLogalad,dC
         dLogalad.Tactual[k+1,p]=evS.τP*dLogalad.Tactual[k,p]+evS.γP*dLogalad.Itotal[k,p]^2+evS.ρP*evS.Tamb[stepI+k,1]  #fix for mpc
     end
 
-    # ALADIN coordination problem
-    coordALAD(p,stepI,itμ,evS,itLam,itVu,itVs,itVz,itVt,itρ,dLogalad,roundSigFigs)
-
     #check for convergence
     constGap=norm(dLogalad.couplConst[:,p],1)
-    itGap = norm(dLogalad.Lam[:,p]-itLam[:,1],2)
     objFun(sn,u)=sum(sum((sn[(k-1)*(N)+n,1]-1)^2*evS.Qsi[n,stepI+k-1] for n=1:N) +
                      sum((u[(k-1)*N+n,1])^2*evS.Ri[n,stepI+k-1]       for n=1:N) for k=1:horzLen+1)
     dLogalad.objVal[1,p]=objFun(dLogalad.Sn[:,p],dLogalad.Un[:,p])
     auxGap=norm(vcat(σU[1]*(itVu[:,1]-dLogalad.Un[:,p]),σZ*(itVz[:,1]-dLogalad.Z[:,p]),
                  σT*(itVt[:,1]-dLogalad.Tpred[:,p]),σS[1]*(itVs[:,1]-dLogalad.Sn[:,p])),1)
 
-    #only if saving
-    if stepI in saveLogInd
-        ind=findall(x->x==stepI,saveLogInd)[1]
-        dCM.coupl1Norm[p,ind]=constGap
-        dCM.coupl2Norm[p,ind]=norm(dLogalad.couplConst[:,p],2)
-        dCM.couplInfNorm[p,ind]=norm(dLogalad.couplConst[:,p],Inf)
-        dCM.lamIt1Norm[p,ind]= norm(dLogalad.Lam[:,p]-itLam[:,1],1)
-        dCM.lamIt2Norm[p,ind]=itGap
-        dCM.lamItInfNorm[p,ind]= norm(dLogalad.Lam[:,p]-itLam[:,1],Inf)
-        dCM.objAbs[p,ind]=abs(dLogalad.objVal[1,p]-cSave.Obj[1,1,ind])
-        dCM.objPerc[p,ind]=abs(dLogalad.objVal[1,p]-cSave.Obj[1,1,ind])/cSave.Obj[1,1,ind]
-        prevObj = if p==1 dLogalad.objVal[1,p] else dLogalad.objVal[1,p-1] end
-        dCM.objItPerc[p,ind]=abs(dLogalad.objVal[1,p]-prevObj)/prevObj
-        dCM.lam1Norm[p,ind]= norm(dLogalad.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],1)
-        dCM.lam2Norm[p,ind]= norm(dLogalad.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],2)
-        dCM.lamInfNorm[p,ind]= norm(dLogalad.Lam[:,p]-cSave.Lam[1:(horzLen+1),:,ind],Inf)
-        dCM.t1Norm[p,ind]= norm(dLogalad.Tactual[:,p]-cSave.Tactual[1:(horzLen+1),:,ind],1)
-        dCM.t2Norm[p,ind]= norm(dLogalad.Tactual[:,p]-cSave.Tactual[1:(horzLen+1),:,ind],2)
-        dCM.tInfNorm[p,ind]= norm(dLogalad.Tactual[:,p]-cSave.Tactual[1:(horzLen+1),:,ind],Inf)
-        zReshape=zeros(horzLen+1,S)
-        uReshape=zeros(horzLen+1,N)
-        for ii= 1:N
-            uReshape[:,ii]=dLogalad.Un[collect(ii:N:length(dLogalad.Un[:,p])),p]
+     #only if saving
+     if stepI in saveLogInd
+         ind=findall(x->x==stepI,saveLogInd)[1]
+         dCM.coupl1Norm[p,ind]=constGap
+         dCM.coupl2Norm[p,ind]=norm(dLogalad.couplConst[:,p],2)
+         dCM.couplInfNorm[p,ind]=norm(dLogalad.couplConst[:,p],Inf)
+         dCM.objAbs[p,ind]=abs(dLogalad.objVal[1,p]-cSave.Obj[1,1,ind])
+         dCM.objPerc[p,ind]=abs(dLogalad.objVal[1,p]-cSave.Obj[1,1,ind])/cSave.Obj[1,1,ind]
+         prevObj = if p==1 dLogalad.objVal[1,p] else dLogalad.objVal[1,p-1] end
+         dCM.objItPerc[p,ind]=abs(dLogalad.objVal[1,p]-prevObj)/prevObj
+         dCM.t1Norm[p,ind]= norm(dLogalad.Tactual[:,p]-cSave.Tactual[1:(horzLen+1),:,ind],1)
+         dCM.t2Norm[p,ind]= norm(dLogalad.Tactual[:,p]-cSave.Tactual[1:(horzLen+1),:,ind],2)
+         dCM.tInfNorm[p,ind]= norm(dLogalad.Tactual[:,p]-cSave.Tactual[1:(horzLen+1),:,ind],Inf)
+         zReshape=zeros(horzLen+1,S)
+         uReshape=zeros(horzLen+1,N)
+         for ii= 1:N
+             uReshape[:,ii]=dLogalad.Un[collect(ii:N:length(dLogalad.Un[:,p])),p]
+         end
+         for ii= 1:S
+             zReshape[:,ii]=dLogalad.Z[collect(ii:S:length(dLogalad.Z[:,p])),p]
+         end
+         dCM.un1Norm[p,ind]= norm(uReshape-cSave.Un[1:(horzLen+1),:,ind],1)
+         dCM.un2Norm[p,ind]= norm(uReshape-cSave.Un[1:(horzLen+1),:,ind],2)
+         dCM.unInfNorm[p,ind]= norm(uReshape-cSave.Un[1:(horzLen+1),:,ind],Inf)
+         dCM.z1Norm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],1)
+         dCM.z2Norm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],2)
+         dCM.zInfNorm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],Inf)
+
+        #lam are one index back
+        if p==1
+            save_lam = itLam
+        else
+            save_lam = dLogalad.Lam[:,p-1]
         end
-        for ii= 1:S
-            zReshape[:,ii]=dLogalad.Z[collect(ii:S:length(dLogalad.Z[:,p])),p]
-        end
-        dCM.un1Norm[p,ind]= norm(uReshape-cSave.Un[1:(horzLen+1),:,ind],1)
-        dCM.un2Norm[p,ind]= norm(uReshape-cSave.Un[1:(horzLen+1),:,ind],2)
-        dCM.unInfNorm[p,ind]= norm(uReshape-cSave.Un[1:(horzLen+1),:,ind],Inf)
-        dCM.z1Norm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],1)
-        dCM.z2Norm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],2)
-        dCM.zInfNorm[p,ind]= norm(zReshape-cSave.Z[1:(horzLen+1),:,ind],Inf)
-    end
+        dCM.lamIt1Norm[p,ind]= norm(save_lam-itLam[:,1],1)
+        dCM.lamIt2Norm[p,ind]= norm(save_lam-itLam[:,1],2)
+        dCM.lamItInfNorm[p,ind]= norm(save_lam-itLam[:,1],Inf)
+        dCM.lam1Norm[p,ind]= norm(save_lam-cSave.Lam[1:(horzLen+1),:,ind],1)
+        dCM.lam2Norm[p,ind]= norm(save_lam-cSave.Lam[1:(horzLen+1),:,ind],2)
+        dCM.lamInfNorm[p,ind]= norm(save_lam-cSave.Lam[1:(horzLen+1),:,ind],Inf)
+
+     end
 
     # if  constGap<=primChk && itGap<=dualChk
     if  constGap<=primChk && auxGap<=auxChk
@@ -1281,6 +1285,10 @@ function runEVALADIt(p,stepI,evS,itLam,itVu,itVz,itVs,itVt,itρ,itμ,dLogalad,dC
             @printf "constGap   %e after %g iterations\n\n" constGap p
         end
     end
+
+    # ALADIN coordination problem
+    coordALAD(p,stepI,itμ,evS,itLam,itVu,itVs,itVz,itVt,itρ,dLogalad,roundSigFigs)
+
     return false
 end
 
