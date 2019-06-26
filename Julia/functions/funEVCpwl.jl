@@ -1444,17 +1444,17 @@ function runEVALADStep(stepI,maxIt,evS,dSol,dCM,cSave,eqForm,roundSigFigs,silent
     else
         dSol.lamCoupl[stepI,1]=dLogalad.Lam[1,convIt-1]
         if stepI+horzLen==evS.K
-            newLam=dLogalad.Lam[2:horzLen+1,convIt]
-            newVu=dLogalad.Vu[(N+1):(N*(horzLen+1)),convIt]
-            newVz=dLogalad.Vz[(S+1):(S*(horzLen+1)),convIt]
-            newVt=dLogalad.Vt[2:horzLen+1,convIt]
-            newVs=dLogalad.Vs[(N+1):(N*(horzLen+1)),convIt]
+            newLam=dLogalad.Lam[2:horzLen+1,convIt-1]
+            newVu=dLogalad.Vu[(N+1):(N*(horzLen+1)),convIt-1]
+            newVz=dLogalad.Vz[(S+1):(S*(horzLen+1)),convIt-1]
+            newVt=dLogalad.Vt[2:horzLen+1,convIt-1]
+            newVs=dLogalad.Vs[(N+1):(N*(horzLen+1)),convIt-1]
         else
-            newLam=vcat(dLogalad.Lam[2:horzLen+1,convIt],dLogalad.Lam[horzLen+1,convIt])
-            newVu=vcat(dLogalad.Vu[(N+1):(N*(horzLen+1)),convIt],dLogalad.Vu[((N*horzLen)+1):(N*(horzLen+1)),convIt])
-            newVz=vcat(dLogalad.Vz[(S+1):(S*(horzLen+1)),convIt],dLogalad.Vz[((S*horzLen)+1):(S*(horzLen+1)),convIt])
-            newVt=vcat(dLogalad.Vt[2:horzLen+1,convIt],dLogalad.Vt[horzLen+1,convIt])
-            newVs=vcat(dLogalad.Vs[(N+1):(N*(horzLen+1)),convIt],dLogalad.Vs[((N*horzLen)+1):(N*(horzLen+1)),convIt])
+            newLam=vcat(dLogalad.Lam[2:horzLen+1,convIt-1],dLogalad.Lam[horzLen+1,convIt-1])
+            newVu=vcat(dLogalad.Vu[(N+1):(N*(horzLen+1)),convIt-1],dLogalad.Vu[((N*horzLen)+1):(N*(horzLen+1)),convIt-1])
+            newVz=vcat(dLogalad.Vz[(S+1):(S*(horzLen+1)),convIt-1],dLogalad.Vz[((S*horzLen)+1):(S*(horzLen+1)),convIt-1])
+            newVt=vcat(dLogalad.Vt[2:horzLen+1,convIt-1],dLogalad.Vt[horzLen+1,convIt-1])
+            newVs=vcat(dLogalad.Vs[(N+1):(N*(horzLen+1)),convIt-1],dLogalad.Vs[((N*horzLen)+1):(N*(horzLen+1)),convIt-1])
         end
     end
 
