@@ -273,7 +273,7 @@ function runHubDualIt(p,stepI,hubS,itLam,dLog,dSol,cSol,mode,silent)
     horzLen=min(hubS.K1,K-stepI)
 
     minAlpha=1e-9 # minimum step size
-	alphaDivRate=20 # controls step size over iterations
+	alphaDivRate=15 # controls step size over iterations
 
     #solve subproblem for each Hub
 	if runParallel
@@ -340,7 +340,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
 		# global p # used for debugging
 		if p==1
 			itLam=prevLam
-			global alpha0=max(min(maximum(prevLam)/200,1e6),1e-3)
+			global alpha0=max(min(maximum(prevLam)/150,1e8),1e-4)
 		else
 			itLam=round.(dLog.Lam[:,1,(p-1)],digits=8)
 		end

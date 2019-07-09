@@ -13,7 +13,7 @@ using Gurobi
 using Suppressor
 
 H=4                  # number of hubs
-maxIt=5000           # maximum number of iterations per time step
+maxIt=1000           # maximum number of iterations per time step
 auxChk = 1e3         # auxillary gap check for ALADIN
 primChk = 1e-1       # coupling constraint gap check
 datafile="jld2"      # "jld2" for reading in scenario file, "n" for creating new scenario
