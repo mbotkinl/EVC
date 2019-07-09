@@ -77,3 +77,5 @@ plot!(aggU,hubS.iD_actual/Ntf*1000,label="Background Demand",line=(:dash),linewi
 # testDept=abs.(compDept).<=epsilon
 # all(testDept) # this can be false
 # t=findfirst(testDept.==false)
+
+t = checkFeasibility(hubS, cSol)

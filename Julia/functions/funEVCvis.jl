@@ -222,7 +222,7 @@ function compareConvGraph_New(evS;ind=1)
 
     Plots.scalefontsizes(1.2)
 
-    maxIt=150
+    maxIt=200
     #internal metrics
     couplLabel= L"||i_d[k+1]+\sum_{n=1}^N i_n[k+1]-\sum_{m=1}^M i_m^{PW}[k+1]||_1"
     couplLabel="1-Norm Coupling Gap"
@@ -239,7 +239,7 @@ function compareConvGraph_New(evS;ind=1)
     if saveF savefig(intConvPlot,path*pname) end
 
     #external
-    objPlot=plot(convDict["objPerc"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"|J^{(p)}-J^{*}|")
+    objPlot=plot(convDict["objPerc"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"|J^{(p)}-J^{*}|", xlims=(0,maxIt))
     if saveF savefig(objPlot,path*"objPercConv") end
 
     un1Plot=plot(convDict["un1Norm"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"||u_n^{(p)}-u_n^{*}||_1")
@@ -377,7 +377,7 @@ function compareRunsTable(runs,evS)
     for keyI in keys(runs)
         println(keyI)
         loadF=runs[keyI]
-        curr2Norm=norm(cU*1000-loadF["solution"].U*1000,2)
+        curr2Norm=norm((cU*1000) .- (loadF["solution"].U*1000),2)
         currRMSE=sqrt(sum((cU*1000 .-loadF["solution"].U*1000).^2)/length(cU))
 
         lam2Norm=norm(cLam/1000-loadF["solution"].Lam/1000,2)

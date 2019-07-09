@@ -1,6 +1,26 @@
 # Functions to run Hub Simulations
 # Micah Botkin-Levy
 
+
+function checkFeasibility(hubS, sol)
+	flag = true
+	epsilon=1e-2
+
+	# check temperature feasiblity
+    if any((sol.Tactual .- hubS.Tmax) .> epsilon)
+		flag = false
+	end
+
+	# check minimum e departure feasiblity
+	#TODO: would need to add E_depart
+	if any((sol.E_depart .- hubS.eDepart_min) .< -epsilon)
+		flag = false
+	end
+
+	return flag
+end
+
+
 ### CENTRAL
 function runHubCentralStep(stepI,hubS,cSol,mode,silent)
 	# run single time step open loop central optimization problem
