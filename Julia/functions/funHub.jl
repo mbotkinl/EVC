@@ -175,7 +175,8 @@ function localHubDual(hubInd::Int,p::Int,stepI::Int,hubS::scenarioHubStruct,dLog
     slackMax=hubS.slackMax[stepI:(stepI+horzLen),hubInd]
 
 	# create model
-    hubM=Model(solver = GurobiSolver(NumericFocus=3))
+    # hubM=Model(solver = GurobiSolver(NumericFocus=3))
+	hubM=Model(solver = GurobiSolver())
     @variable(hubM,u[1:horzLen+1])
     @variable(hubM,e[1:horzLen+1])
     @variable(hubM,eΔ[1:(horzLen+1)])
@@ -217,7 +218,7 @@ function localXFRMDual(p::Int,stepI::Int,hubS::scenarioHubStruct,dLog::hubItLogP
     horzLen=min(hubS.K1,hubS.K-stepI)
 
 	# create model
-    coorM=Model(solver = GurobiSolver(NumericFocus=3))
+    coorM=Model(solver = GurobiSolver())
     @variable(coorM,t[1:(horzLen+1)])
     @constraint(coorM,upperTCon,t.<=hubS.Tmax)
     @constraint(coorM,t.>=0)
@@ -340,7 +341,7 @@ function runHubDualStep(stepI,maxIt,hubS,dSol,cSol,mode,silent)
 		# global p # used for debugging
 		if p==1
 			itLam=prevLam
-			global alpha0=max(min(maximum(prevLam)/150,1e8),1e-4)
+			global alpha0=max(min(maximum(prevLam)/150,1e8),1e-8)
 		else
 			itLam=round.(dLog.Lam[:,1,(p-1)],digits=8)
 		end
@@ -426,7 +427,8 @@ function hubDual(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
     Nh=hubS.Nh
     dSol=hubSolutionStruct(K=K,H=H)
 
-	p = plot(2,label=["Central" "Dual"]) # plot that updates each MPC time step
+	p_lambda = plot(2,label=["Central" "Dual"]) # plot that updates each MPC time step
+	p_current = plot(2,label=["Central" "Dual"]) # plot that updates each MPC time step
     Juno.progress() do id
         for stepI=1:K
             @info "$(Dates.format(Dates.now(),"HH:MM:SS")): $(stepI) of $(K)....\n" progress=stepI/K _id=id
@@ -438,8 +440,10 @@ function hubDual(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
                 @printf "error: %s" e
                 break
             end
-			push!(p, stepI, [cSol.Lam[stepI], dSol.Lam[stepI]])
-			display(p)
+			push!(p_lambda, stepI, [cSol.Lam[stepI], dSol.Lam[stepI]])
+			display(p_lambda)
+			push!(p_current, stepI, [sum(cSol.U[stepI,:]), sum(dSol.U[stepI,:]]))
+			display(p_current)
         end
     end
 
