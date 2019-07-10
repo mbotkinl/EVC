@@ -442,7 +442,7 @@ function hubDual(maxIt::Int,hubS::scenarioHubStruct,cSol::hubSolutionStruct,mode
             end
 			push!(p_lambda, stepI, [cSol.Lam[stepI], dSol.Lam[stepI]])
 			display(p_lambda)
-			push!(p_current, stepI, [sum(cSol.U[stepI,:]), sum(dSol.U[stepI,:]]))
+			push!(p_current, stepI, [sum(cSol.U[stepI,:]), sum(dSol.U[stepI,:])])
 			display(p_current)
         end
     end
