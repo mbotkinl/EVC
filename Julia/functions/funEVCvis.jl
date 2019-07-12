@@ -325,12 +325,14 @@ function compareRunsTable(runs,evS)
 
     Klen=evS.K
 
-    compareSpeedTable = DataFrame(name=String[],timeTotal=Float64[],avgTimePerTs=Float64[],avgtimePerIt=Float64[],avgconvIt=Float64[],maxConvIt=Float64[])
+    compareSpeedTable = DataFrame(name=String[],timeTotal=Float64[],avgTimePerTs=Float64[],avgtimePerIt=Float64[],
+                                  avgconvIt=Float64[],maxConvIt=Float64[],avgTimeSolve=Float64[])
     for keyI in keys(runs)
         println(keyI)
         loadF=runs[keyI]
         timeT=loadF["runTime"]
         convIt=loadF["solution"].convIt
+        timeSolve=loadF["solution"].timeSolve
         #cm=loadF["convMetrics"]
         #local convIt=loadF["convIt"]
         #ind= if convIt>0 convIt-1 else length(cm.lam) end
@@ -339,12 +341,14 @@ function compareRunsTable(runs,evS)
         avgTime=timeT/max(sum(convIt),Klen)
         avgConv=max(sum(convIt),Klen)/Klen
         maxConv=maximum(convIt)
-        stats = [renameLabel(keyI) timeT avgTimeTs avgTime avgConv maxConv]
+        avgTimeSolve=mean(timeSolve)
+        stats = [renameLabel(keyI) timeT avgTimeTs avgTime avgConv maxConv avgTimeSolve]
         push!(compareSpeedTable,stats)
     end
     #add central
     avgTimeTs=cRun["runTime"]/Klen
-    stats = ["Central" cRun["runTime"] avgTimeTs avgTimeTs 1 1]
+    avgTimeSolve = mean(cRun["solution"].timeSolve)
+    stats = ["Central" cRun["runTime"] avgTimeTs avgTimeTs 1 1 avgTimeSolve]
     push!(compareSpeedTable,stats)
 
     #EVC
