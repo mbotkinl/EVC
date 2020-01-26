@@ -56,6 +56,7 @@ function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 	requiredInd=findall(x->x==1,requiredCh)
 	extraInd=findall(x->x==2,Req)
 	optOffInd=findall(x->x==0,Req) #did not request
+	requestedInd=findall(x->x==1,Req)
 
 	if stepI==280
 		Rec=requiredCh
@@ -78,6 +79,10 @@ function pemEVCcoord(stepI,horzLen,packLen,evS,pemSol,Req)
 		@constraint(m,tempCon3[kk=horzLen:backgroundForecast-1],Test[kk+1]>=evS.τP*Test[kk]+evS.ρP*evS.Tamb[stepI+kk])
 		@constraint(m,Test.<=evS.Tmax+slackT)
 		@constraint(m,slackT>=0)
+		@constraint(m,acceptC1[nn=1:length(requestedInd), k=1:horzLen-1], u[k, requestedInd[nn]] <= u[k+1, requestedInd[nn]])
+		if !isempty(extraInd)
+			@constraint(m,acceptC2[nn=1:length(extraInd), k=1:horzLen-1], u[k, extraInd[nn]] <= u[k+1, extraInd[nn]])
+		end
 		@constraint(m,optOnC[nn=1:length(requiredInd)],sum(u[kk,requiredInd[nn]] for kk=1:Int(min(abs(Req[requiredInd[nn]]),horzLen)))==min(abs(Req[requiredInd[nn]]),horzLen))
 		@constraint(m,optOffC[kk=1:horzLen],sum(u[kk,n] for n in optOffInd)==0)
 
