@@ -6,13 +6,21 @@ using Plots.PlotMeasures
 
 #get path where .jld2 simulation files live
 #path = clips()
-path=path*"ForVis\\"
-path=path*"PWL\\"
+# path=path*"ForVis\\"
+# path=path*"PWL\\"
 
 # read in the simulation files
 cRun,runs, noLim=readRuns(path);
 lowRes=true # affect figure resolution
 saveF=false # save figures
+
+# plot attr
+fontfam = "serif"
+legsize1 = 23
+legsize2 = 18
+ticksize = 20
+guidesize = 33
+titlesize = 35
 
 #resPlot=compareRunsGraph(runs, cRun, noLim, saveResults,lowRes)
 #cTable=compareRunsTable(runs,evS)
@@ -103,33 +111,40 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
 
-    Plots.scalefontsizes(1.2) # careful about running this multiple times
+    # Plots.scalefontsizes(1.2) # careful about running this multiple times
     cAlpha=0.25
-    lWidth=1.5
+    centralWidth=16
+    lwidth= 4
 
     #Time plots
     tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linealpha=cAlpha,
-                    xlabel="",ylabel="Temp (C)",xticks=xticks,linewidth=8, title="a")
-    plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red),linewidth=2)
-    plot!(tempPlot,T,labels="",seriescolor=plotColors,linewidth=lWidth)
+                  legendfontsize=legsize1,xtickfontsize=ticksize, ytickfontsize=ticksize,
+                  xguidefontsize=guidesize, yguidefontsize=guidesize,titlefontsize=titlesize,
+                  xlabel="",ylabel="Temp (C)",xticks=xticks,linewidth=centralWidth, title="a", fontfamily=fontfam)
+    plot!(tempPlot,1:Klen,evS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red),linewidth=lwidth)
+    plot!(tempPlot,T,labels="",seriescolor=plotColors,linewidth=lwidth)
     if noLim !=nothing
-        plot!(tempPlot,1:Klen,noLim["solution"].Tactual,label="",seriescolor=allColors[P+1],linewidth=lWidth)
+        plot!(tempPlot,1:Klen,noLim["solution"].Tactual,label="",seriescolor=allColors[P+1],linewidth=lwidth)
     end
 
     uSumPlot=plot(1:Klen,cSol.uSum,xlabel="",ylabel="Current Sum (kA)",xlims=(0,Klen),labels="Central",
-                  seriescolor=:black,linewidth=6,linealpha=cAlpha,xticks=xticks)
-    plot!(uSumPlot,uSum,labels=plotLabels,seriescolor=plotColors,legend=false,linewidth=lWidth)
+                legendfontsize=legsize1,xtickfontsize=ticksize, ytickfontsize=ticksize,
+                xguidefontsize=guidesize, yguidefontsize=guidesize,titlefontsize=titlesize,
+                  seriescolor=:black,linewidth=centralWidth,linealpha=cAlpha,xticks=xticks, fontfamily=fontfam)
+    plot!(uSumPlot,uSum,labels=plotLabels,seriescolor=plotColors,legend=false,linewidth=lwidth)
     if noLim !=nothing
-        plot!(uSumPlot,1:Klen,noLim["solution"].uSum,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=lWidth)
+        plot!(uSumPlot,1:Klen,noLim["solution"].uSum,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=lwidth)
     end
 
     iD=evS.iD_actual[1:Klen]
     loadPlot=plot(1:Klen,(cSol.uSum+iD)/Ntf*1000,xlabel="",ylabel="Current (A)",labels="",
-                  seriescolor=:black,linewidth=6,linealpha=cAlpha,xticks=xticks, title="b")
-    plot!(loadPlot,1:Klen,iD/Ntf*1000,label="Background Demand",line=(:dash),linewidth=2)
-    plot!(loadPlot,(uSum.+iD)/Ntf*1000,labels="",seriescolor=plotColors,linewidth=lWidth)
+                legendfontsize=legsize1,xtickfontsize=ticksize, ytickfontsize=ticksize,
+                xguidefontsize=guidesize, yguidefontsize=guidesize,titlefontsize=titlesize,
+                  seriescolor=:black,linewidth=centralWidth,linealpha=cAlpha,xticks=xticks, title="b", fontfamily=fontfam)
+    plot!(loadPlot,1:Klen,iD/Ntf*1000,label="Background Demand",line=(:dash),linewidth=lwidth)
+    plot!(loadPlot,(uSum.+iD)/Ntf*1000,labels="",seriescolor=plotColors,linewidth=lwidth)
     if noLim !=nothing
-        plot!(loadPlot,1:Klen,(noLim["solution"].uSum+iD)/Ntf*1000,label="",seriescolor=allColors[P+1],linewidth=lWidth)
+        plot!(loadPlot,1:Klen,(noLim["solution"].uSum+iD)/Ntf*1000,label="",seriescolor=allColors[P+1],linewidth=lwidth)
     end
 
     target=zeros(Klen)
@@ -140,18 +155,22 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
 
     snSumCentral=sum(cSol.Sn,dims=2)# sum up across N
     snSumPlot=plot(snSumCentral,xlabel="",ylabel="SoC Sum",xlims=(0,Klen),labels="",
-                   seriescolor=:black,linewidth=4,linealpha=cAlpha,xticks=xticks)
-    plot!(snSumPlot,target,label="SoC Target",line=(:dash))
-    plot!(snSumPlot,snSum,labels="",seriescolor=plotColors)
+                    legendfontsize=legsize1,xtickfontsize=ticksize, ytickfontsize=ticksize,
+                    xguidefontsize=guidesize, yguidefontsize=guidesize,titlefontsize=titlesize,
+                   seriescolor=:black,linewidth=centralWidth,linealpha=cAlpha,xticks=xticks, fontfamily=fontfam)
+    plot!(snSumPlot,target,label="SoC Target",line=(:dash),linewidth=lwidth)
+    plot!(snSumPlot,snSum,labels="",seriescolor=plotColors,linewidth=lwidth)
     if noLim !=nothing
-        plot!(snSumPlot,sum(noLim["solution"].Sn,dims=2),label="",seriescolor=allColors[P+1])
+        plot!(snSumPlot,sum(noLim["solution"].Sn,dims=2),label="",seriescolor=allColors[P+1],linewidth=lwidth)
     end
 
     lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda",labels="Central",
-                   seriescolor=:black,linewidth=6,linealpha=cAlpha,xticks=xticks, title="c")
-    plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors,linewidth=lWidth)
+                legendfontsize=legsize2,xtickfontsize=ticksize, ytickfontsize=ticksize,
+                xguidefontsize=guidesize, yguidefontsize=guidesize,titlefontsize=titlesize,
+                   seriescolor=:black,linewidth=centralWidth,linealpha=cAlpha,xticks=xticks, title="c", fontfamily=fontfam)
+    plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors,linewidth=lwidth)
     if noLim !=nothing
-        plot!(lamPlot,1:Klen,noLim["solution"].lamCoupl,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=lWidth)
+        plot!(lamPlot,1:Klen,noLim["solution"].lamCoupl,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=lwidth)
     end
 
     # R plot***
@@ -170,7 +189,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     if lowRes
         pubPlot(resPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
     else
-        pubPlot(resPlot,thickscale=1,sizeWH=(1000,600),dpi=40)
+        pubPlot(resPlot,thickscale=1,sizeWH=(1500,900),dpi=100)
     end
 
     if saveF savefig(resPlot,path*"resPlot.png") end
@@ -220,7 +239,7 @@ function compareConvGraph_New(evS;ind=1)
         plotLabels[i]=renameLabel(plotLabels[i])
     end
 
-    Plots.scalefontsizes(1.2)
+    # Plots.scalefontsizes(1.2)
 
     maxIt=200
     #internal metrics
@@ -239,8 +258,13 @@ function compareConvGraph_New(evS;ind=1)
     if saveF savefig(intConvPlot,path*pname) end
 
     #external
-    objPlot=plot(convDict["objPerc"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"|J^{(p)}-J^{*}|", xlims=(0,maxIt))
-    if saveF savefig(objPlot,path*"objPercConv") end
+    objPlot=plot(convDict["objPerc"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"|J^{(p)}-J^{*}|", xlims=(0,maxIt),
+                legendfontsize=legsize1,xtickfontsize=ticksize, ytickfontsize=ticksize,
+                xguidefontsize=guidesize, yguidefontsize=guidesize,titlefontsize=titlesize,
+                fontfamily=fontfam, linewidth=4)
+    pubPlot(objPlot,thickscale=1,sizeWH=(1500,900),dpi=100)
+
+    if saveF savefig(objPlot,path*"objPercConv.png") end
 
     un1Plot=plot(convDict["un1Norm"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"||u_n^{(p)}-u_n^{*}||_1")
     unInfPlot=plot(convDict["unInfNorm"],labels=plotLabels,yscale=:log10,xlabel="Iteration",ylabel=L"||u_n^{(p)}-u_n^{*}||_{\infty}")
@@ -343,6 +367,7 @@ function compareRunsTable(runs,evS)
         maxConv=maximum(convIt)
         avgTimeSolve=mean(timeSolve)
         stats = [renameLabel(keyI) timeT avgTimeTs avgTime avgConv maxConv avgTimeSolve]
+        # stats = [keyI timeT avgTimeTs avgTime avgConv maxConv]
         push!(compareSpeedTable,stats)
     end
     #add central
@@ -388,6 +413,7 @@ function compareRunsTable(runs,evS)
         lamRMSE=sqrt(sum((cLam/1000 .-loadF["solution"].Lam/1000).^2)/length(cLam))
 
         stats = [renameLabel(keyI) curr2Norm currRMSE lam2Norm lamRMSE]
+        # stats = [keyI curr2Norm currRMSE lam2Norm lamRMSE]
         push!(comparePerfTable,stats)
     end
 
@@ -429,40 +455,52 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     allColors=get_color_palette(:auto, plot_color(:white), P+1)
     plotColors=allColors[1:P]'
 
-    Plots.scalefontsizes(1.2)
+    # Plots.scalefontsizes(1.2)
 
     cAlpha=0.25
     lWidth=1.5
+    centralWidth=16
+    lwidth= 4
+
     #Time plots
-    tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linewidth=8,linealpha=cAlpha,
+    tempPlot=plot(1:Klen,cSol.Tactual,label="",seriescolor=:black,linewidth=centralWidth,linealpha=cAlpha,
+                    legendfontsize=legsize1,xtickfontsize=ticksize, ytickfontsize=ticksize,
+                    xguidefontsize=guidesize, yguidefontsize=guidesize,titlefontsize=titlesize,
+                    fontfamily=fontfam,
                     xlabel="",ylabel="Temp (C)",xticks=xticks,title="a")
-    plot!(tempPlot,1:Klen,hubS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red))
-    plot!(tempPlot,T,labels="",seriescolor=plotColors,linewidth=lWidth)
+    plot!(tempPlot,1:Klen,hubS.Tmax*ones(Klen),label="XFRM Limit",line=(:dash,:red),linewidth=lwidth)
+    plot!(tempPlot,T,labels="",seriescolor=plotColors,linewidth=lwidth)
     if noLim !=nothing
-        plot!(tempPlot,1:Klen,noLim["solution"].Tactual,label="",seriescolor=allColors[P+1],linewidth=lWidth)
+        plot!(tempPlot,1:Klen,noLim["solution"].Tactual,label="",seriescolor=allColors[P+1],linewidth=lwidth)
     end
 
     iD=hubS.iD_actual[1:Klen]
     loadPlot=plot(1:Klen,(cSol.uSum+iD)/Ntf,xlabel="",ylabel="Current (kA)",labels="",
-                  seriescolor=:black,linewidth=8,linealpha=cAlpha,xticks=xticks,title="b")
-    plot!(loadPlot,1:Klen,iD/Ntf,label="Background Demand",line=(:dash))
-    plot!(loadPlot,(uSum.+iD)/Ntf,labels="",seriescolor=plotColors,linewidth=lWidth)
+                    legendfontsize=legsize1,xtickfontsize=ticksize, ytickfontsize=ticksize,
+                    xguidefontsize=guidesize, yguidefontsize=guidesize,titlefontsize=titlesize,
+                    fontfamily=fontfam,
+                  seriescolor=:black,linewidth=centralWidth,linealpha=cAlpha,xticks=xticks,title="b")
+    plot!(loadPlot,1:Klen,iD/Ntf,label="Background Demand",line=(:dash),linewidth=lwidth)
+    plot!(loadPlot,(uSum.+iD)/Ntf,labels="",seriescolor=plotColors,linewidth=lwidth)
     if noLim !=nothing
-        plot!(loadPlot,1:Klen,(noLim["solution"].uSum+iD)/Ntf,label="",seriescolor=allColors[P+1])
+        plot!(loadPlot,1:Klen,(noLim["solution"].uSum+iD)/Ntf,label="",seriescolor=allColors[P+1],linewidth=lwidth)
     end
 
     lamPlot=plot(1:Klen,cSol.Lam,xlabel="Time",ylabel=raw"Lambda",labels="Central",
-                   seriescolor=:black,linewidth=8,linealpha=cAlpha,xticks=xticks,title="c")
-    plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors,linewidth=lWidth)
+                legendfontsize=legsize2,xtickfontsize=ticksize, ytickfontsize=ticksize,
+                xguidefontsize=guidesize, yguidefontsize=guidesize,titlefontsize=titlesize,
+                fontfamily=fontfam,
+                   seriescolor=:black,linewidth=centralWidth,linealpha=cAlpha,xticks=xticks,title="c")
+    plot!(lamPlot,Lam,labels=plotLabels,seriescolor=plotColors,linewidth=lwidth)
     if noLim !=nothing
-        plot!(lamPlot,1:Klen,noLim["solution"].Lam,label="Uncoordinated",seriescolor=allColors[P+1])
+        plot!(lamPlot,1:Klen,noLim["solution"].Lam,label="Uncoordinated",seriescolor=allColors[P+1],linewidth=lwidth)
     end
 
     resPlot=plot(tempPlot,loadPlot,lamPlot,layout=(3,1))
     if lowRes
         pubPlot(resPlot,thickscale=0.4,sizeWH=(400,300),dpi=40)
     else
-        pubPlot(resPlot,thickscale=1,sizeWH=(1000,600),dpi=40)
+        pubPlot(resPlot,thickscale=1,sizeWH=(1500,900),dpi=100)
     end
 
     if saveF savefig(resPlot,path*"hubPlot.png") end
