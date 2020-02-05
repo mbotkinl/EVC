@@ -164,7 +164,7 @@ function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
         plot!(snSumPlot,sum(noLim["solution"].Sn,dims=2),label="",seriescolor=allColors[P+1],linewidth=lwidth)
     end
 
-    lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=raw"Lambda",labels="Central",
+    lamPlot=plot(1:Klen,cSol.lamCoupl,xlabel="Time",ylabel=L"\lambda",labels="Central",
                 legendfontsize=legsize2,xtickfontsize=ticksize, ytickfontsize=ticksize,
                 xguidefontsize=guidesize, yguidefontsize=guidesize,titlefontsize=titlesize,
                    seriescolor=:black,linewidth=centralWidth,linealpha=cAlpha,xticks=xticks, title="c", fontfamily=fontfam)
@@ -486,7 +486,7 @@ function compareHubsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
         plot!(loadPlot,1:Klen,(noLim["solution"].uSum+iD)/Ntf,label="",seriescolor=allColors[P+1],linewidth=lwidth)
     end
 
-    lamPlot=plot(1:Klen,cSol.Lam,xlabel="Time",ylabel=raw"Lambda",labels="Central",
+    lamPlot=plot(1:Klen,cSol.Lam,xlabel="Time",ylabel=L"\lambda",labels="Central",
                 legendfontsize=legsize2,xtickfontsize=ticksize, ytickfontsize=ticksize,
                 xguidefontsize=guidesize, yguidefontsize=guidesize,titlefontsize=titlesize,
                 fontfamily=fontfam,
