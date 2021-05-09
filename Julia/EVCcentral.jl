@@ -2,18 +2,16 @@
 #Micah Botkin-Levy
 #4/8/18
 
-if runParallel
-	@everywhere using Gurobi
-	@everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
-else
-	using Gurobi
-	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
-end
-
 fname = "central_N$(N)"
+# fname = "central_N100"
 if noTlimit
 	fname = fname*"_noLim"
 end
+
+# fname = fname*"_plus_10_gamma"
+# fname = fname*"_plus_5_gamma"
+# fname = fname*"_minus_5_gamma"
+# fname = fname*"_minus_10_gamma"
 
 if loadResults
 	println("Reading in Central Sim")

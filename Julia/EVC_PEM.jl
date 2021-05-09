@@ -1,8 +1,8 @@
 # Run file for PEM EVC simulation
 # Micah Botkin-Levy
 
-using Distributions
-using Gurobi
+# using Distributions
+# using Gurobi
 
 #pull out a few key variables
 N=evS.N

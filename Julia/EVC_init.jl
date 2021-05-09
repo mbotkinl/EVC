@@ -2,9 +2,10 @@
 # Micah Botkin-Levy
 
 println("Loading Packages...")
-runParallel=true   #run local EV problems in parallel
+runParallel=false   #run local EV problems in parallel
 
 using Distributed
+using Gurobi
 
 if runParallel
 	addprocs(3)
@@ -13,14 +14,19 @@ if runParallel
 	@everywhere using Printf
 	@everywhere using Parameters
 	@everywhere using SharedArrays
+	@everywhere using Gurobi
 	@everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
+	@everywhere include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
+
 else
 	using Suppressor
 	using JuMP
 	using Printf
 	using Parameters
 	using SharedArrays
+	using Gurobi
 	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//structEVC.jl")
+	include("C://Users//micah//Documents//uvm//Research//EVC code//Julia//functions//funEVCpwl.jl")
 end
 
 using LinearAlgebra
@@ -32,7 +38,9 @@ N=100 # number of EVs
 
 # path to working directory
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\test\\"
-path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_new2\\"
+path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N100_sensitivity\\"
+# path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N100_scalability\\"
+# path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_new2\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_largeQ\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)\\PWL\\"
 #path="C:\\Users\\micah\\Documents\\uvm\\Research\\Results\\N$(N)_K\\"
@@ -43,7 +51,7 @@ updateMethod="dualAscent" #dual decompostion method: "dualAscent" or "fastAscent
 maxIt=400           # max number of iteration per timestep
 # dualChk = 5e-4      # stopping criteria for ||lam^p-lam^(p-1)||_2 (ALADN)
 auxChk = 5      # stopping criteria for ||lam^p-lam^(p-1)||_2 (ALADN)
-primChk = 1e-1      # stopping criteria for ||coupling constraint||_1  (dual, ADMM, ALAD)
+primChk = 15e-2      # stopping criteria for ||coupling constraint||_1  (dual, ADMM, ALAD)
 saveLogInd=[1,2,71,141,210] # time step index: used for comparing hot start timesteps between central and decentralized methods
 noTlimit=false      # false for coordinator, true for uncooridated (no temperature limit)
 forecastError=false # adds forecast to iD (see below, not fully implemented)
@@ -55,10 +63,10 @@ tempAugment=false   # add temperature augmentation objective term (not fully imp
 
 # Parameters that control I/O
 drawFig=false      # draws output figures
-saveResults=true  # saves result file
+saveResults=false  # saves result file
 saveS=false        # saves scenario file
 loadResults=false  # loads results
-silent=true       # prevents output to console
+silent=false       # prevents output to console
 solverSilent=true  # prevents feedback from JuMP solver
 
 file="EVCscenarioN$(N)."*datafile

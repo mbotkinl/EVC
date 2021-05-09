@@ -100,11 +100,12 @@ function runEVCCentralStep(stepI,evS,cSol,cSave,silent)
         itotal[k,1]=sum((uRaw[(k-1)*N+n,1]) for n=1:N) + iD_actual[stepI+(k-1),1]
         itotal_background[k,1]= iD_actual[stepI+(k-1),1]
     end
-    Tactual[1,1]=evS.τP*t0+evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
-    Tactual_background[1,1]=evS.τP*t0+evS.γP*itotal_background[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
+    gamma_error_percent = 1
+    Tactual[1,1]=evS.τP*t0+gamma_error_percent*evS.γP*itotal[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
+    Tactual_background[1,1]=evS.τP*t0+gamma_error_percent*evS.γP*itotal_background[1,1]^2+evS.ρP*evS.Tamb[stepI,1]
     for k=1:horzLen
-        Tactual[k+1,1]=evS.τP*Tactual[k,1]+evS.γP*itotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]
-        Tactual_background[k+1,1]=evS.τP*Tactual_background[k,1]+evS.γP*itotal_background[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]
+        Tactual[k+1,1]=evS.τP*Tactual[k,1]+gamma_error_percent*evS.γP*itotal[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]
+        Tactual_background[k+1,1]=evS.τP*Tactual_background[k,1]+gamma_error_percent*evS.γP*itotal_background[k+1,1]^2+evS.ρP*evS.Tamb[stepI+k,1]
     end
 
     lambdaCurr=-getdual(currCon)

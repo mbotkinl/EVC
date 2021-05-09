@@ -69,6 +69,49 @@ function readRuns(path,multiCentral=false, ignorePEM=false)
     return cRun, runs, noLim
 end
 
+function sensitivityGraph()
+    lwidth= 4
+
+    cRun=load("C://Users//micah//Documents//uvm//Research//Results//N100_sensitivity//central_N100.jld2")["solution"]
+    cRun_minus_5=load("C://Users//micah//Documents//uvm//Research//Results//N100_sensitivity//central_N100_minus_5_gamma.jld2")["solution"]
+    cRun_minus_10=load("C://Users//micah//Documents//uvm//Research//Results//N100_sensitivity//central_N100_minus_10_gamma.jld2")["solution"]
+    cRun_plus_5=load("C://Users//micah//Documents//uvm//Research//Results//N100_sensitivity//central_N100_plus_5_gamma.jld2")["solution"]
+    cRun_plus_10=load("C://Users//micah//Documents//uvm//Research//Results//N100_sensitivity//central_N100_plus_10_gamma.jld2")["solution"]
+
+    allColors=get_color_palette(:auto, plot_color(:white), 5)
+
+    Plots.scalefontsizes(1.2) # careful about running this multiple times
+
+    K=evS.K
+    Tmax=100
+    p3=plot(1:K,Tmax*ones(K),label="XFRM Limit",xlabel="Time",ylabel="Temp (C)",xticks=xticks,line=(:dash,:red),linewidth=2)
+    plot!(p3, 1:K,cRun.Tactual,label="100% γ",linewidth=lwidth, seriescolor=allColors[1])
+    plot!(p3,1:K,cRun_minus_5.Tactual,label="95% γ",linewidth=lwidth, seriescolor=allColors[2])
+    plot!(p3,1:K,cRun_minus_10.Tactual,label="90% γ",linewidth=lwidth, seriescolor=allColors[3])
+    plot!(p3,1:K,cRun_plus_5.Tactual,label="105% γ",linewidth=lwidth, seriescolor=allColors[4])
+    plot!(p3,1:K,cRun_plus_10.Tactual,label="110% γ",linewidth=lwidth, seriescolor=allColors[5])
+
+    pubPlot(p3,thickscale=1,sizeWH=(1500,900),dpi=100)
+    savefig(p3,path*"sensPlot.png")
+end
+
+function scalabilityGraph()
+    lwidth= 4
+
+    allColors=get_color_palette(:auto, plot_color(:white), 3)
+
+    Plots.scalefontsizes(1.2) # careful about running this multiple times
+
+    Ns = [100, 200, 400]
+    scale_plot=plot(Ns,[0.08, 0.32, 1.1],label="PEM",xlabel="Number of EVs",ylabel="Timestep solution time (s)",linewidth=lwidth, seriescolor=allColors[1], yaxis=:log)
+    plot!(scale_plot, Ns,[26, 79, 179],label="ALADIN (cold start)",linewidth=lwidth, seriescolor=allColors[2])
+    plot!(scale_plot,Ns,[4, 10.8, 47.7],label="ALADIN (warm start)",linewidth=lwidth, seriescolor=allColors[3])
+
+    pubPlot(scale_plot,thickscale=1,sizeWH=(1500,900),dpi=100)
+    savefig(scale_plot,path*"scalePlot.png")
+
+end
+
 function compareRunsGraph(runs, cRun, noLim, saveF::Bool, lowRes::Bool)
     # Compare solutions of simulations
     runNames=collect(keys(runs))

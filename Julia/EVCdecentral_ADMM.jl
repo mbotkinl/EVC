@@ -64,6 +64,8 @@ plot!(pd3admm,evS.Tmax*ones(evS.K),label="XFRM Limit",line=(:dash,:red))
 if drawFig savefig(pd3admm,path*"J_decentral_ADMM_Temp.png") end
 
 pd4admm=plot(hcat(cSol.lamCoupl[1:4],dSoladmm.lamCoupl[1:4]),xlabel="Time",ylabel=raw"Lambda",labels=["Central" "ADMM"])
+pd4admm=plot(hcat(cSol.lamCoupl,dSoladmm.lamCoupl),xlabel="Time",ylabel=raw"Lambda",labels=["Central" "ADMM"])
+
 if drawFig savefig(pd4admm,path*"J_decentral_ADMM_Lam.png") end
 
 #compare central and decentral current agg

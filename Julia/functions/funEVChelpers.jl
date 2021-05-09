@@ -6,15 +6,65 @@ using Dates
 using LaTeXStrings
 using MAT
 
+function repeat_with_noise(X, n, p)
+    for i=1:(n-1)
+        new=X
+        new= new+ rand(Normal(0, mean(new)*p), length(new), 1)
+        X=vcat(X,new)
+    end
+    return X
+end
+
+function scaleEVS(evS, n_multiplier)
+    noise_percent = 0.01
+    N = evS.N * n_multiplier
+    a = repeat(evS.a, n_multiplier)
+    b_kWh = repeat(evS.b_kWh, n_multiplier)
+    imin = repeat(evS.imin, n_multiplier)
+    imax = repeat(evS.imax, n_multiplier)
+    ηP = repeat_with_noise(evS.ηP, n_multiplier, noise_percent)
+    s0 = repeat_with_noise(evS.s0, n_multiplier, noise_percent)
+    Snmin = repeat(evS.Snmin, n_multiplier)
+    Kn = repeat(evS.Kn, n_multiplier)
+    Qsi = [repeat(evS.Qsi[1:evS.N,:], n_multiplier); evS.Qsi[evS.N+1:end,:]]
+    Ri = repeat(evS.Ri, n_multiplier)
+    β = repeat(evS.β, n_multiplier)
+    γP = evS.γP / (n_multiplier)^2
+
+    newS=scenarioStruct(N,evS.Ts,evS.K1,evS.K2,evS.K,evS.S,evS.ItotalMax,evS.deltaI,evS.Tmax,imin,imax,
+                        a,b_kWh,ηP,evS.τP,evS.ρP,γP,s0,evS.t0,Snmin,Kn,evS.iD_pred,evS.iD_actual,
+                        evS.Tamb,evS.Tamb_raw,Qsi,Ri,β)
+    if newS==true
+        save(path*"EVCscenarioN$(N).jld2","evScenario",newS)
+    end
+
+    return newS
+end
+
+
 function rebuildEVS(evS)
     # legacy function to reconstruct scenario structure
 
-    a=zeros(N,1)
-    b_kWh=zeros(N,1)
-    Tamb_raw=evS.Tamb
+    # a=zeros(N,1)
+    # b_kWh=zeros(N,1)
+    # Tamb_raw=evS.Tamb
+
+    # 1/5/21 change Q/R ratio
+    qrRatio=round.((15-10)*rand(Beta(0.5, 0.5),evS.N,1) .+ 10,digits=2)
+    Ri=ones(evS.N,evS.K)
+    Qi=qrRatio.*Ri
+
+    # reduce Q and R for time steps after vehicle can leave
+    # for n=1:N
+    #     Ri[n,evS.Kn[n]:evS.K].=Ri[n,1]*100
+    #     Qi[n,evS.Kn[n]:evS.K].=Qi[n,1]/10
+    # end
+    QT=zeros(1,evS.K)
+    Qsi=[Qi;QT];
+
     newS=scenarioStruct(evS.N,evS.Ts,evS.K1,evS.K2,evS.K,evS.S,evS.ItotalMax,evS.deltaI,evS.Tmax,evS.imin,evS.imax,
-                        a,b_kWh,evS.ηP,evS.τP,evS.ρP,evS.γP,evS.s0,evS.t0,evS.Snmin,evS.Kn,evS.iD_pred,evS.iD_actual,
-                        evS.Tamb,Tamb_raw,evS.Qsi,evS.Ri,evS.β)
+                        evS.a,evS.b_kWh,evS.ηP,evS.τP,evS.ρP,evS.γP,evS.s0,evS.t0,evS.Snmin,evS.Kn,evS.iD_pred,evS.iD_actual,
+                        evS.Tamb,evS.Tamb_raw,Qsi,Ri,evS.β)
 
     # for old Qsi and Ri
     # newS=scenarioStruct(evS.N,evS.Ts,evS.K1,evS.K2,evS.K,evS.S,evS.ItotalMax,evS.deltaI,evS.Tmax,evS.imin,evS.imax,
@@ -105,6 +155,12 @@ function checkDesiredStates(Sn,Kn,Snmin)
             end
         end
     end
+
+    # for n=1:N
+    #     if any(cSol.Un[evS.Kn[n]:evS.K, n].>epsilon)
+    #         println(n)
+    #     end
+    # end
 
     return flag
 end
